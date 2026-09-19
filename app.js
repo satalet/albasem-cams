@@ -97,7 +97,7 @@ async function handleAdminLogout() {
   alert("تم تسجيل الخروج وإخفاء أزرار التحكم.");
 }
 
-// 2. المزامنة المباشرة الحقيقية مع Firebase
+// 2. المزامنة المباشرة مع Firebase
 function initRealtimeSync() {
   streamsRef.on('value', (snapshot) => {
     const data = snapshot.val();
@@ -118,7 +118,7 @@ function initRealtimeSync() {
   });
 }
 
-// 3. بناء الفلاتر وشبكة الكاميرات
+// 3. بناء الفلاتر
 function setupFilters() {
   const filterBox = document.getElementById('filter-buttons');
   if (!filterBox) return;
@@ -140,40 +140,71 @@ function filterByArea(area) {
   renderCams();
 }
 
-// دالة تشغيل HLS الذكية (3 محاولات فقط لمنع استهلاك المعالج والإنترنت)
+// تشغيل HLS الذكي مع مؤقت أمان قاطع لمنع اللف اللانهائي وحماية المعالج
 function setupHlsWithRetry(video, url, container) {
+  let isPlaying = false;
+  let hlsInstance = null;
+
+  const showOfflineBox = () => {
+    if (hlsInstance) {
+      try { hlsInstance.destroy(); } catch(e){}
+    }
+    video.pause();
+    video.removeAttribute('src');
+    try { video.load(); } catch(e){}
+
+    container.innerHTML = `
+      <div class="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-4 text-center z-20">
+        <i class="fa-solid fa-circle-exclamation text-amber-400 text-2xl mb-1.5"></i>
+        <span class="text-slate-200 text-xs font-bold mb-1">البث متوقف حالياً</span>
+        <span class="text-slate-400 text-[10px] mb-3">تم إيقاف المحاولات لتوفير الإنترنت والبطارية</span>
+        <button class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-[11px] font-bold px-4 py-1.5 rounded-lg transition shadow-lg flex items-center gap-1.5" onclick="renderCams()">
+          <i class="fa-solid fa-rotate-right"></i> تشغيل يدوي
+        </button>
+      </div>
+    `;
+  };
+
+  // مؤقت 5 ثواني قاطع: لو البث ما بدأ تشغيل فعلي، وقف المحاولة فوراً!
+  const safetyTimer = setTimeout(() => {
+    if (!isPlaying && (video.currentTime === 0 || video.paused || video.readyState < 2)) {
+      showOfflineBox();
+    }
+  }, 5000);
+
+  video.addEventListener('playing', () => {
+    isPlaying = true;
+    clearTimeout(safetyTimer);
+  });
+
+  video.addEventListener('timeupdate', () => {
+    if (video.currentTime > 0.2) {
+      isPlaying = true;
+      clearTimeout(safetyTimer);
+    }
+  });
+
   if (Hls.isSupported()) {
     const hls = new Hls({
       manifestLoadingMaxRetry: 2,
-      manifestLoadingRetryDelay: 1000,
+      manifestLoadingRetryDelay: 800,
       levelLoadingMaxRetry: 2,
       fragLoadingMaxRetry: 2,
-      fragLoadingRetryDelay: 1000,
+      fragLoadingRetryDelay: 800,
       enableWorker: true,
       lowLatencyMode: true
     });
+    hlsInstance = hls;
 
     let retryCount = 0;
     hls.loadSource(url);
     hls.attachMedia(video);
 
-    const showOfflineBox = () => {
-      try { hls.destroy(); } catch(e){}
-      container.innerHTML = `
-        <div class="absolute inset-0 bg-slate-950/92 flex flex-col items-center justify-center p-3 text-center z-10">
-          <i class="fa-solid fa-triangle-exclamation text-amber-500 text-xl mb-1.5"></i>
-          <span class="text-slate-300 text-[11px] font-medium mb-2">البث متوقف حالياً (توفير البيانات)</span>
-          <button class="bg-emerald-600/90 hover:bg-emerald-500 text-white text-[10px] font-bold px-3 py-1 rounded-md transition shadow" onclick="renderCams()">
-            <i class="fa-solid fa-rotate-right ml-1"></i> إعادة المحاولة
-          </button>
-        </div>
-      `;
-    };
-
     hls.on(Hls.Events.ERROR, (event, data) => {
       if (data.fatal) {
         retryCount++;
         if (retryCount >= 2) {
+          clearTimeout(safetyTimer);
           showOfflineBox();
         } else {
           if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
@@ -181,6 +212,7 @@ function setupHlsWithRetry(video, url, container) {
           } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
             hls.recoverMediaError();
           } else {
+            clearTimeout(safetyTimer);
             showOfflineBox();
           }
         }
@@ -188,17 +220,9 @@ function setupHlsWithRetry(video, url, container) {
     });
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
     video.src = url;
-    let appleRetry = 0;
     video.onerror = () => {
-      appleRetry++;
-      if (appleRetry >= 2) {
-        container.innerHTML = `
-          <div class="absolute inset-0 bg-slate-950/92 flex flex-col items-center justify-center p-3 text-center z-10">
-            <span class="text-slate-300 text-[11px] mb-2">البث متوقف حالياً</span>
-            <button class="bg-emerald-600 text-white text-[10px] font-bold px-3 py-1 rounded-md" onclick="renderCams()">إعادة المحاولة</button>
-          </div>
-        `;
-      }
+      clearTimeout(safetyTimer);
+      showOfflineBox();
     };
   }
 }
@@ -221,7 +245,6 @@ function renderCams() {
     const card = document.createElement('div');
     card.className = 'bg-[#0f172a] border border-slate-800/90 rounded-xl overflow-hidden shadow-xl flex flex-col transition hover:border-slate-700';
 
-    // أزرار الإدارة تمنع فتح التكبير عند الضغط عليها
     const adminActions = currentUser ? `
       <div class="flex items-center gap-1.5 ml-2 border-l border-slate-700 pl-2" onclick="event.stopPropagation()">
         <button onclick="openEditModal('${stream.id}')" class="bg-blue-600/30 hover:bg-blue-600 text-blue-300 hover:text-white px-2 py-0.5 rounded text-[11px] transition" title="تعديل">
@@ -233,7 +256,7 @@ function renderCams() {
       </div>
     ` : '';
 
-    // جعل شريط العنوان كاملاً قابلاً للمس للتكبير السهل على الجوال
+    // النقر على العنوان يكبر الكاميرا فوراً
     const header = `
       <div onclick="openModal('${stream.id}')" class="px-3 py-2 bg-[#121c33] border-b border-slate-800/80 flex justify-between items-center text-xs cursor-pointer hover:bg-slate-800/60 transition select-none">
         <div class="flex items-center gap-2 truncate">
@@ -360,7 +383,6 @@ async function deleteStream(id, title) {
   }
 }
 
-// 5. التحكم بالشاشات والمودال مع دعم زر الرجوع بالجوال
 function changeLayout(cols) {
   currentCols = cols;
   const grid = document.getElementById('cams-grid');
@@ -378,6 +400,7 @@ function changeLayout(cols) {
   if (cols === 3) grid.classList.add('grid-cols-1', 'md:grid-cols-2', 'lg:grid-cols-3');
 }
 
+// 5. التكبير بكامل شاشة الجوال (100dvh) مع تشغيل الصوت ودعم زر الرجوع
 function openModal(streamId) {
   const stream = streamsData.find(s => s.id === streamId);
   if (!stream) return;
@@ -391,22 +414,33 @@ function openModal(streamId) {
       const idMatch = ytUrl.match(/(?:v=|\/embed\/|youtu\.be\/)([\w-]{11})/);
       if (idMatch) ytUrl = `https://www.youtube-nocookie.com/embed/${idMatch[1]}`;
     }
-    modalBox.innerHTML = `<iframe class="w-full h-full border-0" src="${ytUrl}?autoplay=1&mute=1" allowfullscreen></iframe>`;
+    // فتح الصوت لليوتيوب في التكبير
+    modalBox.innerHTML = `<iframe class="w-full h-full border-0" src="${ytUrl}?autoplay=1&mute=0&controls=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
   } else if (stream.type === 'hls') {
     const video = document.createElement('video');
-    video.className = 'w-full h-full';
+    video.className = 'w-full h-full object-contain';
     video.autoplay = true;
     video.controls = true;
-    video.muted = true;
+    video.playsInline = true;
+    video.muted = false; // تشغيل الصوت تلقائياً عند التكبير!
+    video.volume = 1.0;
     modalBox.appendChild(video);
+    
     setupHlsWithRetry(video, stream.url, modalBox);
+
+    const playPromise = video.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        // لو نظام حماية المتصفح رفض الصوت التلقائي، بشغلها صامتة عشان ما توقف
+        video.muted = true;
+        video.play();
+      });
+    }
   } else if (stream.type === 'image') {
     modalBox.innerHTML = `<img src="${stream.url}?t=${Date.now()}" class="w-full h-full object-contain">`;
   }
 
   document.getElementById('cam-modal').classList.remove('hidden');
-  
-  // تفعيل دعم زر الرجوع في الجوال
   history.pushState({ modalOpen: true }, "");
 }
 
@@ -421,7 +455,7 @@ function closeModal(fromHistory = false) {
   }
 }
 
-// التقاط كبسة الرجوع في الجوال لتصغير الكاميرا ومنع إغلاق الموقع
+// تصغير الكاميرا فور الضغط على زر رجوع الجوال
 window.addEventListener('popstate', () => {
   closeModal(true);
 });
