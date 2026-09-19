@@ -1,11 +1,22 @@
-const CACHE_NAME = 'albasem-cams-v1';
+const CACHE_VERSION = 'v1.0.0';
+const CACHE_NAME = `albasem-cams-${CACHE_VERSION}`;
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (e) => {
-  e.waitUntil(clients.claim());
+  e.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key);
+          }
+        })
+      );
+    }).then(() => clients.claim())
+  );
 });
 
 self.addEventListener('fetch', (e) => {
