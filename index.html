@@ -2,228 +2,215 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>الباسم سات | غرفة المراقبة ورادار الكاميرات الحية</title>
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#090d16">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>الباسم سات | منصة ودليل البث المباشر المفتوح</title>
   
-  <!-- منع الكاش نهائياً من الهيدر -->
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
+  <!-- الأيقونات الرسمية وتطبيق الويب PWA -->
+  <link rel="icon" type="image/png" sizes="180x180" href="./icons/icon-ios.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/icon-ios.png">
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#059669">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   
+  <!-- Tailwind CSS & FontAwesome & Hls.js -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-
+  
   <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 
-  <style>
-    body { font-family: 'Tajawal', sans-serif; }
-    .ratio-16-9 { aspect-ratio: 16 / 9; }
-    .active-btn { background-color: #059669 !important; border-color: #10b981 !important; color: white !important; }
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: #0b0f19; }
-    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: #334155; }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
-<body class="bg-[#070a12] text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-black">
+<body class="bg-[#070a12] text-slate-100 min-h-screen flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
 
-  <!-- Header -->
-  <header class="bg-[#0d1322]/95 backdrop-blur-md border-b border-slate-800/80 sticky top-0 z-40 shadow-xl">
-    <div class="max-w-7xl mx-auto px-4 py-2.5 flex flex-wrap justify-between items-center gap-3">
+  <!-- شريط التنقل العلوي النظيف -->
+  <header class="sticky top-0 z-40 bg-[#0c1222]/90 backdrop-blur-md border-b border-slate-800/80 px-4 py-3 transition">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
       
-      <!-- Brand & Title -->
+      <!-- شعار واسم المنصة المريح -->
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shadow-lg shadow-emerald-500/20 text-white font-black text-xl">
-          <i class="fa-solid fa-satellite-dish"></i>
-        </div>
+        <img src="./icons/icon-ios.png" alt="الباسم سات" class="w-10 h-10 rounded-xl shadow-lg border border-slate-700/60 object-cover">
         <div>
           <div class="flex items-center gap-2">
-            <h1 class="text-base sm:text-lg font-black tracking-wide text-white">الباسم سات</h1>
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/30 animate-pulse">
-              ● بث حي
+            <h1 class="font-bold text-base md:text-lg tracking-wide text-white">الباسم سات</h1>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1.5 ml-0.5"></span> بث حي
             </span>
           </div>
-          <p class="text-[11px] text-slate-400">رادار كاميرات الطرق والطقس المباشرة</p>
+          <p class="text-[11px] text-slate-400">منصة وتجميع قنوات البث المفتوحة لزبائننا الكرام</p>
         </div>
       </div>
 
-      <!-- Actions -->
+      <!-- أزرار التواصل وأدوات العرض -->
       <div class="flex items-center gap-2">
-        <div class="hidden sm:flex items-center bg-[#141c30] p-1 rounded-lg border border-slate-800 text-xs">
-          <button id="btn-grid-1" onclick="changeLayout(1)" class="px-2.5 py-1 rounded transition text-slate-400 hover:text-white" title="شاشة واحدة">
-            <i class="fa-solid fa-square"></i>
-          </button>
-          <button id="btn-grid-2" onclick="changeLayout(2)" class="px-2.5 py-1 rounded transition active-btn text-white" title="شاشتان">
-            <i class="fa-solid fa-table-cells-large"></i>
-          </button>
-          <button id="btn-grid-3" onclick="changeLayout(3)" class="px-2.5 py-1 rounded transition text-slate-400 hover:text-white" title="شبكة ثلاثية">
-            <i class="fa-solid fa-table-cells"></i>
-          </button>
-        </div>
-
-        <!-- زر القفل الإداري -->
-        <button id="auth-btn" onclick="handleAuthButtonClick()" class="bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5" title="دخول إدارة الباسم سات">
-          <i class="fa-solid fa-lock text-emerald-400"></i>
-          <span id="auth-btn-text" class="hidden md:inline">الإدارة</span>
+        <a href="https://wa.me/972534829927" target="_blank" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition shadow-sm">
+          <i class="fa-brands fa-whatsapp text-sm"></i> <span>واتساب</span>
+        </a>
+        <a href="tel:0534829927" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-phone text-xs"></i> <span class="hidden sm:inline">0534829927</span>
+        </a>
+        
+        <button id="auth-btn" onclick="handleAuthButtonClick()" class="bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1">
+          <i class="fa-solid fa-lock text-[10px]"></i> <span id="auth-btn-text">الإدارة</span>
         </button>
 
-        <a href="tel:0534829927" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition">
-          <i class="fa-solid fa-phone text-emerald-400"></i>
-          <span class="hidden md:inline">0534829927</span>
-        </a>
-
-        <a href="https://wa.me/972534829927?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D8%A7%D9%84%D8%A8%D8%A7%D8%B3%D9%85%20%D8%B3%D8%A7%D8%AA%D8%8C%20%5B%D8%A8%D8%AB%20%D9%82%D9%86%D9%88%D8%A7%D8%AA%5D%20%D8%B9%D9%86%D8%AF%D9%8A%20%D8%A7%D8%B3%D8%AA%D9%81%D8%B3%D8%A7%D8%B1%3A%20" target="_blank" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 shadow-lg shadow-emerald-600/20 transition transform active:scale-95">
-          <i class="fa-brands fa-whatsapp text-sm"></i>
-          <span>واتساب</span>
-        </a>
+        <!-- مبدل التقسيم للشاشات الكبيرة -->
+        <div class="hidden sm:flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5">
+          <button id="btn-grid-1" onclick="changeLayout(1)" class="p-1.5 text-slate-400 hover:text-white rounded" title="شاشة واحدة"><i class="fa-solid fa-square"></i></button>
+          <button id="btn-grid-2" onclick="changeLayout(2)" class="p-1.5 text-slate-400 hover:text-white rounded active-btn" title="شاشتين"><i class="fa-solid fa-table-cells-large"></i></button>
+          <button id="btn-grid-3" onclick="changeLayout(3)" class="p-1.5 text-slate-400 hover:text-white rounded" title="ثلاث شاشات"><i class="fa-solid fa-table-cells"></i></button>
+        </div>
       </div>
-
     </div>
-  </header>
 
-  <!-- شريط الإدارة الخاص بأبو باسم -->
-  <div id="admin-bar" class="hidden bg-emerald-950/40 border-b border-emerald-500/30 px-4 py-2">
-    <div class="max-w-7xl mx-auto flex justify-between items-center text-xs">
-      <div class="flex items-center gap-2 text-emerald-300 font-bold">
-        <i class="fa-solid fa-user-shield"></i>
-        <span>وضع إدارة الباسم سات مفعّل</span>
-      </div>
+    <!-- شريط الإدارة الخاص بأبو باسم (يظهر فقط عند تسجيل الدخول) -->
+    <div id="admin-bar" class="hidden max-w-7xl mx-auto mt-2 pt-2 border-t border-slate-800 flex items-center justify-between">
+      <span class="text-xs text-emerald-400 font-semibold flex items-center gap-1.5">
+        <i class="fa-solid fa-circle-check"></i> تم تفعيل وضع إدارة البثوث
+      </span>
       <div class="flex items-center gap-2">
-        <button onclick="openAddModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded-lg font-bold flex items-center gap-1.5 transition">
-          <i class="fa-solid fa-plus"></i>
-          <span>إضافة بث جديد</span>
+        <button onclick="openAddModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded transition shadow">
+          <i class="fa-solid fa-plus ml-1"></i> إضافة بث جديد
         </button>
-        <button onclick="handleAdminLogout()" class="bg-red-950/60 hover:bg-red-900 border border-red-800 text-red-300 px-2.5 py-1 rounded-lg transition font-bold">
+        <button onclick="handleAdminLogout()" class="bg-rose-600/80 hover:bg-rose-600 text-white text-xs px-2.5 py-1 rounded transition">
           خروج
         </button>
       </div>
     </div>
-  </div>
+  </header>
 
-  <!-- Filter Bar -->
-  <div class="bg-[#0b101d] border-b border-slate-800/60 px-4 py-2 sticky top-[57px] z-30">
-    <div class="max-w-7xl mx-auto flex items-center gap-2 overflow-x-auto text-xs py-1" id="filter-buttons">
-      <button onclick="filterByArea('all')" class="filter-chip active-btn px-3 py-1 rounded-full border border-slate-700 font-medium whitespace-nowrap transition">
-        جميع الكاميرات
-      </button>
+  <!-- المحتوى الرئيسي -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-4 py-4">
+    
+    <!-- شريط التبويبات والتصنيفات -->
+    <div class="mb-4 overflow-x-auto pb-1.5 no-scrollbar">
+      <div id="filter-buttons" class="flex items-center gap-1.5">
+        <!-- تملأ ديناميكياً من app.js -->
+      </div>
     </div>
-  </div>
 
-  <!-- Streams Grid -->
-  <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-4">
+    <!-- شبكة عرض القنوات المباشرة -->
     <div id="cams-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div class="col-span-full py-12 text-center text-slate-500">
-        <i class="fa-solid fa-circle-notch fa-spin text-2xl text-emerald-500 mb-2"></i>
-        <p>جاري تحميل الكاميرات المباشرة...</p>
+      <div class="col-span-full py-20 text-center text-slate-500 text-sm flex flex-col items-center justify-center gap-3">
+        <span class="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></span>
+        <span>جاري مزامنة قنوات البث المفتوحة...</span>
       </div>
     </div>
   </main>
 
-  <!-- Login Modal -->
-  <div id="login-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden flex items-center justify-center p-4">
-    <div class="bg-[#0f172a] border border-slate-700 w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl p-5 space-y-4">
-      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-        <div class="flex items-center gap-2 text-emerald-400 font-bold text-sm">
-          <i class="fa-solid fa-shield-halved"></i>
-          <span>دخول إدارة الباسم سات</span>
-        </div>
-        <button onclick="closeLoginModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+  <!-- التذييل الاحترافي وإخلاء المسؤولية الصارم -->
+  <footer class="bg-[#0a0f1d] border-t border-slate-800/90 mt-12 py-8 px-4 text-slate-400 text-xs leading-relaxed">
+    <div class="max-w-5xl mx-auto space-y-4 text-center">
+      
+      <!-- الرابط الرقمي التفاعلي للكرت -->
+      <div class="text-sm text-slate-300">
+        هذه المنصة ودليل القنوات المباشرة مقدم كخدمة رقمية مجانية لجمهور ومتابعي 
+        <a href="https://cutt.ly/abu-basem" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 font-bold text-emerald-400 hover:text-emerald-300 underline underline-offset-4 decoration-emerald-500/60 transition mx-1">
+          <span>الباسم سات لأنظمة الستلايت وكاميرات المراقبة</span>
+          <i class="fa-solid fa-arrow-up-right-from-square text-[11px]"></i>
+        </a>
       </div>
-      <form onsubmit="handleAdminLogin(event)" class="space-y-3 text-xs">
-        <div>
-          <label class="block text-slate-400 mb-1">البريد الإلكتروني</label>
-          <input type="email" id="login-email" required class="w-full bg-[#0a0e17] border border-slate-700 rounded-lg px-3 py-2 text-white outline-none focus:border-emerald-500 font-mono">
-        </div>
-        <div>
-          <label class="block text-slate-400 mb-1">كلمة المرور</label>
-          <input type="password" id="login-password" required class="w-full bg-[#0a0e17] border border-slate-700 rounded-lg px-3 py-2 text-white outline-none focus:border-emerald-500 font-mono">
-        </div>
-        <button type="submit" id="login-submit-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-lg transition">
-          تسجيل الدخول
+
+      <!-- إشعار إخلاء المسؤولية القانوني الصارم (تجميع وتدوير دون تعديل) -->
+      <div class="p-4 bg-slate-900/60 border border-slate-800/80 rounded-xl text-[11px] text-slate-400 text-justify md:text-center space-y-1.5">
+        <p class="font-bold text-slate-300 flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-shield-halved text-emerald-400"></i> إشعار إخلاء مسؤولية قانوني وتوضيح طبيعة الخدمة:
+        </p>
+        <p>
+          تُعد هذه المنصة دليلاً تقنياً ومجمّعاً مجانياً يقوم بإعادة تضمين وفهرسة روابط البث المباشر العامة والمفتوحة للعموم على شبكة الإنترنت في نافذة واحدة لتسهيل وصول المستخدمين إليها.
+          <strong>تؤكد مؤسسة الباسم سات أنها لا تمتلك، ولا تُنشئ، ولا تبث، ولا تستضيف أي محتوى مرئي أو مسموع عبر خوادمها، ولا تتدخل بأي شكل من الأشكال في تعديل أو تغيير أو اجتزاء محتوى البث أو إزالة العلامات التجارية والشعارات الأصلية للقنوات والجهات المصدرية.</strong>
+        </p>
+        <p class="text-slate-500 text-[10px]">
+          جميع حقوق النشر والبث والعلامات التجارية مملوكة حصرياً للجهات والقنوات الأصلية أصحاب البث. في حال رغبة أي جهة معتمدة بإزالة رابط تضمين قناتها من هذا الدليل المجاني، يرجى التواصل المباشر ليتم الحذف فوراً.
+        </p>
+      </div>
+
+      <div class="text-[11px] text-slate-500 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 pt-2">
+        <span>الرام - كفر عقب - القدس وضواحيها</span>
+        <span>•</span>
+        <span>هاتف: 0534829927</span>
+        <span>•</span>
+        <span>جميع الحقوق محفوظة © الباسم سات</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- مودال تكبير القناة بالكامل (100dvh على الجوال مع الصوت) -->
+  <div id="cam-modal" class="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm hidden flex items-center justify-center p-2 sm:p-6">
+    <div class="bg-[#0d1322] border border-slate-800 rounded-2xl w-full max-w-5xl h-full max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
+      <div class="px-4 py-3 bg-[#11192e] border-b border-slate-800 flex justify-between items-center text-sm">
+        <h3 id="modal-title" class="font-bold text-white truncate"></h3>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-white p-1 rounded-lg transition" title="إغلاق">
+          <i class="fa-solid fa-xmark text-lg"></i>
         </button>
+      </div>
+      <div id="modal-content" class="flex-1 bg-black flex items-center justify-center overflow-hidden relative"></div>
+    </div>
+  </div>
+
+  <!-- مودال تسجيل الدخول للإدارة -->
+  <div id="login-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-6 w-full max-w-sm shadow-2xl">
+      <h3 class="font-bold text-base text-white mb-4 flex items-center gap-2">
+        <i class="fa-solid fa-user-shield text-emerald-400"></i> دخول إدارة الباسم سات
+      </h3>
+      <form onsubmit="handleAdminLogin(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">البريد الإلكتروني</label>
+          <input type="email" id="login-email" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" required>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">كلمة المرور</label>
+          <input type="password" id="login-password" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" required>
+        </div>
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button type="button" onclick="closeLoginModal()" class="px-3 py-1.5 text-xs text-slate-400 hover:text-white">إلغاء</button>
+          <button type="submit" id="login-submit-btn" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-1.5 rounded-lg transition">دخول</button>
+        </div>
       </form>
     </div>
   </div>
 
-  <!-- Edit/Add Modal -->
-  <div id="edit-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden flex items-center justify-center p-4">
-    <div class="bg-[#0f172a] border border-slate-700 w-full max-w-md rounded-2xl overflow-hidden shadow-2xl p-5 space-y-4">
-      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-        <h3 id="edit-modal-title" class="text-sm font-bold text-emerald-400">➕ إضافة كاميرا جديدة</h3>
-        <button onclick="closeEditModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
-      </div>
+  <!-- مودال تعديل وإضافة الكاميرات -->
+  <div id="edit-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-5 w-full max-w-md shadow-2xl">
+      <h3 id="edit-modal-title" class="font-bold text-sm text-white mb-4"></h3>
       <form id="edit-form" onsubmit="handleSaveStream(event)" class="space-y-3 text-xs">
         <input type="hidden" id="edit-stream-id">
         <div>
-          <label class="block text-slate-400 mb-1">اسم / عنوان الكاميرا</label>
-          <input type="text" id="edit-title" required placeholder="مثلاً: جولة نابلسية" class="w-full bg-[#0a0e17] border border-slate-700 rounded-lg px-3 py-2 text-white outline-none focus:border-emerald-500">
+          <label class="block text-slate-400 mb-1">اسم / عنوان القناة</label>
+          <input type="text" id="edit-title" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white" required>
         </div>
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block text-slate-400 mb-1">المنطقة</label>
-            <input type="text" id="edit-area" required placeholder="نابلس، كفر عقب..." class="w-full bg-[#0a0e17] border border-slate-700 rounded-lg px-3 py-2 text-white outline-none focus:border-emerald-500">
+            <label class="block text-slate-400 mb-1">المنطقة / التبويب</label>
+            <input type="text" id="edit-area" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white" required>
           </div>
           <div>
             <label class="block text-slate-400 mb-1">نوع البث</label>
-            <select id="edit-type" class="w-full bg-[#0a0e17] border border-slate-700 rounded-lg px-3 py-2 text-white outline-none focus:border-emerald-500">
-              <option value="hls">بث مباشر M3U8 (HLS)</option>
+            <select id="edit-type" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white">
+              <option value="hls">بث مباشر (M3U8 HLS)</option>
               <option value="youtube">بث يوتيوب (YouTube)</option>
-              <option value="image">لقطة متجددة (Image)</option>
+              <option value="image">صورة متجددة (Live Image)</option>
             </select>
           </div>
         </div>
         <div>
           <label class="block text-slate-400 mb-1">رابط البث المباشر (URL)</label>
-          <input type="url" id="edit-url" required placeholder="https://..." class="w-full bg-[#0a0e17] border border-slate-700 rounded-lg px-3 py-2 text-white outline-none focus:border-emerald-500 font-mono">
+          <input type="text" id="edit-url" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono text-[11px]" required>
         </div>
-        <div class="flex gap-2 pt-2">
-          <button type="submit" id="edit-save-btn" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-lg transition">
-            حفظ ونشر فوراً
-          </button>
-          <button type="button" onclick="closeEditModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg transition">
-            إلغاء
-          </button>
+        <div class="flex items-center justify-end gap-2 pt-3">
+          <button type="button" onclick="closeEditModal()" class="px-3 py-1.5 text-slate-400 hover:text-white">إلغاء</button>
+          <button type="submit" id="edit-save-btn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-1.5 rounded-lg transition"></button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Fullscreen Modal -->
-  <div id="cam-modal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex items-center justify-center p-2 sm:p-6">
-    <div class="bg-[#0f172a] border border-slate-700 w-full max-w-5xl rounded-2xl overflow-hidden shadow-2xl flex flex-col">
-      <div class="px-4 py-3 bg-slate-900 flex justify-between items-center border-b border-slate-800">
-        <div class="flex items-center gap-2">
-          <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
-          <h3 id="modal-title" class="text-sm sm:text-base font-bold text-white"></h3>
-        </div>
-        <button onclick="closeModal()" class="text-slate-400 hover:text-white p-1 rounded-lg transition">
-          <i class="fa-solid fa-xmark text-lg"></i>
-        </button>
-      </div>
-      <div id="modal-content" class="bg-black ratio-16-9 w-full flex items-center justify-center"></div>
-    </div>
-  </div>
-
-  <!-- Footer -->
-  <footer class="bg-[#090d16] border-t border-slate-800/80 py-4 px-4 text-center text-xs text-slate-500">
-    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
-      <p>خدمة البث المباشر مقدمة من <span class="text-emerald-400 font-bold">الباسم سات</span> لأنظمة المراقبة والستلايت</p>
-      <p class="text-[11px] text-slate-600">الرام - كفر عقب - القدس وضواحيها | هاتف: 0534829927</p>
-    </div>
-  </footer>
-
-  <!-- تحميل الكود مع كسر الكاش الزمني دائماً -->
-  <script>
-    const script = document.createElement('script');
-    script.src = 'app.js?v=' + Date.now();
-    document.body.appendChild(script);
-  </script>
+  <script src="app.js"></script>
 </body>
 </html>

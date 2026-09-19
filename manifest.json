@@ -1,22 +1,33 @@
 {
-  "name": "الباسم سات | رادار الكاميرات الحية",
+  "name": "الباسم سات | منصة البث المباشر",
   "short_name": "الباسم سات",
-  "description": "منصة مراقبة الكاميرات الحية وحركة السير - الباسم سات لأنظمة المراقبة والستلايت",
+  "description": "منصة وخدمة مجانية لتجميع وإعادة عرض القنوات والبثوث الرقمية المفتوحة لزبائن الباسم سات",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#0a0e17",
-  "theme_color": "#0a0e17",
-  "orientation": "any",
+  "orientation": "portrait",
+  "background_color": "#070a12",
+  "theme_color": "#059669",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/2928/2928883.png",
+      "src": "./icons/icon-android.png",
+      "sizes": "144x144",
+      "type": "image/png"
+    },
+    {
+      "src": "./icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/2928/2928883.png",
-      "sizes": "512x512",
+      "src": "./icons/icon-ios.png",
+      "sizes": "180x180",
       "type": "image/png"
+    },
+    {
+      "src": "./icons/icon-playstore.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
