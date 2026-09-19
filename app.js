@@ -140,8 +140,18 @@ function filterByArea(area) {
   renderCams();
 }
 
-// تشغيل HLS الذكي مع مؤقت أمان قاطع لمنع اللف اللانهائي وحماية المعالج
-function setupHlsWithRetry(video, url, container) {
+// تشغيل وإعادة محاولة حصرية وخاصة بكادر الكاميرا الفردي فقط
+function launchHlsStream(container, url, isModal = false) {
+  container.innerHTML = '';
+  const video = document.createElement('video');
+  video.className = isModal ? 'w-full h-full object-contain' : 'w-full h-full object-cover';
+  video.autoplay = true;
+  video.controls = true;
+  video.playsInline = true;
+  video.muted = isModal ? false : true;
+  if (isModal) video.volume = 1.0;
+  container.appendChild(video);
+
   let isPlaying = false;
   let hlsInstance = null;
 
@@ -154,18 +164,26 @@ function setupHlsWithRetry(video, url, container) {
     try { video.load(); } catch(e){}
 
     container.innerHTML = `
-      <div class="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-4 text-center z-20">
+      <div class="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-4 text-center z-20" onclick="event.stopPropagation()">
         <i class="fa-solid fa-circle-exclamation text-amber-400 text-2xl mb-1.5"></i>
         <span class="text-slate-200 text-xs font-bold mb-1">البث متوقف حالياً</span>
         <span class="text-slate-400 text-[10px] mb-3">تم إيقاف المحاولات لتوفير الإنترنت والبطارية</span>
-        <button class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-[11px] font-bold px-4 py-1.5 rounded-lg transition shadow-lg flex items-center gap-1.5" onclick="renderCams()">
+        <button class="retry-single-btn bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-[11px] font-bold px-4 py-1.5 rounded-lg transition shadow-lg flex items-center gap-1.5">
           <i class="fa-solid fa-rotate-right"></i> تشغيل يدوي
         </button>
       </div>
     `;
+
+    // زر التحديث يحدث هذا البوكس فقط دون لمس بقية الكاميرات إطلاقاً
+    const retryBtn = container.querySelector('.retry-single-btn');
+    if (retryBtn) {
+      retryBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        launchHlsStream(container, url, isModal);
+      });
+    }
   };
 
-  // مؤقت 5 ثواني قاطع: لو البث ما بدأ تشغيل فعلي، وقف المحاولة فوراً!
   const safetyTimer = setTimeout(() => {
     if (!isPlaying && (video.currentTime === 0 || video.paused || video.readyState < 2)) {
       showOfflineBox();
@@ -225,6 +243,16 @@ function setupHlsWithRetry(video, url, container) {
       showOfflineBox();
     };
   }
+
+  if (isModal) {
+    const p = video.play();
+    if (p !== undefined) {
+      p.catch(() => {
+        video.muted = true;
+        video.play();
+      });
+    }
+  }
 }
 
 function renderCams() {
@@ -256,7 +284,6 @@ function renderCams() {
       </div>
     ` : '';
 
-    // النقر على العنوان يكبر الكاميرا فوراً
     const header = `
       <div onclick="openModal('${stream.id}')" class="px-3 py-2 bg-[#121c33] border-b border-slate-800/80 flex justify-between items-center text-xs cursor-pointer hover:bg-slate-800/60 transition select-none">
         <div class="flex items-center gap-2 truncate">
@@ -290,14 +317,7 @@ function renderCams() {
         </iframe>
       `;
     } else if (stream.type === 'hls') {
-      const video = document.createElement('video');
-      video.className = 'w-full h-full object-cover';
-      video.autoplay = true;
-      video.muted = true;
-      video.controls = true;
-      video.playsInline = true;
-      feedContainer.appendChild(video);
-      setupHlsWithRetry(video, stream.url, feedContainer);
+      launchHlsStream(feedContainer, stream.url, false);
     } else if (stream.type === 'image') {
       const img = document.createElement('img');
       img.src = stream.url + '?t=' + Date.now();
@@ -400,7 +420,7 @@ function changeLayout(cols) {
   if (cols === 3) grid.classList.add('grid-cols-1', 'md:grid-cols-2', 'lg:grid-cols-3');
 }
 
-// 5. التكبير بكامل شاشة الجوال (100dvh) مع تشغيل الصوت ودعم زر الرجوع
+// 5. التكبير مع دعم العزل الكامل وزر الرجوع
 function openModal(streamId) {
   const stream = streamsData.find(s => s.id === streamId);
   if (!stream) return;
@@ -414,28 +434,9 @@ function openModal(streamId) {
       const idMatch = ytUrl.match(/(?:v=|\/embed\/|youtu\.be\/)([\w-]{11})/);
       if (idMatch) ytUrl = `https://www.youtube-nocookie.com/embed/${idMatch[1]}`;
     }
-    // فتح الصوت لليوتيوب في التكبير
     modalBox.innerHTML = `<iframe class="w-full h-full border-0" src="${ytUrl}?autoplay=1&mute=0&controls=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
   } else if (stream.type === 'hls') {
-    const video = document.createElement('video');
-    video.className = 'w-full h-full object-contain';
-    video.autoplay = true;
-    video.controls = true;
-    video.playsInline = true;
-    video.muted = false; // تشغيل الصوت تلقائياً عند التكبير!
-    video.volume = 1.0;
-    modalBox.appendChild(video);
-    
-    setupHlsWithRetry(video, stream.url, modalBox);
-
-    const playPromise = video.play();
-    if (playPromise !== undefined) {
-      playPromise.catch(() => {
-        // لو نظام حماية المتصفح رفض الصوت التلقائي، بشغلها صامتة عشان ما توقف
-        video.muted = true;
-        video.play();
-      });
-    }
+    launchHlsStream(modalBox, stream.url, true);
   } else if (stream.type === 'image') {
     modalBox.innerHTML = `<img src="${stream.url}?t=${Date.now()}" class="w-full h-full object-contain">`;
   }
@@ -455,7 +456,6 @@ function closeModal(fromHistory = false) {
   }
 }
 
-// تصغير الكاميرا فور الضغط على زر رجوع الجوال
 window.addEventListener('popstate', () => {
   closeModal(true);
 });
