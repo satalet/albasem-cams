@@ -1,24 +1,38 @@
-const CACHE_VERSION = 'v1789843749';
-const CACHE_NAME = `albasem-cams-${CACHE_VERSION}`;
+// رقم إصدار ديناميكي يتغير دائماً
+const CACHE_NAME = 'albasem-cams-live-v' + Date.now();
 
-self.addEventListener('install', (e) => {
+// 1. التثبيت الفوري وتخطي الانتظار
+self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-self.addEventListener('activate', (e) => {
-  e.waitUntil(
-    caches.keys().then((keys) => {
+// 2. تنظيف ومسح كل الكاش القديم فوراً عند التفعيل
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
       return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
+        cacheNames.map((cache) => {
+          return caches.delete(cache);
         })
       );
-    }).then(() => clients.claim())
+    }).then(() => self.clients.claim())
   );
 });
 
-self.addEventListener('fetch', (e) => {
-  e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+// 3. Network First: اسحب دائماً من السيرفر والإنترنت أولاً
+self.addEventListener('fetch', (event) => {
+  // عدم تخزين طلبات فايربيس أو البث المباشر
+  if (event.request.url.includes('firebaseio.com') || event.request.url.includes('.m3u8')) {
+    return;
+  }
+  
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        return response;
+      })
+      .catch(() => {
+        return caches.match(event.request);
+      })
+  );
 });

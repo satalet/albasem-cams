@@ -7,12 +7,17 @@
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#090d16">
   
+  <!-- منع الكاش نهائياً من الهيدر -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
-  <!-- مكتبات Firebase الرسمية -->
+  <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
@@ -33,6 +38,7 @@
   <header class="bg-[#0d1322]/95 backdrop-blur-md border-b border-slate-800/80 sticky top-0 z-40 shadow-xl">
     <div class="max-w-7xl mx-auto px-4 py-2.5 flex flex-wrap justify-between items-center gap-3">
       
+      <!-- Brand & Title -->
       <div class="flex items-center gap-3">
         <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shadow-lg shadow-emerald-500/20 text-white font-black text-xl">
           <i class="fa-solid fa-satellite-dish"></i>
@@ -48,6 +54,7 @@
         </div>
       </div>
 
+      <!-- Actions -->
       <div class="flex items-center gap-2">
         <div class="hidden sm:flex items-center bg-[#141c30] p-1 rounded-lg border border-slate-800 text-xs">
           <button id="btn-grid-1" onclick="changeLayout(1)" class="px-2.5 py-1 rounded transition text-slate-400 hover:text-white" title="شاشة واحدة">
@@ -62,8 +69,9 @@
         </div>
 
         <!-- زر القفل الإداري -->
-        <button id="auth-btn" onclick="handleAuthButtonClick()" class="bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 p-2 rounded-lg text-xs transition" title="لوحة إدارة الكاميرات">
+        <button id="auth-btn" onclick="handleAuthButtonClick()" class="bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5" title="دخول إدارة الباسم سات">
           <i class="fa-solid fa-lock text-emerald-400"></i>
+          <span id="auth-btn-text" class="hidden md:inline">الإدارة</span>
         </button>
 
         <a href="tel:0534829927" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition">
@@ -80,6 +88,25 @@
     </div>
   </header>
 
+  <!-- شريط الإدارة الخاص بأبو باسم -->
+  <div id="admin-bar" class="hidden bg-emerald-950/40 border-b border-emerald-500/30 px-4 py-2">
+    <div class="max-w-7xl mx-auto flex justify-between items-center text-xs">
+      <div class="flex items-center gap-2 text-emerald-300 font-bold">
+        <i class="fa-solid fa-user-shield"></i>
+        <span>وضع إدارة الباسم سات مفعّل</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="openAddModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded-lg font-bold flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-plus"></i>
+          <span>إضافة بث جديد</span>
+        </button>
+        <button onclick="handleAdminLogout()" class="bg-red-950/60 hover:bg-red-900 border border-red-800 text-red-300 px-2.5 py-1 rounded-lg transition font-bold">
+          خروج
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Filter Bar -->
   <div class="bg-[#0b101d] border-b border-slate-800/60 px-4 py-2 sticky top-[57px] z-30">
     <div class="max-w-7xl mx-auto flex items-center gap-2 overflow-x-auto text-xs py-1" id="filter-buttons">
@@ -94,28 +121,12 @@
     <div id="cams-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div class="col-span-full py-12 text-center text-slate-500">
         <i class="fa-solid fa-circle-notch fa-spin text-2xl text-emerald-500 mb-2"></i>
-        <p>جاري مزامنة الكاميرات المباشرة مع السيرفر...</p>
+        <p>جاري تحميل الكاميرات المباشرة...</p>
       </div>
     </div>
   </main>
 
-  <!-- Fullscreen Modal -->
-  <div id="cam-modal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex items-center justify-center p-2 sm:p-6">
-    <div class="bg-[#0f172a] border border-slate-700 w-full max-w-5xl rounded-2xl overflow-hidden shadow-2xl flex flex-col">
-      <div class="px-4 py-3 bg-slate-900 flex justify-between items-center border-b border-slate-800">
-        <div class="flex items-center gap-2">
-          <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
-          <h3 id="modal-title" class="text-sm sm:text-base font-bold text-white"></h3>
-        </div>
-        <button onclick="closeModal()" class="text-slate-400 hover:text-white p-1 rounded-lg transition">
-          <i class="fa-solid fa-xmark text-lg"></i>
-        </button>
-      </div>
-      <div id="modal-content" class="bg-black ratio-16-9 w-full flex items-center justify-center"></div>
-    </div>
-  </div>
-
-  <!-- نافذة تسجيل الدخول الآمن -->
+  <!-- Login Modal -->
   <div id="login-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden flex items-center justify-center p-4">
     <div class="bg-[#0f172a] border border-slate-700 w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl p-5 space-y-4">
       <div class="flex justify-between items-center border-b border-slate-800 pb-3">
@@ -135,84 +146,72 @@
           <input type="password" id="login-password" required class="w-full bg-[#0a0e17] border border-slate-700 rounded-lg px-3 py-2 text-white outline-none focus:border-emerald-500 font-mono">
         </div>
         <button type="submit" id="login-submit-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-lg transition">
-          تسجيل الدخول المشفر
+          تسجيل الدخول
         </button>
       </form>
     </div>
   </div>
 
-  <!-- لوحة التحكم الإدارية (ADMIN MODAL) -->
-  <div id="admin-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-6">
-    <div class="bg-[#0f172a] border border-slate-700 w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-      
-      <div class="px-5 py-3.5 bg-slate-900 border-b border-slate-800 flex justify-between items-center">
-        <div class="flex items-center gap-2">
-          <i class="fa-solid fa-sliders text-emerald-400"></i>
-          <h2 class="text-base font-bold text-white">لوحة تحكم الباسم سات</h2>
-        </div>
-        <div class="flex items-center gap-2">
-          <button onclick="handleAdminLogout()" class="text-red-400 hover:text-red-300 text-xs px-2 py-1 bg-red-950/40 border border-red-800/50 rounded transition" title="تسجيل الخروج">
-            <i class="fa-solid fa-right-from-bracket ml-1"></i> خروج
-          </button>
-          <button onclick="closeAdminModal()" class="text-slate-400 hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
-        </div>
+  <!-- Edit/Add Modal -->
+  <div id="edit-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-[#0f172a] border border-slate-700 w-full max-w-md rounded-2xl overflow-hidden shadow-2xl p-5 space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h3 id="edit-modal-title" class="text-sm font-bold text-emerald-400">➕ إضافة كاميرا جديدة</h3>
+        <button onclick="closeEditModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
       </div>
-
-      <div class="p-5 overflow-y-auto space-y-6">
-        <form id="cam-form" onsubmit="handleSaveStream(event)" class="bg-[#131b2e] p-4 rounded-xl border border-slate-800 space-y-3">
-          <input type="hidden" id="form-stream-id">
-          <h3 id="form-title" class="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-2">➕ إضافة كاميرا جديدة</h3>
-          
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label class="block text-[11px] text-slate-400 mb-1">اسم / عنوان الكاميرا</label>
-              <input type="text" id="cam-title-input" required placeholder="مثلاً: جولة نابلسية" class="w-full bg-[#0a0e17] border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:border-emerald-500 outline-none">
-            </div>
-            <div>
-              <label class="block text-[11px] text-slate-400 mb-1">المنطقة / الفهرس</label>
-              <input type="text" id="cam-area-input" required placeholder="مثلاً: نابلس، كفر عقب، الرام" class="w-full bg-[#0a0e17] border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:border-emerald-500 outline-none">
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label class="block text-[11px] text-slate-400 mb-1">نوع البث</label>
-              <select id="cam-type-input" class="w-full bg-[#0a0e17] border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:border-emerald-500 outline-none">
-                <option value="hls">بث مباشر M3U8 (HLS)</option>
-                <option value="youtube">بث يوتيوب (YouTube)</option>
-                <option value="image">لقطة متجددة (Image)</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-[11px] text-slate-400 mb-1">التصنيف</label>
-              <input type="text" id="cam-cat-input" placeholder="سير، طقس، معالم" value="سير" class="w-full bg-[#0a0e17] border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:border-emerald-500 outline-none">
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-[11px] text-slate-400 mb-1">رابط البث المباشر (URL)</label>
-            <input type="url" id="cam-url-input" required placeholder="https://..." class="w-full bg-[#0a0e17] border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:border-emerald-500 outline-none font-mono">
-          </div>
-
-          <div class="flex gap-2 pt-2">
-            <button type="submit" id="form-submit-btn" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded-lg transition">
-              حفظ ونشر فوراً
-            </button>
-            <button type="button" onclick="resetForm()" id="form-cancel-btn" class="hidden bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs py-2 px-3 rounded-lg transition">
-              إلغاء التعديل
-            </button>
-          </div>
-        </form>
-
+      <form id="edit-form" onsubmit="handleSaveStream(event)" class="space-y-3 text-xs">
+        <input type="hidden" id="edit-stream-id">
         <div>
-          <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">الكاميرات المربوطة بالسيرفر</h3>
-          <div id="admin-cams-list" class="space-y-2"></div>
+          <label class="block text-slate-400 mb-1">اسم / عنوان الكاميرا</label>
+          <input type="text" id="edit-title" required placeholder="مثلاً: جولة نابلسية" class="w-full bg-[#0a0e17] border border-slate-700 rounded-lg px-3 py-2 text-white outline-none focus:border-emerald-500">
         </div>
-
-      </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-400 mb-1">المنطقة</label>
+            <input type="text" id="edit-area" required placeholder="نابلس، كفر عقب..." class="w-full bg-[#0a0e17] border border-slate-700 rounded-lg px-3 py-2 text-white outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">نوع البث</label>
+            <select id="edit-type" class="w-full bg-[#0a0e17] border border-slate-700 rounded-lg px-3 py-2 text-white outline-none focus:border-emerald-500">
+              <option value="hls">بث مباشر M3U8 (HLS)</option>
+              <option value="youtube">بث يوتيوب (YouTube)</option>
+              <option value="image">لقطة متجددة (Image)</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">رابط البث المباشر (URL)</label>
+          <input type="url" id="edit-url" required placeholder="https://..." class="w-full bg-[#0a0e17] border border-slate-700 rounded-lg px-3 py-2 text-white outline-none focus:border-emerald-500 font-mono">
+        </div>
+        <div class="flex gap-2 pt-2">
+          <button type="submit" id="edit-save-btn" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-lg transition">
+            حفظ ونشر فوراً
+          </button>
+          <button type="button" onclick="closeEditModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg transition">
+            إلغاء
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 
+  <!-- Fullscreen Modal -->
+  <div id="cam-modal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex items-center justify-center p-2 sm:p-6">
+    <div class="bg-[#0f172a] border border-slate-700 w-full max-w-5xl rounded-2xl overflow-hidden shadow-2xl flex flex-col">
+      <div class="px-4 py-3 bg-slate-900 flex justify-between items-center border-b border-slate-800">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
+          <h3 id="modal-title" class="text-sm sm:text-base font-bold text-white"></h3>
+        </div>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-white p-1 rounded-lg transition">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <div id="modal-content" class="bg-black ratio-16-9 w-full flex items-center justify-center"></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
   <footer class="bg-[#090d16] border-t border-slate-800/80 py-4 px-4 text-center text-xs text-slate-500">
     <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
       <p>خدمة البث المباشر مقدمة من <span class="text-emerald-400 font-bold">الباسم سات</span> لأنظمة المراقبة والستلايت</p>
@@ -220,6 +219,11 @@
     </div>
   </footer>
 
-  <script src="app.js"></script>
+  <!-- تحميل الكود مع كسر الكاش الزمني دائماً -->
+  <script>
+    const script = document.createElement('script');
+    script.src = 'app.js?v=' + Date.now();
+    document.body.appendChild(script);
+  </script>
 </body>
 </html>

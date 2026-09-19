@@ -1,8 +1,21 @@
+// مراقبة التحديث التلقائي للـ Service Worker لكسر الكاش ذاتياً
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW fail', err));
+  navigator.serviceWorker.register('./sw.js').then((reg) => {
+    // فحص دوري عند فتح الصفحة
+    reg.update();
+  }).catch(err => console.log('SW fail', err));
+
+  // أول ما الـ Service Worker يتحدث، حدّث الصفحة فوراً على أجهزة الجميع
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) {
+      refreshing = true;
+      window.location.reload();
+    }
+  });
 }
 
-// 1. مفاتيح فايربيس المعتمدة
+// 1. مفاتيح فايربيس الرسمية
 const firebaseConfig = {
   apiKey: "AIzaSyD4U4DFTtO8zuqIlrJp19ji1ESptfuVr9E",
   authDomain: "albasem-cams.firebaseapp.com",
@@ -19,25 +32,39 @@ const db = firebase.database();
 const auth = firebase.auth();
 const streamsRef = db.ref('streams');
 
-// حالة تسجيل الدخول التلقائية
 let currentUser = null;
+let streamsData = [];
+let currentFilter = 'all';
+let currentCols = 2;
+
+// مراقبة الدخول والخروج مع حفظ الجلسة
 auth.onAuthStateChanged((user) => {
   currentUser = user;
   const authBtn = document.getElementById('auth-btn');
+  const authText = document.getElementById('auth-btn-text');
+  const adminBar = document.getElementById('admin-bar');
+
   if (user) {
-    authBtn.classList.add('bg-emerald-600', 'text-white');
-    authBtn.classList.remove('bg-slate-800/80', 'text-slate-300');
-    authBtn.title = "لوحة التحكم مفتوحة (أبو باسم)";
+    if (authBtn) {
+      authBtn.classList.add('bg-emerald-600', 'text-white', 'border-emerald-500');
+      authBtn.classList.remove('bg-slate-800/80', 'text-slate-300', 'border-slate-700');
+    }
+    if (authText) authText.textContent = "أبو باسم ✓";
+    if (adminBar) adminBar.classList.remove('hidden');
   } else {
-    authBtn.classList.remove('bg-emerald-600', 'text-white');
-    authBtn.classList.add('bg-slate-800/80', 'text-slate-300');
-    authBtn.title = "تسجيل دخول الإدارة";
+    if (authBtn) {
+      authBtn.classList.remove('bg-emerald-600', 'text-white', 'border-emerald-500');
+      authBtn.classList.add('bg-slate-800/80', 'text-slate-300', 'border-slate-700');
+    }
+    if (authText) authText.textContent = "الإدارة";
+    if (adminBar) adminBar.classList.add('hidden');
   }
+  renderCams();
 });
 
 function handleAuthButtonClick() {
   if (currentUser) {
-    openAdminModal();
+    alert("أهلاً بك يا أبو باسم! أنت في وضع الإدارة حالياً، وأزرار التعديل والحذف ظاهرة فوق كل كاميرا.");
   } else {
     document.getElementById('login-modal').classList.remove('hidden');
   }
@@ -54,39 +81,29 @@ async function handleAdminLogin(e) {
   const btn = document.getElementById('login-submit-btn');
 
   btn.disabled = true;
-  btn.textContent = "جاري التحقق الآمن...";
+  btn.textContent = "جاري الدخول...";
 
   try {
     await auth.signInWithEmailAndPassword(email, pass);
     closeLoginModal();
-    openAdminModal();
   } catch (error) {
     alert("❌ فشل تسجيل الدخول: " + error.message);
   } finally {
     btn.disabled = false;
-    btn.textContent = "تسجيل الدخول المشفر";
+    btn.textContent = "تسجيل الدخول";
   }
 }
 
 async function handleAdminLogout() {
   await auth.signOut();
-  closeAdminModal();
-  alert("تم تسجيل الخروج وقفل لوحة التحكم.");
+  alert("تم تسجيل الخروج وإخفاء أزرار التحكم.");
 }
 
-// 2. المزامنة الحية
-let streamsData = [];
-let currentFilter = 'all';
-let currentCols = 2;
-
+// 2. المزامنة الحية مع Firebase
 function initRealtimeSync() {
-  streamsRef.on('value', async (snapshot) => {
+  streamsRef.on('value', (snapshot) => {
     const data = snapshot.val();
-    if (!data) {
-      console.log("[*] استيراد أولي من streams.json...");
-      await migrateLocalStreams();
-      return;
-    }
+    if (!data) return;
 
     streamsData = Object.keys(data).map(key => ({
       id: key,
@@ -95,25 +112,13 @@ function initRealtimeSync() {
 
     setupFilters();
     renderCams();
-    if (currentUser) renderAdminList();
   });
 }
 
-async function migrateLocalStreams() {
-  try {
-    const res = await fetch('streams.json?v=' + Date.now());
-    const local = await res.json();
-    for (const item of local) {
-      await streamsRef.push(item);
-    }
-  } catch (e) {
-    console.error("Migration error:", e);
-  }
-}
-
-// 3. بناء شبكة الكاميرات
+// 3. بناء شبكة الكاميرات وأزرار التحكم المباشرة
 function setupFilters() {
   const filterBox = document.getElementById('filter-buttons');
+  if (!filterBox) return;
   const areas = ['all', ...new Set(streamsData.map(s => s.area))];
   
   filterBox.innerHTML = '';
@@ -134,6 +139,7 @@ function filterByArea(area) {
 
 function renderCams() {
   const grid = document.getElementById('cams-grid');
+  if (!grid) return;
   grid.innerHTML = '';
 
   const filtered = currentFilter === 'all' 
@@ -149,15 +155,28 @@ function renderCams() {
     const card = document.createElement('div');
     card.className = 'bg-[#0f172a] border border-slate-800/90 rounded-xl overflow-hidden shadow-xl flex flex-col transition hover:border-slate-700';
 
+    // أزرار التحكم المباشرة (فقط لأبو باسم)
+    const adminActions = currentUser ? `
+      <div class="flex items-center gap-1.5 ml-2 border-l border-slate-700 pl-2">
+        <button onclick="openEditModal('${stream.id}')" class="bg-blue-600/30 hover:bg-blue-600 text-blue-300 hover:text-white px-2 py-0.5 rounded text-[11px] transition" title="تعديل">
+          <i class="fa-solid fa-pen-to-square"></i> تعديل
+        </button>
+        <button onclick="deleteStream('${stream.id}', '${stream.title}')" class="bg-red-600/30 hover:bg-red-600 text-red-300 hover:text-white px-2 py-0.5 rounded text-[11px] transition" title="حذف">
+          <i class="fa-solid fa-trash"></i>
+        </button>
+      </div>
+    ` : '';
+
     const header = `
       <div class="px-3 py-2 bg-[#121c33] border-b border-slate-800/80 flex justify-between items-center text-xs">
         <div class="flex items-center gap-2 truncate">
           <span class="w-2 h-2 rounded-full ${stream.status === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}"></span>
           <span class="font-bold text-slate-200 truncate">${stream.title}</span>
         </div>
-        <div class="flex items-center gap-2 flex-shrink-0">
+        <div class="flex items-center gap-1.5 flex-shrink-0">
+          ${adminActions}
           <span class="bg-slate-800/80 text-slate-400 px-2 py-0.5 rounded text-[10px] border border-slate-700/50">${stream.area}</span>
-          <button onclick="openModal('${stream.id}')" class="text-slate-400 hover:text-emerald-400 transition" title="تكبير الكاميرا">
+          <button onclick="openModal('${stream.id}')" class="text-slate-400 hover:text-emerald-400 p-1 transition" title="تكبير الكاميرا">
             <i class="fa-solid fa-expand"></i>
           </button>
         </div>
@@ -210,117 +229,86 @@ function renderCams() {
   });
 }
 
-// 4. العمليات الإدارية
-function openAdminModal() {
-  document.getElementById('admin-modal').classList.remove('hidden');
-  renderAdminList();
+// 4. نوافذ الإضافة والتعديل
+function openAddModal() {
+  document.getElementById('edit-stream-id').value = '';
+  document.getElementById('edit-form').reset();
+  document.getElementById('edit-modal-title').textContent = "➕ إضافة كاميرا جديدة";
+  document.getElementById('edit-save-btn').textContent = "حفظ ونشر فوراً";
+  document.getElementById('edit-modal').classList.remove('hidden');
 }
 
-function closeAdminModal() {
-  document.getElementById('admin-modal').classList.add('hidden');
-  resetForm();
+function openEditModal(id) {
+  const stream = streamsData.find(s => s.id === id);
+  if (!stream) return;
+
+  document.getElementById('edit-stream-id').value = stream.id;
+  document.getElementById('edit-title').value = stream.title;
+  document.getElementById('edit-area').value = stream.area;
+  document.getElementById('edit-type').value = stream.type;
+  document.getElementById('edit-url').value = stream.url;
+
+  document.getElementById('edit-modal-title').textContent = "✏️ تعديل بيانات الكاميرا";
+  document.getElementById('edit-save-btn').textContent = "حفظ التعديلات";
+  document.getElementById('edit-modal').classList.remove('hidden');
 }
 
-function renderAdminList() {
-  const container = document.getElementById('admin-cams-list');
-  container.innerHTML = '';
-
-  streamsData.forEach(stream => {
-    const item = document.createElement('div');
-    item.className = 'flex items-center justify-between p-2.5 bg-[#0a0e17] border border-slate-800 rounded-lg text-xs';
-    item.innerHTML = `
-      <div class="truncate mr-2">
-        <div class="font-bold text-white truncate">${stream.title}</div>
-        <div class="text-[10px] text-slate-400 font-mono truncate">${stream.area} • [${stream.type}]</div>
-      </div>
-      <div class="flex items-center gap-1 flex-shrink-0">
-        <button onclick="editStream('${stream.id}')" class="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-2 py-1 rounded transition text-[11px]">
-          تعديل
-        </button>
-        <button onclick="deleteStream('${stream.id}')" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-2 py-1 rounded transition text-[11px]">
-          حذف
-        </button>
-      </div>
-    `;
-    container.appendChild(item);
-  });
+function closeEditModal() {
+  document.getElementById('edit-modal').classList.add('hidden');
 }
 
 async function handleSaveStream(e) {
   e.preventDefault();
-  if (!currentUser) {
-    alert("⚠️ غير مصرح لك بالتعديل!");
-    return;
-  }
+  if (!currentUser) return;
 
-  const streamId = document.getElementById('form-stream-id').value;
+  const streamId = document.getElementById('edit-stream-id').value;
   const payload = {
-    title: document.getElementById('cam-title-input').value.trim(),
-    area: document.getElementById('cam-area-input').value.trim(),
-    type: document.getElementById('cam-type-input').value,
-    category: document.getElementById('cam-cat-input').value.trim() || 'سير',
-    url: document.getElementById('cam-url-input').value.trim(),
+    title: document.getElementById('edit-title').value.trim(),
+    area: document.getElementById('edit-area').value.trim(),
+    type: document.getElementById('edit-type').value,
+    url: document.getElementById('edit-url').value.trim(),
+    category: 'سير',
     status: 'active'
   };
 
   try {
     if (streamId) {
       await db.ref('streams/' + streamId).update(payload);
-      alert("✓ تم حفظ تعديل الكاميرا بنجاح!");
+      alert("✓ تم حفظ التعديل بنجاح!");
     } else {
       await streamsRef.push(payload);
-      alert("✓ تم إضافة الكاميرا ونشرها فوراً على أجهزة الجميع!");
+      alert("✓ تم إضافة الكاميرا ونشرها فوراً!");
     }
-    resetForm();
+    closeEditModal();
   } catch (err) {
-    alert("❌ رفض السيرفر الحفظ: " + err.message);
+    alert("خطأ أثناء الحفظ: " + err.message);
   }
 }
 
-function editStream(id) {
-  const stream = streamsData.find(s => s.id === id);
-  if (!stream) return;
-
-  document.getElementById('form-stream-id').value = stream.id;
-  document.getElementById('cam-title-input').value = stream.title;
-  document.getElementById('cam-area-input').value = stream.area;
-  document.getElementById('cam-type-input').value = stream.type;
-  document.getElementById('cam-cat-input').value = stream.category || 'سير';
-  document.getElementById('cam-url-input').value = stream.url;
-
-  document.getElementById('form-title').textContent = "✏️ تعديل الكاميرا";
-  document.getElementById('form-submit-btn').textContent = "حفظ التعديلات";
-  document.getElementById('form-cancel-btn').classList.remove('hidden');
-}
-
-function resetForm() {
-  document.getElementById('form-stream-id').value = '';
-  document.getElementById('cam-form').reset();
-  document.getElementById('form-title').textContent = "➕ إضافة كاميرا جديدة";
-  document.getElementById('form-submit-btn').textContent = "حفظ ونشر فوراً";
-  document.getElementById('form-cancel-btn').classList.add('hidden');
-}
-
-async function deleteStream(id) {
-  if (!confirm("هل أنت متأكد من حذف هذه الكاميرا نهائياً؟")) return;
+async function deleteStream(id, title) {
+  if (!confirm(`هل أنت متأكد من حذف كاميرا "${title}" نهائياً من الموقع؟`)) return;
   if (!currentUser) return;
 
   try {
     await db.ref('streams/' + id).remove();
     alert("✓ تم حذف الكاميرا فوراً.");
   } catch (err) {
-    alert("❌ رفض السيرفر الحذف: " + err.message);
+    alert("خطأ: " + err.message);
   }
 }
 
-// 5. التحكم والمودال
+// 5. التحكم بالشاشات والمودال
 function changeLayout(cols) {
   currentCols = cols;
   const grid = document.getElementById('cams-grid');
+  if (!grid) return;
   ['btn-grid-1', 'btn-grid-2', 'btn-grid-3'].forEach(id => {
-    document.getElementById(id).classList.remove('active-btn');
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('active-btn');
   });
-  document.getElementById(`btn-grid-${cols}`).classList.add('active-btn');
+  const activeBtn = document.getElementById(`btn-grid-${cols}`);
+  if (activeBtn) activeBtn.classList.add('active-btn');
+
   grid.className = 'grid gap-4';
   if (cols === 1) grid.classList.add('grid-cols-1');
   if (cols === 2) grid.classList.add('grid-cols-1', 'md:grid-cols-2');
