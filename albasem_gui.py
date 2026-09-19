@@ -18,11 +18,12 @@ CONFIG_FILE = os.path.expanduser("~/albasem-cams/config.json")
 class AlbasemWindow(Gtk.Window):
     def __init__(self):
         super().__init__(title="الباسم سات | أداة إدارة وقنص الكاميرات الحية")
-        self.set_default_size(580, 680)
+        self.set_default_size(580, 720)
         self.set_position(Gtk.WindowPosition.CENTER)
         self.set_border_width(15)
 
         self.id_token = None
+        self.discovered_streams = []
         self.load_credentials()
 
         main_vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
@@ -35,13 +36,13 @@ class AlbasemWindow(Gtk.Window):
         lbl_title.set_halign(Gtk.Align.END)
         header_box.pack_start(lbl_title, False, False, 0)
 
-        lbl_sub = Gtk.Label(label="قنص روابط البث المباشر (HLS / YouTube) والنشر الفوري في الموقع")
+        lbl_sub = Gtk.Label(label="قنص روابط البث المباشر وكل السيرفرات المتاحة والنشر الفوري في الموقع")
         lbl_sub.set_halign(Gtk.Align.END)
         header_box.pack_start(lbl_sub, False, False, 0)
         main_vbox.pack_start(header_box, False, False, 0)
 
         # 2. إطار القنّاص
-        sniff_frame = Gtk.Frame(label=" 🎯 1. قنّاص الروابط الذكي ")
+        sniff_frame = Gtk.Frame(label=" 🎯 1. قنّاص الروابط والسيرفرات المتعددة ")
         sniff_vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         sniff_vbox.set_border_width(10)
         sniff_frame.add(sniff_vbox)
@@ -54,9 +55,22 @@ class AlbasemWindow(Gtk.Window):
         self.page_url_entry.set_placeholder_text("https://...")
         sniff_vbox.pack_start(self.page_url_entry, False, False, 0)
 
-        self.sniff_btn = Gtk.Button(label="🚀 قنص الرابط والاسم تلقائياً")
+        self.sniff_btn = Gtk.Button(label="🚀 قنص وفحص جميع سيرفرات وقنوات الصفحة")
         self.sniff_btn.connect("clicked", self.on_sniff_clicked)
         sniff_vbox.pack_start(self.sniff_btn, False, False, 0)
+
+        # خيار اختيار السيرفر المكتشف
+        self.server_choice_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        lbl_srv = Gtk.Label(label="السيرفرات والقنوات المكتشفة بالصفحة (اختر منها):")
+        lbl_srv.set_halign(Gtk.Align.END)
+        self.server_choice_box.pack_start(lbl_srv, False, False, 0)
+        
+        self.server_combo = Gtk.ComboBoxText()
+        self.server_combo.connect("changed", self.on_server_selected)
+        self.server_choice_box.pack_start(self.server_combo, False, False, 0)
+        self.server_choice_box.set_no_show_all(True)
+        sniff_vbox.pack_start(self.server_choice_box, False, False, 0)
+
         main_vbox.pack_start(sniff_frame, False, False, 0)
 
         # 3. إطار تفاصيل الكاميرا
@@ -74,7 +88,6 @@ class AlbasemWindow(Gtk.Window):
 
         row_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         
-        # نوع البث
         v_type = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         lbl_type = Gtk.Label(label="نوع البث:")
         lbl_type.set_halign(Gtk.Align.END)
@@ -86,7 +99,6 @@ class AlbasemWindow(Gtk.Window):
         v_type.pack_start(self.type_combo, True, True, 0)
         row_box.pack_start(v_type, True, True, 0)
 
-        # المنطقة
         v_area = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         lbl_area = Gtk.Label(label="المنطقة:")
         lbl_area.set_halign(Gtk.Align.END)
@@ -100,7 +112,6 @@ class AlbasemWindow(Gtk.Window):
 
         cam_vbox.pack_start(row_box, False, False, 0)
 
-        # رابط البث
         lbl_st = Gtk.Label(label="رابط البث الصافي (Direct Stream URL):")
         lbl_st.set_halign(Gtk.Align.END)
         cam_vbox.pack_start(lbl_st, False, False, 0)
@@ -108,7 +119,6 @@ class AlbasemWindow(Gtk.Window):
         self.stream_url_entry = Gtk.Entry()
         cam_vbox.pack_start(self.stream_url_entry, False, False, 0)
 
-        # زر النشر
         self.publish_btn = Gtk.Button(label="✨ نشر الكاميرا فوراً على موقع وتطبيق الباسم سات")
         self.publish_btn.connect("clicked", self.on_publish_clicked)
         cam_vbox.pack_start(self.publish_btn, False, False, 0)
@@ -159,8 +169,8 @@ class AlbasemWindow(Gtk.Window):
             return
 
         self.sniff_btn.set_sensitive(False)
-        self.sniff_btn.set_label("⏳ جاري التحليل واختراق حماية البث...")
-        self.status_lbl.set_text("جاري الفحص المتقدم لشبكة وبنية الصفحة...")
+        self.sniff_btn.set_label("⏳ جاري مسح جميع السيرفرات والقنوات بالصفحة...")
+        self.status_lbl.set_text("جاري فحص السيرفرات والأزرار المتعددة...")
 
         thread = threading.Thread(target=self.run_sniff, args=(target_url,), daemon=True)
         thread.start()
@@ -188,12 +198,15 @@ class AlbasemWindow(Gtk.Window):
                     print("YouTube fetch error:", e)
 
             embed_url = f"https://www.youtube-nocookie.com/embed/{vid_id}" if vid_id else target_url
-            GLib.idle_add(self.apply_result, embed_url, title, "youtube", "قنوات أخبار")
+            streams = [{"label": title, "url": embed_url, "type": "youtube", "area": "قنوات أخبار"}]
+            GLib.idle_add(self.apply_multi_results, streams)
             return
 
-        # 2. قنص صفحات HLS الذكي المتقدم
-        found_url = None
+        # 2. فحص متعدد لسيرفرات HLS عبر النقر التلقائي
+        found_streams = []
+        seen_urls = set()
         extracted_title = ""
+
         try:
             from playwright.sync_api import sync_playwright
             with sync_playwright() as p:
@@ -207,13 +220,12 @@ class AlbasemWindow(Gtk.Window):
                 )
                 page = context.new_page()
 
+                latest_url = None
                 def handle_req(req):
-                    nonlocal found_url
+                    nonlocal latest_url
                     u = req.url
-                    if (".m3u8" in u or ".mpd" in u) and not found_url:
-                        if not ("chunk" in u or "segment" in u):
-                            found_url = u
-
+                    if (".m3u8" in u or ".mpd" in u) and not ("chunk" in u or "segment" in u):
+                        latest_url = u
                 page.on("request", handle_req)
 
                 try:
@@ -221,77 +233,81 @@ class AlbasemWindow(Gtk.Window):
                 except Exception:
                     pass
 
-                # مسح كود الصفحة المباشر (Regex) للبحث عن الروابط المخفية داخل الجافاسكريبت
-                try:
-                    content = page.content()
-                    raw_matches = re.findall(r'https?://[^\s"\'<>]+\.m3u8[^\s"\'<>]*', content)
-                    if raw_matches and not found_url:
-                        found_url = raw_matches[0]
-                except Exception:
-                    pass
-
-                # محاكاة الضغط على أزرار المشغل أو السيرفرات إذا لم يبدأ البث
-                if not found_url:
-                    for selector in [".vjs-big-play-button", "video", "button:has-text('سيرفر')", "button:has-text('تشغيل')", "#player"]:
-                        try:
-                            el = page.locator(selector).first
-                            if el.is_visible():
-                                el.click(timeout=1000)
-                                break
-                        except Exception:
-                            pass
-                    page.wait_for_timeout(3500)
-
-                # البحث داخل جميع الـ iframes
-                if not found_url:
-                    for frame in page.frames:
-                        try:
-                            f_content = frame.content()
-                            f_matches = re.findall(r'https?://[^\s"\'<>]+\.m3u8[^\s"\'<>]*', f_content)
-                            if f_matches:
-                                found_url = f_matches[0]
-                                break
-                        except Exception:
-                            pass
-
                 raw_title = page.title()
                 try:
                     h1 = page.locator("h1").first.inner_text()
-                    if h1 and len(h1.strip()) > 1:
-                        extracted_title = h1.strip()
+                    if h1 and len(h1.strip()) > 1: extracted_title = h1.strip()
                 except Exception:
                     pass
                 if not extracted_title:
                     extracted_title = raw_title.split("-")[0].split("|")[0].strip()
 
+                page.wait_for_timeout(2000)
+                if latest_url and latest_url not in seen_urls:
+                    seen_urls.add(latest_url)
+                    found_streams.append({"label": f"{extracted_title} - سيرفر رئيسي", "url": latest_url})
+
+                # فحص والنقر على جميع أزرار السيرفرات (سيرفر 1، سيرفر 2، القرآن...)
+                buttons = page.locator("button, a, .btn, [class*='server']").all()
+                for btn in buttons:
+                    try:
+                        txt = btn.inner_text().strip()
+                        if any(k in txt for k in ["سيرفر", "القرآن", "قناة", "بث"]):
+                            latest_url = None
+                            btn.click(timeout=800)
+                            page.wait_for_timeout(1200)
+                            if latest_url and latest_url not in seen_urls:
+                                seen_urls.add(latest_url)
+                                clean_u = latest_url.split("?")[0] if ("index.m3u8" in latest_url or "mono.m3u8" in latest_url) else latest_url
+                                found_streams.append({"label": f"{extracted_title} - {txt}", "url": clean_u})
+                    except Exception:
+                        pass
+
                 browser.close()
         except Exception as e:
             print("Sniff error:", e)
 
-        if found_url:
-            clean_url = found_url.split("?")[0] if ("index.m3u8" in found_url or "mono.m3u8" in found_url) else found_url
-            GLib.idle_add(self.apply_result, clean_url, extracted_title or "بث مباشر", "hls", "نابلس")
-        else:
-            GLib.idle_add(self.on_sniff_failed, extracted_title or "بث مباشر")
+        # تجهيز النتائج
+        formatted = []
+        for s in found_streams:
+            formatted.append({
+                "label": s["label"],
+                "url": s["url"],
+                "type": "hls",
+                "area": "نابلس"
+            })
 
-    def apply_result(self, url, title, b_type, area):
-        self.sniff_btn.set_sensitive(True)
-        self.sniff_btn.set_label("🚀 قنص الرابط والاسم تلقائياً")
-        self.title_entry.set_text(title)
-        self.stream_url_entry.set_text(url)
-        idx = 1 if b_type == "youtube" else 0
-        self.type_combo.set_active(idx)
-        self.area_combo.get_child().set_text(area)
-        self.status_lbl.set_text(f"✓ تم التقاط البث بنجاح: {title}")
-        self.show_dialog("تم القنص بنجاح! 🎯", f"تم العثور على رابط البث الفعلي:\n\nالعنوان: {title}\nالرابط: {url}", Gtk.MessageType.INFO)
+        GLib.idle_add(self.apply_multi_results, formatted)
 
-    def on_sniff_failed(self, title):
+    def apply_multi_results(self, streams):
         self.sniff_btn.set_sensitive(True)
-        self.sniff_btn.set_label("🚀 قنص الرابط والاسم تلقائياً")
-        self.title_entry.set_text(title)
-        self.stream_url_entry.set_text("")
-        self.status_lbl.set_text("[-] لم يتم التقاط رابط .m3u8 تلقائياً.")
-        self.show_dialog("تنبيه", "لم يتم العثور على رابط بث مباشر بصيغة m3u8 في هذه الصفحة.\nيرجى التأكد من تشغيل البث أو وضع الرابط المباشر يدوياً.", Gtk.MessageType.WARNING)
+        self.sniff_btn.set_label("🚀 قنص وفحص جميع سيرفرات وقنوات الصفحة")
+        self.discovered_streams = streams
+
+        if not streams:
+            self.status_lbl.set_text("[-] لم يتم العثور على سيرفرات بث مباشر بصيغة m3u8.")
+            self.show_dialog("تنبيه", "لم يتم العثور على بث مباشر بصيغة m3u8 في الصفحة.", Gtk.MessageType.WARNING)
+            return
+
+        # تعبئة القائمة المنسدلة بالسيرفرات المكتشفة
+        self.server_combo.remove_all()
+        for s in streams:
+            self.server_combo.append_text(f"{s['label']} ⟵ ({s['url'][:45]}...)")
+        
+        self.server_choice_box.show_all()
+        self.server_combo.set_active(0)
+        self.status_lbl.set_text(f"✓ تم اكتشاف {len(streams)} سيرفر / قناة بنجاح!")
+        self.show_dialog("صيد متكامل! 🎯", f"تم العثور على {len(streams)} سيرفر/قناة داخل الصفحة!\nتم فتح قائمة السيرفرات بالأسفل لاختيار ما تريد.", Gtk.MessageType.INFO)
+
+    def on_server_selected(self, combo):
+        idx = combo.get_active()
+        if idx >= 0 and idx < len(self.discovered_streams):
+            st = self.discovered_streams[idx]
+            self.title_entry.set_text(st["label"])
+            self.stream_url_entry.set_text(st["url"])
+            type_idx = 1 if st.get("type") == "youtube" else 0
+            self.type_combo.set_active(type_idx)
+            self.area_combo.get_child().set_text(st.get("area", "نابلس"))
 
     def on_publish_clicked(self, widget):
         title = self.title_entry.get_text().strip()
@@ -324,6 +340,7 @@ class AlbasemWindow(Gtk.Window):
                 self.title_entry.set_text("")
                 self.stream_url_entry.set_text("")
                 self.page_url_entry.set_text("")
+                self.server_choice_box.hide()
                 self.status_lbl.set_text("جاهز للعمل...")
             else:
                 self.show_dialog("خطأ", f"رفض السيرفر الحفظ: {res.text}", Gtk.MessageType.ERROR)
