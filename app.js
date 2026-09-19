@@ -1,4 +1,33 @@
-// مراقبة التحديث التلقائي للـ Service Worker لكسر الكاش ذاتياً
+// مراقبة وتسجيل الـ Service Worker لكسر الكاش وتثبيت PWA
+let deferredPrompt = null;
+const installBtn = document.getElementById('pwa-install-btn');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (installBtn) installBtn.classList.remove('hidden');
+});
+
+if (installBtn) {
+  installBtn.addEventListener('click', async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        installBtn.classList.add('hidden');
+      }
+      deferredPrompt = null;
+    } else {
+      alert("لتثبيت التطبيق على جهازك:\nاضغط على خيارات المتصفح (⋮) ثم اختر 'إضافة إلى الشاشة الرئيسية' أو 'تثبيت التطبيق'");
+    }
+  });
+}
+
+window.addEventListener('appinstalled', () => {
+  if (installBtn) installBtn.classList.add('hidden');
+  deferredPrompt = null;
+});
+
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').then((reg) => {
     reg.update();
@@ -35,7 +64,6 @@ let streamsData = [];
 let currentFilter = 'all';
 let currentCols = 2;
 
-// مراقبة حالة تسجيل الدخول
 auth.onAuthStateChanged((user) => {
   currentUser = user;
   const authBtn = document.getElementById('auth-btn');
@@ -97,7 +125,6 @@ async function handleAdminLogout() {
   alert("تم تسجيل الخروج وإخفاء أزرار التحكم.");
 }
 
-// 2. المزامنة المباشرة مع Firebase
 function initRealtimeSync() {
   streamsRef.on('value', (snapshot) => {
     const data = snapshot.val();
@@ -118,7 +145,6 @@ function initRealtimeSync() {
   });
 }
 
-// 3. بناء الفلاتر
 function setupFilters() {
   const filterBox = document.getElementById('filter-buttons');
   if (!filterBox) return;
@@ -140,23 +166,21 @@ function filterByArea(area) {
   renderCams();
 }
 
-// تشغيل ذكي متكيف مع ذاكرة الأداء ومؤقت 14 ثانية مريح
 function launchHlsStream(container, url, isModal = false) {
   container.innerHTML = '';
   
-  // مؤشر تحميل لطيف أثناء التهيئة
   const loadingIndicator = document.createElement('div');
   loadingIndicator.className = 'absolute inset-0 bg-slate-950/80 flex items-center justify-center pointer-events-none z-10 transition-opacity duration-300';
   loadingIndicator.innerHTML = `
     <div class="flex flex-col items-center gap-2">
       <span class="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></span>
-      <span class="text-[10px] text-slate-400 font-medium">جاري مزامنة البث المباشر...</span>
+      <span class="text-[10px] text-slate-400 font-medium">جاري مزامنة البث...</span>
     </div>
   `;
   container.appendChild(loadingIndicator);
 
   const video = document.createElement('video');
-  video.className = isModal ? 'w-full h-full object-contain' : 'w-full h-full object-cover';
+  video.className = isModal ? 'w-full h-full object-contain' : 'absolute inset-0 w-full h-full object-cover';
   video.autoplay = true;
   video.controls = true;
   video.playsInline = true;
@@ -175,9 +199,6 @@ function launchHlsStream(container, url, isModal = false) {
     video.pause();
     video.removeAttribute('src');
     try { video.load(); } catch(e){}
-
-    // تسجيل في الذاكرة المحلية أن هذا البث متوقف حالياً
-    localStorage.setItem('stream_status_' + btoa(url).slice(0, 16), 'offline');
 
     container.innerHTML = `
       <div class="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-4 text-center z-20" onclick="event.stopPropagation()">
@@ -199,7 +220,6 @@ function launchHlsStream(container, url, isModal = false) {
     }
   };
 
-  // مهلة ذكية مريحة 14 ثانية للبثوث البطيئة
   const safetyTimer = setTimeout(() => {
     if (!isPlaying && (video.currentTime === 0 || video.paused || video.readyState < 2)) {
       showOfflineBox();
@@ -210,8 +230,6 @@ function launchHlsStream(container, url, isModal = false) {
     isPlaying = true;
     clearTimeout(safetyTimer);
     if (loadingIndicator) loadingIndicator.remove();
-    // حفظ نجاح البث وسرعته بالذاكرة
-    localStorage.setItem('stream_status_' + btoa(url).slice(0, 16), 'active');
   };
 
   video.addEventListener('playing', onStreamReady);
@@ -317,8 +335,9 @@ function renderCams() {
       </div>
     `;
 
+    // تثبيت أبعاد 16:9 سينمائية متطابقة لجميع الكاميرات دون استثناء
     const feedContainer = document.createElement('div');
-    feedContainer.className = 'ratio-16-9 bg-black relative flex items-center justify-center overflow-hidden';
+    feedContainer.className = 'w-full aspect-video bg-black relative flex items-center justify-center overflow-hidden';
 
     if (stream.type === 'youtube') {
       let ytUrl = stream.url;
@@ -327,7 +346,7 @@ function renderCams() {
         if (idMatch) ytUrl = `https://www.youtube-nocookie.com/embed/${idMatch[1]}`;
       }
       feedContainer.innerHTML = `
-        <iframe class="w-full h-full border-0" 
+        <iframe class="absolute inset-0 w-full h-full border-0" 
           src="${ytUrl}?autoplay=1&mute=1&controls=1&rel=0" 
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
           allowfullscreen>
@@ -338,7 +357,7 @@ function renderCams() {
     } else if (stream.type === 'image') {
       const img = document.createElement('img');
       img.src = stream.url + '?t=' + Date.now();
-      img.className = 'w-full h-full object-cover';
+      img.className = 'absolute inset-0 w-full h-full object-cover';
       setInterval(() => { img.src = stream.url + '?t=' + Date.now(); }, 10000);
       feedContainer.appendChild(img);
     }
@@ -349,11 +368,10 @@ function renderCams() {
   });
 }
 
-// 4. العمليات الإدارية
 function openAddModal() {
   document.getElementById('edit-stream-id').value = '';
   document.getElementById('edit-form').reset();
-  document.getElementById('edit-modal-title').textContent = "➕ إضافة كاميرا جديدة";
+  document.getElementById('edit-modal-title').textContent = "➕ إضافة بث جديد";
   document.getElementById('edit-save-btn').textContent = "حفظ ونشر فوراً";
   document.getElementById('edit-modal').classList.remove('hidden');
 }
@@ -368,7 +386,7 @@ function openEditModal(id) {
   document.getElementById('edit-type').value = stream.type;
   document.getElementById('edit-url').value = stream.url;
 
-  document.getElementById('edit-modal-title').textContent = "✏️ تعديل بيانات الكاميرا";
+  document.getElementById('edit-modal-title').textContent = "✏️ تعديل بيانات القناة";
   document.getElementById('edit-save-btn').textContent = "حفظ التعديلات";
   document.getElementById('edit-modal').classList.remove('hidden');
 }
@@ -397,7 +415,7 @@ async function handleSaveStream(e) {
       alert("✓ تم حفظ التعديل بنجاح!");
     } else {
       await streamsRef.push(payload);
-      alert("✓ تم إضافة الكاميرا ونشرها فوراً!");
+      alert("✓ تم إضافة البث ونشره فوراً!");
     }
     closeEditModal();
   } catch (err) {
@@ -406,7 +424,7 @@ async function handleSaveStream(e) {
 }
 
 async function deleteStream(id, title) {
-  if (!confirm(`هل أنت متأكد من حذف كاميرا "${title}" نهائياً من الموقع؟`)) return;
+  if (!confirm(`هل أنت متأكد من حذف بث "${title}" نهائياً من الموقع؟`)) return;
   if (!currentUser) {
     alert("⚠️ يجب تسجيل الدخول كمسؤول أولاً!");
     return;
@@ -414,7 +432,7 @@ async function deleteStream(id, title) {
 
   try {
     await db.ref('streams/' + id).remove();
-    alert("✓ تم حذف الكاميرا من السيرفر بنجاح!");
+    alert("✓ تم حذف البث من السيرفر بنجاح!");
   } catch (err) {
     alert("خطأ أثناء الحذف: " + err.message);
   }
@@ -437,7 +455,6 @@ function changeLayout(cols) {
   if (cols === 3) grid.classList.add('grid-cols-1', 'md:grid-cols-2', 'lg:grid-cols-3');
 }
 
-// 5. التكبير مع دعم العزل الكامل وزر الرجوع
 function openModal(streamId) {
   const stream = streamsData.find(s => s.id === streamId);
   if (!stream) return;
