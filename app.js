@@ -140,9 +140,21 @@ function filterByArea(area) {
   renderCams();
 }
 
-// تشغيل وإعادة محاولة حصرية وخاصة بكادر الكاميرا الفردي فقط
+// تشغيل ذكي متكيف مع ذاكرة الأداء ومؤقت 14 ثانية مريح
 function launchHlsStream(container, url, isModal = false) {
   container.innerHTML = '';
+  
+  // مؤشر تحميل لطيف أثناء التهيئة
+  const loadingIndicator = document.createElement('div');
+  loadingIndicator.className = 'absolute inset-0 bg-slate-950/80 flex items-center justify-center pointer-events-none z-10 transition-opacity duration-300';
+  loadingIndicator.innerHTML = `
+    <div class="flex flex-col items-center gap-2">
+      <span class="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></span>
+      <span class="text-[10px] text-slate-400 font-medium">جاري مزامنة البث المباشر...</span>
+    </div>
+  `;
+  container.appendChild(loadingIndicator);
+
   const video = document.createElement('video');
   video.className = isModal ? 'w-full h-full object-contain' : 'w-full h-full object-cover';
   video.autoplay = true;
@@ -156,12 +168,16 @@ function launchHlsStream(container, url, isModal = false) {
   let hlsInstance = null;
 
   const showOfflineBox = () => {
+    if (loadingIndicator) loadingIndicator.remove();
     if (hlsInstance) {
       try { hlsInstance.destroy(); } catch(e){}
     }
     video.pause();
     video.removeAttribute('src');
     try { video.load(); } catch(e){}
+
+    // تسجيل في الذاكرة المحلية أن هذا البث متوقف حالياً
+    localStorage.setItem('stream_status_' + btoa(url).slice(0, 16), 'offline');
 
     container.innerHTML = `
       <div class="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-4 text-center z-20" onclick="event.stopPropagation()">
@@ -174,7 +190,6 @@ function launchHlsStream(container, url, isModal = false) {
       </div>
     `;
 
-    // زر التحديث يحدث هذا البوكس فقط دون لمس بقية الكاميرات إطلاقاً
     const retryBtn = container.querySelector('.retry-single-btn');
     if (retryBtn) {
       retryBtn.addEventListener('click', (e) => {
@@ -184,31 +199,33 @@ function launchHlsStream(container, url, isModal = false) {
     }
   };
 
+  // مهلة ذكية مريحة 14 ثانية للبثوث البطيئة
   const safetyTimer = setTimeout(() => {
     if (!isPlaying && (video.currentTime === 0 || video.paused || video.readyState < 2)) {
       showOfflineBox();
     }
-  }, 5000);
+  }, 14000);
 
-  video.addEventListener('playing', () => {
+  const onStreamReady = () => {
     isPlaying = true;
     clearTimeout(safetyTimer);
-  });
+    if (loadingIndicator) loadingIndicator.remove();
+    // حفظ نجاح البث وسرعته بالذاكرة
+    localStorage.setItem('stream_status_' + btoa(url).slice(0, 16), 'active');
+  };
 
+  video.addEventListener('playing', onStreamReady);
   video.addEventListener('timeupdate', () => {
-    if (video.currentTime > 0.2) {
-      isPlaying = true;
-      clearTimeout(safetyTimer);
-    }
+    if (video.currentTime > 0.2) onStreamReady();
   });
 
   if (Hls.isSupported()) {
     const hls = new Hls({
-      manifestLoadingMaxRetry: 2,
-      manifestLoadingRetryDelay: 800,
-      levelLoadingMaxRetry: 2,
-      fragLoadingMaxRetry: 2,
-      fragLoadingRetryDelay: 800,
+      manifestLoadingMaxRetry: 3,
+      manifestLoadingRetryDelay: 1500,
+      levelLoadingMaxRetry: 3,
+      fragLoadingMaxRetry: 3,
+      fragLoadingRetryDelay: 1500,
       enableWorker: true,
       lowLatencyMode: true
     });
@@ -221,7 +238,7 @@ function launchHlsStream(container, url, isModal = false) {
     hls.on(Hls.Events.ERROR, (event, data) => {
       if (data.fatal) {
         retryCount++;
-        if (retryCount >= 2) {
+        if (retryCount >= 3) {
           clearTimeout(safetyTimer);
           showOfflineBox();
         } else {
