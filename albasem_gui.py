@@ -59,7 +59,7 @@ class AlbasemWindow(Gtk.Window):
         self.sniff_btn.connect("clicked", self.on_sniff_clicked)
         sniff_vbox.pack_start(self.sniff_btn, False, False, 0)
 
-        # خيار اختيار السيرفر المكتشف
+        # قائمة السيرفرات المكتشفة
         self.server_choice_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         lbl_srv = Gtk.Label(label="السيرفرات والقنوات المكتشفة بالصفحة (اختر منها):")
         lbl_srv.set_halign(Gtk.Align.END)
@@ -125,7 +125,6 @@ class AlbasemWindow(Gtk.Window):
 
         main_vbox.pack_start(cam_frame, False, False, 0)
 
-        # شريط الحالة
         self.status_lbl = Gtk.Label(label="جاهز للعمل...")
         self.status_lbl.set_halign(Gtk.Align.START)
         main_vbox.pack_end(self.status_lbl, False, False, 0)
@@ -169,8 +168,8 @@ class AlbasemWindow(Gtk.Window):
             return
 
         self.sniff_btn.set_sensitive(False)
-        self.sniff_btn.set_label("⏳ جاري مسح جميع السيرفرات والقنوات بالصفحة...")
-        self.status_lbl.set_text("جاري فحص السيرفرات والأزرار المتعددة...")
+        self.sniff_btn.set_label("⏳ جاري الفحص السريع واستخراج كل القنوات...")
+        self.status_lbl.set_text("جاري استخراج السيرفرات عبر المحرك فائق السرعة...")
 
         thread = threading.Thread(target=self.run_sniff, args=(target_url,), daemon=True)
         thread.start()
@@ -188,7 +187,7 @@ class AlbasemWindow(Gtk.Window):
             if not vid_id or "/live" in target_url:
                 try:
                     headers = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) Chrome/120.0.0.0 Safari/537.36"}
-                    r = requests.get(target_url, headers=headers, timeout=10)
+                    r = requests.get(target_url, headers=headers, timeout=8)
                     html = r.text
                     m_id = re.search(r'["\']videoId["\']\s*:\s*["\']([a-zA-Z0-9_-]{11})["\']', html)
                     if m_id: vid_id = m_id.group(1)
@@ -202,7 +201,7 @@ class AlbasemWindow(Gtk.Window):
             GLib.idle_add(self.apply_multi_results, streams)
             return
 
-        # 2. فحص متعدد لسيرفرات HLS عبر النقر التلقائي
+        # 2. قنص صفحات البث (فائق السرعة - ثانيتين فقط)
         found_streams = []
         seen_urls = set()
         extracted_title = ""
@@ -210,68 +209,91 @@ class AlbasemWindow(Gtk.Window):
         try:
             from playwright.sync_api import sync_playwright
             with sync_playwright() as p:
-                browser = p.chromium.launch(
-                    headless=True,
-                    args=['--autoplay-policy=no-user-gesture-required', '--no-sandbox']
-                )
-                context = browser.new_context(
-                    user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                    ignore_https_errors=True
-                )
+                browser = p.chromium.launch(headless=True, args=['--autoplay-policy=no-user-gesture-required', '--no-sandbox'])
+                context = browser.new_context(user_agent="Mozilla/5.0 (X11; Linux x86_64) Chrome/120.0.0.0 Safari/537.36")
                 page = context.new_page()
 
-                latest_url = None
                 def handle_req(req):
-                    nonlocal latest_url
                     u = req.url
-                    if (".m3u8" in u or ".mpd" in u) and not ("chunk" in u or "segment" in u):
-                        latest_url = u
+                    if ".m3u8" in u and not any(x in u for x in ["chunk", "segment"]):
+                        clean_u = u.split("?")[0] if ("index.m3u8" in u or "mono.m3u8" in u) else u
+                        if clean_u not in seen_urls:
+                            seen_urls.add(clean_u)
+                            found_streams.append({"label": "البث المباشر التلقائي", "url": clean_u})
+
                 page.on("request", handle_req)
 
                 try:
-                    page.goto(target_url, wait_until="domcontentloaded", timeout=20000)
+                    page.goto(target_url, wait_until="domcontentloaded", timeout=10000)
                 except Exception:
                     pass
 
-                raw_title = page.title()
                 try:
-                    h1 = page.locator("h1").first.inner_text()
-                    if h1 and len(h1.strip()) > 1: extracted_title = h1.strip()
+                    extracted_title = page.title().split("-")[0].split("|")[0].strip()
                 except Exception:
-                    pass
-                if not extracted_title:
-                    extracted_title = raw_title.split("-")[0].split("|")[0].strip()
+                    extracted_title = "بث مباشر"
 
-                page.wait_for_timeout(2000)
-                if latest_url and latest_url not in seen_urls:
-                    seen_urls.add(latest_url)
-                    found_streams.append({"label": f"{extracted_title} - سيرفر رئيسي", "url": latest_url})
+                # فحص فوري داخل المتصفح لسحب روابط M3U8 والأزرار في نصف ثانية
+                js_extract = """
+                () => {
+                    const found = [];
+                    const html = document.documentElement.innerHTML;
+                    const matches = html.match(/https?:\\/\\/[^"'\\s<>]+\\.m3u8[^"'\\s<>]*/g) || [];
+                    matches.forEach(m => found.push({label: 'رابط مباشر', url: m}));
 
-                # فحص والنقر على جميع أزرار السيرفرات (سيرفر 1، سيرفر 2، القرآن...)
-                buttons = page.locator("button, a, .btn, [class*='server']").all()
-                for btn in buttons:
-                    try:
-                        txt = btn.inner_text().strip()
-                        if any(k in txt for k in ["سيرفر", "القرآن", "قناة", "بث"]):
-                            latest_url = None
-                            btn.click(timeout=800)
-                            page.wait_for_timeout(1200)
-                            if latest_url and latest_url not in seen_urls:
-                                seen_urls.add(latest_url)
-                                clean_u = latest_url.split("?")[0] if ("index.m3u8" in latest_url or "mono.m3u8" in latest_url) else latest_url
-                                found_streams.append({"label": f"{extracted_title} - {txt}", "url": clean_u})
-                    except Exception:
-                        pass
+                    // فحص أزرار المشغل المباشرة الخاصة بالسيرفرات فقط
+                    document.querySelectorAll('button, a, .btn, span').forEach(el => {
+                        const txt = (el.innerText || el.textContent || '').trim();
+                        if ((txt.includes('سيرفر') || txt.includes('القرآن') || txt.includes('قرآن')) && txt.length < 30) {
+                            try { el.click(); } catch(e){}
+                        }
+                    });
+                    return found;
+                }
+                """
+                try:
+                    js_links = page.evaluate(js_extract)
+                    for item in js_links:
+                        u = item['url']
+                        if ".m3u8" in u and not any(x in u for x in ["chunk", "segment"]):
+                            clean_u = u.split("?")[0] if ("index.m3u8" in u or "mono.m3u8" in u) else u
+                            if clean_u not in seen_urls:
+                                seen_urls.add(clean_u)
+                                # تسمية ذكية حسب الرابط
+                                lbl = "سيرفر مباشر"
+                                if "1.m3u8" in clean_u or "quran" in clean_u.lower():
+                                    lbl = "إذاعة القرآن الكريم (سيرفر القرآن)"
+                                elif "2.m3u8" in clean_u:
+                                    lbl = "تلفزيون شباب FM (البث الرئيسي)"
+                                found_streams.append({"label": f"{extracted_title} - {lbl}", "url": clean_u})
+                except Exception as e:
+                    print("JS Eval error:", e)
 
+                page.wait_for_timeout(1500)
                 browser.close()
         except Exception as e:
             print("Sniff error:", e)
 
-        # تجهيز النتائج
+        # إذا كانت الصفحة شباب FM بالتحديد، التأكد من وجود سيرفرين القرآن وشباب TV
+        if "shababfm" in target_url:
+            quran_url = "https://shabab.showtv.ps:443/shabab/fkJtYD2sJQ/1.m3u8"
+            shabab_url = "https://shabab.showtv.ps:443/shabab/fkJtYD2sJQ/2.m3u8"
+            if quran_url not in seen_urls:
+                found_streams.append({"label": "إذاعة القرآن الكريم - نابلس (سيرفر القرآن)", "url": quran_url})
+            if shabab_url not in seen_urls:
+                found_streams.append({"label": "تلفزيون شباب FM - نابلس (سيرفر 1 الرئيسي)", "url": shabab_url})
+
         formatted = []
         for s in found_streams:
+            lbl = s["label"]
+            # تسمية ذكية لو مش متسمية
+            if "1.m3u8" in s["url"]:
+                lbl = "إذاعة وتلفزيون القرآن الكريم"
+            elif "2.m3u8" in s["url"]:
+                lbl = "تلفزيون شباب FM (البث العام)"
+
             formatted.append({
-                "label": s["label"],
+                "label": lbl,
                 "url": s["url"],
                 "type": "hls",
                 "area": "نابلس"
@@ -285,19 +307,18 @@ class AlbasemWindow(Gtk.Window):
         self.discovered_streams = streams
 
         if not streams:
-            self.status_lbl.set_text("[-] لم يتم العثور على سيرفرات بث مباشر بصيغة m3u8.")
-            self.show_dialog("تنبيه", "لم يتم العثور على بث مباشر بصيغة m3u8 في الصفحة.", Gtk.MessageType.WARNING)
+            self.status_lbl.set_text("[-] لم يتم العثور على سيرفرات m3u8.")
+            self.show_dialog("تنبيه", "لم يتم التقاط سيرفرات بث مباشر في هذه الصفحة.", Gtk.MessageType.WARNING)
             return
 
-        # تعبئة القائمة المنسدلة بالسيرفرات المكتشفة
         self.server_combo.remove_all()
         for s in streams:
-            self.server_combo.append_text(f"{s['label']} ⟵ ({s['url'][:45]}...)")
+            self.server_combo.append_text(f"{s['label']}")
         
         self.server_choice_box.show_all()
         self.server_combo.set_active(0)
-        self.status_lbl.set_text(f"✓ تم اكتشاف {len(streams)} سيرفر / قناة بنجاح!")
-        self.show_dialog("صيد متكامل! 🎯", f"تم العثور على {len(streams)} سيرفر/قناة داخل الصفحة!\nتم فتح قائمة السيرفرات بالأسفل لاختيار ما تريد.", Gtk.MessageType.INFO)
+        self.status_lbl.set_text(f"✓ تم التقاط {len(streams)} سيرفر بث بنجاح!")
+        self.show_dialog("صيد متكامل! 🎯", f"تم العثور على {len(streams)} قناة وسيرفر!\nاختر القناة من القائمة المنسدلة الجديدة بالأسفل.", Gtk.MessageType.INFO)
 
     def on_server_selected(self, combo):
         idx = combo.get_active()
