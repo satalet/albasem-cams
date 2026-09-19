@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.0.0';
+const CACHE_VERSION = 'v1789843749';
 const CACHE_NAME = `albasem-cams-${CACHE_VERSION}`;
 
 self.addEventListener('install', (e) => {

@@ -34,5 +34,14 @@
     "type": "image",
     "url": "https://picsum.photos/800/450",
     "status": "active"
+  },
+  {
+    "id": "cam-1789843749",
+    "title": "جولة نابلسيه",
+    "area": "نابلس",
+    "category": "معالم",
+    "type": "hls",
+    "url": "https://streaming.zaytonatube.com:8081/nb/nb/tracks-v1a1/mono.m3u8",
+    "status": "active"
   }
 ]
