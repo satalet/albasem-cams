@@ -108,7 +108,6 @@ function initRealtimeSync() {
       return;
     }
 
-    // تثبيت المعرّف الحقيقي الخاص بفايربيس لمنع أي خطأ بالحذف أو التعديل
     streamsData = Object.keys(data).map(key => ({
       ...data[key],
       id: key
@@ -141,6 +140,69 @@ function filterByArea(area) {
   renderCams();
 }
 
+// دالة تشغيل HLS الذكية (3 محاولات فقط لمنع استهلاك المعالج والإنترنت)
+function setupHlsWithRetry(video, url, container) {
+  if (Hls.isSupported()) {
+    const hls = new Hls({
+      manifestLoadingMaxRetry: 2,
+      manifestLoadingRetryDelay: 1000,
+      levelLoadingMaxRetry: 2,
+      fragLoadingMaxRetry: 2,
+      fragLoadingRetryDelay: 1000,
+      enableWorker: true,
+      lowLatencyMode: true
+    });
+
+    let retryCount = 0;
+    hls.loadSource(url);
+    hls.attachMedia(video);
+
+    const showOfflineBox = () => {
+      try { hls.destroy(); } catch(e){}
+      container.innerHTML = `
+        <div class="absolute inset-0 bg-slate-950/92 flex flex-col items-center justify-center p-3 text-center z-10">
+          <i class="fa-solid fa-triangle-exclamation text-amber-500 text-xl mb-1.5"></i>
+          <span class="text-slate-300 text-[11px] font-medium mb-2">البث متوقف حالياً (توفير البيانات)</span>
+          <button class="bg-emerald-600/90 hover:bg-emerald-500 text-white text-[10px] font-bold px-3 py-1 rounded-md transition shadow" onclick="renderCams()">
+            <i class="fa-solid fa-rotate-right ml-1"></i> إعادة المحاولة
+          </button>
+        </div>
+      `;
+    };
+
+    hls.on(Hls.Events.ERROR, (event, data) => {
+      if (data.fatal) {
+        retryCount++;
+        if (retryCount >= 2) {
+          showOfflineBox();
+        } else {
+          if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+            hls.startLoad();
+          } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+            hls.recoverMediaError();
+          } else {
+            showOfflineBox();
+          }
+        }
+      }
+    });
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    video.src = url;
+    let appleRetry = 0;
+    video.onerror = () => {
+      appleRetry++;
+      if (appleRetry >= 2) {
+        container.innerHTML = `
+          <div class="absolute inset-0 bg-slate-950/92 flex flex-col items-center justify-center p-3 text-center z-10">
+            <span class="text-slate-300 text-[11px] mb-2">البث متوقف حالياً</span>
+            <button class="bg-emerald-600 text-white text-[10px] font-bold px-3 py-1 rounded-md" onclick="renderCams()">إعادة المحاولة</button>
+          </div>
+        `;
+      }
+    };
+  }
+}
+
 function renderCams() {
   const grid = document.getElementById('cams-grid');
   if (!grid) return;
@@ -159,9 +221,9 @@ function renderCams() {
     const card = document.createElement('div');
     card.className = 'bg-[#0f172a] border border-slate-800/90 rounded-xl overflow-hidden shadow-xl flex flex-col transition hover:border-slate-700';
 
-    // أزرار التعديل والحذف المباشرة
+    // أزرار الإدارة تمنع فتح التكبير عند الضغط عليها
     const adminActions = currentUser ? `
-      <div class="flex items-center gap-1.5 ml-2 border-l border-slate-700 pl-2">
+      <div class="flex items-center gap-1.5 ml-2 border-l border-slate-700 pl-2" onclick="event.stopPropagation()">
         <button onclick="openEditModal('${stream.id}')" class="bg-blue-600/30 hover:bg-blue-600 text-blue-300 hover:text-white px-2 py-0.5 rounded text-[11px] transition" title="تعديل">
           <i class="fa-solid fa-pen-to-square"></i> تعديل
         </button>
@@ -171,16 +233,17 @@ function renderCams() {
       </div>
     ` : '';
 
+    // جعل شريط العنوان كاملاً قابلاً للمس للتكبير السهل على الجوال
     const header = `
-      <div class="px-3 py-2 bg-[#121c33] border-b border-slate-800/80 flex justify-between items-center text-xs">
+      <div onclick="openModal('${stream.id}')" class="px-3 py-2 bg-[#121c33] border-b border-slate-800/80 flex justify-between items-center text-xs cursor-pointer hover:bg-slate-800/60 transition select-none">
         <div class="flex items-center gap-2 truncate">
           <span class="w-2 h-2 rounded-full ${stream.status === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}"></span>
-          <span class="font-bold text-slate-200 truncate">${stream.title}</span>
+          <span class="font-bold text-slate-200 truncate hover:text-emerald-400 transition">${stream.title}</span>
         </div>
         <div class="flex items-center gap-1.5 flex-shrink-0">
           ${adminActions}
           <span class="bg-slate-800/80 text-slate-400 px-2 py-0.5 rounded text-[10px] border border-slate-700/50">${stream.area}</span>
-          <button onclick="openModal('${stream.id}')" class="text-slate-400 hover:text-emerald-400 p-1 transition" title="تكبير الكاميرا">
+          <button onclick="event.stopPropagation(); openModal('${stream.id}')" class="text-slate-400 hover:text-emerald-400 p-1 transition" title="تكبير الكاميرا">
             <i class="fa-solid fa-expand"></i>
           </button>
         </div>
@@ -210,15 +273,8 @@ function renderCams() {
       video.muted = true;
       video.controls = true;
       video.playsInline = true;
-
-      if (Hls.isSupported()) {
-        const hls = new Hls();
-        hls.loadSource(stream.url);
-        hls.attachMedia(video);
-      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = stream.url;
-      }
       feedContainer.appendChild(video);
+      setupHlsWithRetry(video, stream.url, feedContainer);
     } else if (stream.type === 'image') {
       const img = document.createElement('img');
       img.src = stream.url + '?t=' + Date.now();
@@ -233,7 +289,7 @@ function renderCams() {
   });
 }
 
-// 4. العمليات الإدارية (الحفظ والحذف الدقيق)
+// 4. العمليات الإدارية
 function openAddModal() {
   document.getElementById('edit-stream-id').value = '';
   document.getElementById('edit-form').reset();
@@ -297,7 +353,6 @@ async function deleteStream(id, title) {
   }
 
   try {
-    // الحذف المباشر والدقيق لمفتاح فايربيس
     await db.ref('streams/' + id).remove();
     alert("✓ تم حذف الكاميرا من السيرفر بنجاح!");
   } catch (err) {
@@ -305,7 +360,7 @@ async function deleteStream(id, title) {
   }
 }
 
-// 5. التحكم بالشاشات والمودال
+// 5. التحكم بالشاشات والمودال مع دعم زر الرجوع بالجوال
 function changeLayout(cols) {
   currentCols = cols;
   const grid = document.getElementById('cams-grid');
@@ -343,23 +398,32 @@ function openModal(streamId) {
     video.autoplay = true;
     video.controls = true;
     video.muted = true;
-    if (Hls.isSupported()) {
-      const hls = new Hls();
-      hls.loadSource(stream.url);
-      hls.attachMedia(video);
-    } else {
-      video.src = stream.url;
-    }
     modalBox.appendChild(video);
+    setupHlsWithRetry(video, stream.url, modalBox);
   } else if (stream.type === 'image') {
     modalBox.innerHTML = `<img src="${stream.url}?t=${Date.now()}" class="w-full h-full object-contain">`;
   }
+
   document.getElementById('cam-modal').classList.remove('hidden');
+  
+  // تفعيل دعم زر الرجوع في الجوال
+  history.pushState({ modalOpen: true }, "");
 }
 
-function closeModal() {
-  document.getElementById('modal-content').innerHTML = '';
-  document.getElementById('cam-modal').classList.add('hidden');
+function closeModal(fromHistory = false) {
+  const modal = document.getElementById('cam-modal');
+  if (!modal.classList.contains('hidden')) {
+    document.getElementById('modal-content').innerHTML = '';
+    modal.classList.add('hidden');
+    if (!fromHistory && history.state && history.state.modalOpen) {
+      history.back();
+    }
+  }
 }
+
+// التقاط كبسة الرجوع في الجوال لتصغير الكاميرا ومنع إغلاق الموقع
+window.addEventListener('popstate', () => {
+  closeModal(true);
+});
 
 window.onload = initRealtimeSync;
