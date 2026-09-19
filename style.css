@@ -1,0 +1,64 @@
+
+/* وضع التكبير الذكي للكاميرا على الجوال والشاشات */
+.cam-card.is-fullscreen {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  max-width: 100vw !important;
+  max-height: 100dvh !important;
+  z-index: 999999 !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  background: #000 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.cam-card.is-fullscreen .video-wrapper {
+  flex: 1 !important;
+  height: 100% !important;
+  padding-top: 0 !important;
+}
+
+.cam-card.is-fullscreen video,
+.cam-card.is-fullscreen iframe {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+}
+
+/* شاشة توقف البث الأنيقة لتوفير المعالج والإنترنت */
+.stream-offline-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(7, 10, 18, 0.94);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 15;
+  color: #94a3b8;
+  gap: 10px;
+  padding: 15px;
+  text-align: center;
+}
+
+.stream-offline-overlay span {
+  font-size: 0.88rem;
+  color: #cbd5e1;
+}
+
+.stream-retry-btn {
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
