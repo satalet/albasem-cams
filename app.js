@@ -2,9 +2,7 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW fail', err));
 }
 
-// ==========================================
-// 1. إعدادات FIREBASE الرسمية الخاصة بالباسم سات
-// ==========================================
+// 1. مفاتيح فايربيس المعتمدة
 const firebaseConfig = {
   apiKey: "AIzaSyD4U4DFTtO8zuqIlrJp19ji1ESptfuVr9E",
   authDomain: "albasem-cams.firebaseapp.com",
@@ -18,41 +16,65 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+const auth = firebase.auth();
 const streamsRef = db.ref('streams');
 
-// ==========================================
-// 2. تشفير وأمان لوحة التحكم (SHA-256)
-// كلمة المرور الافتراضية: 123456
-// ==========================================
-const ADMIN_PASSWORD_HASH = "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92";
-let isAdminAuthenticated = false;
-
-async function sha256(str) {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
-  return Array.prototype.map.call(new Uint8Array(buf), x => ('00' + x.toString(16)).slice(-2)).join('');
-}
-
-async function promptAdminLogin() {
-  if (isAdminAuthenticated) {
-    openAdminModal();
-    return;
+// حالة تسجيل الدخول التلقائية
+let currentUser = null;
+auth.onAuthStateChanged((user) => {
+  currentUser = user;
+  const authBtn = document.getElementById('auth-btn');
+  if (user) {
+    authBtn.classList.add('bg-emerald-600', 'text-white');
+    authBtn.classList.remove('bg-slate-800/80', 'text-slate-300');
+    authBtn.title = "لوحة التحكم مفتوحة (أبو باسم)";
+  } else {
+    authBtn.classList.remove('bg-emerald-600', 'text-white');
+    authBtn.classList.add('bg-slate-800/80', 'text-slate-300');
+    authBtn.title = "تسجيل دخول الإدارة";
   }
-  const pass = prompt("🔐 أدخل كلمة مرور لوحة تحكم الباسم سات:");
-  if (!pass) return;
+});
 
-  const hashed = await sha256(pass);
-  if (hashed === ADMIN_PASSWORD_HASH) {
-    isAdminAuthenticated = true;
-    alert("أهلاً بك يا أبو باسم في لوحة التحكم!");
+function handleAuthButtonClick() {
+  if (currentUser) {
     openAdminModal();
   } else {
-    alert("❌ رمز الدخول غير صحيح!");
+    document.getElementById('login-modal').classList.remove('hidden');
   }
 }
 
-// ==========================================
-// 3. المزامنة المباشرة مع Realtime Database
-// ==========================================
+function closeLoginModal() {
+  document.getElementById('login-modal').classList.add('hidden');
+}
+
+async function handleAdminLogin(e) {
+  e.preventDefault();
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-password').value;
+  const btn = document.getElementById('login-submit-btn');
+
+  btn.disabled = true;
+  btn.textContent = "جاري التحقق الآمن...";
+
+  try {
+    await auth.signInWithEmailAndPassword(email, pass);
+    closeLoginModal();
+    openAdminModal();
+  } catch (error) {
+    alert("❌ فشل تسجيل الدخول: " + error.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "تسجيل الدخول المشفر";
+  }
+}
+
+async function handleAdminLogout() {
+  await auth.signOut();
+  closeAdminModal();
+  alert("تم تسجيل الخروج وقفل لوحة التحكم.");
+}
+
+// 2. المزامنة الحية
 let streamsData = [];
 let currentFilter = 'all';
 let currentCols = 2;
@@ -61,7 +83,7 @@ function initRealtimeSync() {
   streamsRef.on('value', async (snapshot) => {
     const data = snapshot.val();
     if (!data) {
-      console.log("[*] قاعدة البيانات فارغة، جاري استيراد الكاميرات من streams.json...");
+      console.log("[*] استيراد أولي من streams.json...");
       await migrateLocalStreams();
       return;
     }
@@ -73,11 +95,10 @@ function initRealtimeSync() {
 
     setupFilters();
     renderCams();
-    if (isAdminAuthenticated) renderAdminList();
+    if (currentUser) renderAdminList();
   });
 }
 
-// استيراد أولي تلقائي من streams.json لأول مرة
 async function migrateLocalStreams() {
   try {
     const res = await fetch('streams.json?v=' + Date.now());
@@ -90,9 +111,7 @@ async function migrateLocalStreams() {
   }
 }
 
-// ==========================================
-// 4. بناء الواجهة وشبكة الكاميرات
-// ==========================================
+// 3. بناء شبكة الكاميرات
 function setupFilters() {
   const filterBox = document.getElementById('filter-buttons');
   const areas = ['all', ...new Set(streamsData.map(s => s.area))];
@@ -191,9 +210,7 @@ function renderCams() {
   });
 }
 
-// ==========================================
-// 5. إدارة الكاميرات (إضافة، تعديل، حذف)
-// ==========================================
+// 4. العمليات الإدارية
 function openAdminModal() {
   document.getElementById('admin-modal').classList.remove('hidden');
   renderAdminList();
@@ -231,6 +248,11 @@ function renderAdminList() {
 
 async function handleSaveStream(e) {
   e.preventDefault();
+  if (!currentUser) {
+    alert("⚠️ غير مصرح لك بالتعديل!");
+    return;
+  }
+
   const streamId = document.getElementById('form-stream-id').value;
   const payload = {
     title: document.getElementById('cam-title-input').value.trim(),
@@ -251,7 +273,7 @@ async function handleSaveStream(e) {
     }
     resetForm();
   } catch (err) {
-    alert("خطأ أثناء الحفظ في Firebase: " + err.message);
+    alert("❌ رفض السيرفر الحفظ: " + err.message);
   }
 }
 
@@ -281,17 +303,17 @@ function resetForm() {
 
 async function deleteStream(id) {
   if (!confirm("هل أنت متأكد من حذف هذه الكاميرا نهائياً؟")) return;
+  if (!currentUser) return;
+
   try {
     await db.ref('streams/' + id).remove();
     alert("✓ تم حذف الكاميرا فوراً.");
   } catch (err) {
-    alert("خطأ أثناء الحذف: " + err.message);
+    alert("❌ رفض السيرفر الحذف: " + err.message);
   }
 }
 
-// ==========================================
-// 6. التحكم بالشاشات والمودال
-// ==========================================
+// 5. التحكم والمودال
 function changeLayout(cols) {
   currentCols = cols;
   const grid = document.getElementById('cams-grid');
