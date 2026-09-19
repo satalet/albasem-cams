@@ -27,7 +27,7 @@ class AlbasemApp:
     def __init__(self, root):
         self.root = root
         self.root.title(ar("الباسم سات | أداة إدارة وقنص الكاميرات الحية"))
-        self.root.geometry("620x730")
+        self.root.geometry("620x760")
         self.root.resizable(False, False)
         self.root.configure(bg="#070a12")
 
@@ -85,44 +85,53 @@ class AlbasemApp:
                            font=("Tajawal", 10), fg="#94a3b8", bg="#0d1322")
         sub_lbl.pack(anchor="e")
 
-        main_box = tk.Frame(self.root, bg="#070a12", padx=20, pady=12)
+        main_box = tk.Frame(self.root, bg="#070a12", padx=20, pady=10)
         main_box.pack(fill="both", expand=True)
 
         # 1. قسم صيد الروابط
         sniff_frame = tk.LabelFrame(main_box, text=ar(" 🎯 1. قنّاص الروابط الذكي "), 
                                     font=("Tajawal", 10, "bold"), fg="#38bdf8", bg="#0f172a", 
-                                    padx=12, pady=10, relief="solid", bd=1)
-        sniff_frame.pack(fill="x", pady=5)
+                                    padx=12, pady=8, relief="solid", bd=1)
+        sniff_frame.pack(fill="x", pady=4)
 
         tk.Label(sniff_frame, text=ar("رابط صفحة البث في الموقع:"), font=("Tajawal", 9), fg="#cbd5e1", bg="#0f172a").pack(anchor="e")
         self.page_url_entry = tk.Entry(sniff_frame, font=("Courier", 10), bg="#070a12", fg="#38bdf8", insertbackground="white")
-        self.page_url_entry.pack(fill="x", pady=4)
+        self.page_url_entry.pack(fill="x", pady=3)
 
-        self.sniff_btn = tk.Button(sniff_frame, text=ar("🚀 قنص واستخراج رابط البث (.m3u8)"), 
+        self.sniff_btn = tk.Button(sniff_frame, text=ar("🚀 قنص واستخراج الرابط والاسم تلقائياً"), 
                                    font=("Tajawal", 10, "bold"), bg="#0284c7", fg="white", 
                                    activebackground="#0369a1", cursor="hand2", command=self.start_sniff_thread)
-        self.sniff_btn.pack(fill="x", pady=5)
+        self.sniff_btn.pack(fill="x", pady=4)
 
         # 2. قسم بيانات الكاميرا
         cam_frame = tk.LabelFrame(main_box, text=ar(" 📝 2. تفاصيل ونشر الكاميرا "), 
                                   font=("Tajawal", 10, "bold"), fg="#10b981", bg="#0f172a", 
-                                  padx=12, pady=10, relief="solid", bd=1)
-        cam_frame.pack(fill="x", pady=5)
+                                  padx=12, pady=8, relief="solid", bd=1)
+        cam_frame.pack(fill="x", pady=4)
 
+        # اسم الكاميرا
         tk.Label(cam_frame, text=ar("اسم / عنوان الكاميرا:"), font=("Tajawal", 9), fg="#cbd5e1", bg="#0f172a").pack(anchor="e")
-        self.title_entry = tk.Entry(cam_frame, font=("Tajawal", 10), bg="#070a12", fg="white", insertbackground="white", justify="right")
-        self.title_entry.pack(fill="x", pady=3)
+        self.title_entry = tk.Entry(cam_frame, font=("Courier", 11), bg="#070a12", fg="white", insertbackground="white")
+        self.title_entry.pack(fill="x", pady=2)
+        self.title_entry.bind("<KeyRelease>", self.update_title_preview)
 
+        # معاينة حية للاسم
+        self.title_preview_lbl = tk.Label(cam_frame, text=ar("المعاينة: (فارغ)"), font=("Tajawal", 10, "bold"), fg="#38bdf8", bg="#0f172a")
+        self.title_preview_lbl.pack(anchor="e", pady=(0, 4))
+
+        # المنطقة ونوع البث
         row_frame = tk.Frame(cam_frame, bg="#0f172a")
-        row_frame.pack(fill="x", pady=3)
+        row_frame.pack(fill="x", pady=2)
 
+        # المنطقة (قائمة منسدلة سهلة)
         col1 = tk.Frame(row_frame, bg="#0f172a")
         col1.pack(side="right", fill="x", expand=True, padx=(4, 0))
         tk.Label(col1, text=ar("المنطقة / الفهرس:"), font=("Tajawal", 9), fg="#cbd5e1", bg="#0f172a").pack(anchor="e")
-        self.area_entry = tk.Entry(col1, font=("Tajawal", 10), bg="#070a12", fg="white", insertbackground="white", justify="right")
-        self.area_entry.pack(fill="x")
-        self.area_entry.insert(0, "نابلس")
+        self.area_combo = ttk.Combobox(col1, values=["نابلس", "القدس", "كفر عقب", "الرام", "رام الله", "طولكرم", "جنين", "الخليل", "عام"], font=("Arial", 10))
+        self.area_combo.set("نابلس")
+        self.area_combo.pack(fill="x")
 
+        # نوع البث
         col2 = tk.Frame(row_frame, bg="#0f172a")
         col2.pack(side="left", fill="x", expand=True, padx=(0, 4))
         tk.Label(col2, text=ar("نوع البث:"), font=("Tajawal", 9), fg="#cbd5e1", bg="#0f172a").pack(anchor="e")
@@ -130,18 +139,27 @@ class AlbasemApp:
         self.type_combo.set("hls")
         self.type_combo.pack(fill="x")
 
-        tk.Label(cam_frame, text=ar("رابط البث الصافي (Direct Stream URL):"), font=("Tajawal", 9), fg="#cbd5e1", bg="#0f172a").pack(anchor="e", pady=(5, 0))
+        # رابط البث الصافي
+        tk.Label(cam_frame, text=ar("رابط البث الصافي (Direct Stream URL):"), font=("Tajawal", 9), fg="#cbd5e1", bg="#0f172a").pack(anchor="e", pady=(4, 0))
         self.stream_url_entry = tk.Entry(cam_frame, font=("Courier", 10), bg="#070a12", fg="#10b981", insertbackground="white")
-        self.stream_url_entry.pack(fill="x", pady=3)
+        self.stream_url_entry.pack(fill="x", pady=2)
 
+        # زر النشر
         self.publish_btn = tk.Button(cam_frame, text=ar("✨ نشر الكاميرا فوراً على موقع وتطبيق الباسم سات"), 
                                      font=("Tajawal", 11, "bold"), bg="#059669", fg="white", 
                                      activebackground="#047857", cursor="hand2", command=self.publish_stream)
-        self.publish_btn.pack(fill="x", pady=8)
+        self.publish_btn.pack(fill="x", pady=6)
 
         # شريط الحالة
-        self.status_lbl = tk.Label(self.root, text=ar("جاهز للعمل..."), font=("Tajawal", 9), fg="#64748b", bg="#070a12", pady=8)
+        self.status_lbl = tk.Label(self.root, text=ar("جاهز للعمل..."), font=("Tajawal", 9), fg="#64748b", bg="#070a12", pady=6)
         self.status_lbl.pack(side="bottom", fill="x")
+
+    def update_title_preview(self, event=None):
+        raw_text = self.title_entry.get().strip()
+        if raw_text:
+            self.title_preview_lbl.config(text=f"{ar('المعاينة')}: {ar(raw_text)}")
+        else:
+            self.title_preview_lbl.config(text=ar("المعاينة: (فارغ)"))
 
     def log(self, text, color="#94a3b8"):
         self.status_lbl.config(text=ar(text), fg=color)
@@ -160,6 +178,7 @@ class AlbasemApp:
 
     def run_playwright_sniff(self, target_url):
         found_url = None
+        extracted_title = ""
         try:
             from playwright.sync_api import sync_playwright
             with sync_playwright() as p:
@@ -176,29 +195,52 @@ class AlbasemApp:
 
                 page.on("request", handle_req)
                 page.goto(target_url, wait_until="domcontentloaded", timeout=20000)
-                page.wait_for_timeout(4000)
+                page.wait_for_timeout(3500)
+
+                # استخراج اسم الكاميرا تلقائياً من الصفحة
+                try:
+                    h1 = page.locator("h1").first.inner_text()
+                    if h1 and len(h1.strip()) > 1:
+                        extracted_title = h1.strip()
+                except Exception:
+                    pass
+
+                if not extracted_title:
+                    raw_title = page.title()
+                    if "-" in raw_title:
+                        extracted_title = raw_title.split("-")[0].strip()
+                    elif "|" in raw_title:
+                        extracted_title = raw_title.split("|")[0].strip()
+                    else:
+                        extracted_title = raw_title.strip()
+
                 browser.close()
         except Exception as e:
             print("Sniff error:", e)
 
-        self.root.after(0, self.finish_sniff, found_url)
+        self.root.after(0, self.finish_sniff, found_url, extracted_title)
 
-    def finish_sniff(self, url):
-        self.sniff_btn.config(state="normal", text=ar("🚀 قنص واستخراج رابط البث (.m3u8)"))
+    def finish_sniff(self, url, title):
+        self.sniff_btn.config(state="normal", text=ar("🚀 قنص واستخراج الرابط والاسم تلقائياً"))
+        if title:
+            self.title_entry.delete(0, tk.END)
+            self.title_entry.insert(0, title)
+            self.update_title_preview()
+
         if url:
             clean_url = url.split("?")[0] if ("index.m3u8" in url or "mono.m3u8" in url) else url
             self.stream_url_entry.delete(0, tk.END)
             self.stream_url_entry.insert(0, clean_url)
             self.type_combo.set("hls")
-            self.log("تم اصطياد الرابط بنجاح!", "#10b981")
-            messagebox.showinfo(ar("تم الصيد بنجاح! 🎯"), f"{ar('تم العثور على رابط البث ووضعه في الخانة')}:\n{clean_url}")
+            self.log("تم اصطياد الرابط والاسم بنجاح!", "#10b981")
+            messagebox.showinfo(ar("تم الصيد بنجاح! 🎯"), f"{ar('تم التقاط الرابط والاسم تلقائياً')}:\n{title}\n{clean_url}")
         else:
             self.log("تعذر العثور على رابط تلقائي، يمكنك وضعه يدوياً.", "#f87171")
             messagebox.showwarning(ar("لم يتم الصيد"), ar("لم يتم التقاط رابط .m3u8 تلقائياً. تأكد من تشغيل البث في الصفحة."))
 
     def publish_stream(self):
         title = self.title_entry.get().strip()
-        area = self.area_entry.get().strip()
+        area = self.area_combo.get().strip()
         stream_type = self.type_combo.get()
         url = self.stream_url_entry.get().strip()
 
@@ -240,6 +282,7 @@ class AlbasemApp:
                 self.title_entry.delete(0, tk.END)
                 self.stream_url_entry.delete(0, tk.END)
                 self.page_url_entry.delete(0, tk.END)
+                self.update_title_preview()
             else:
                 messagebox.showerror(ar("خطأ"), f"{ar('رفض السيرفر الحفظ')}: {res.text}")
         except Exception as e:
