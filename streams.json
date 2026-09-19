@@ -1,0 +1,38 @@
+[
+  {
+    "id": "cam-1",
+    "title": "بث إخباري مباشر (تجربة يوتيوب)",
+    "area": "القدس",
+    "category": "مباشر",
+    "type": "youtube",
+    "url": "https://www.youtube-nocookie.com/embed/bNyUyrR0PHo",
+    "status": "active"
+  },
+  {
+    "id": "cam-2",
+    "title": "بث تجريبي مباشر HLS (أكاديمي/تقني)",
+    "area": "رام الله",
+    "category": "سير",
+    "type": "hls",
+    "url": "https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8",
+    "status": "active"
+  },
+  {
+    "id": "cam-3",
+    "title": "كاميرا مراقبة حركة السير (M3U8 Live)",
+    "area": "كفر عقب والرام",
+    "category": "سير",
+    "type": "hls",
+    "url": "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8",
+    "status": "active"
+  },
+  {
+    "id": "cam-4",
+    "title": "راصد أحوال الطقس (تحديث تلقائي)",
+    "area": "الوسط",
+    "category": "طقس",
+    "type": "image",
+    "url": "https://picsum.photos/800/450",
+    "status": "active"
+  }
+]

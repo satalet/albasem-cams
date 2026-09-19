@@ -1,0 +1,22 @@
+{
+  "name": "الباسم سات | رادار الكاميرات الحية",
+  "short_name": "الباسم سات",
+  "description": "منصة مراقبة الكاميرات الحية وحركة السير - الباسم سات لأنظمة المراقبة والستلايت",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a0e17",
+  "theme_color": "#0a0e17",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2928/2928883.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2928/2928883.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

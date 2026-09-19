@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>الباسم سات | غرفة المراقبة ورادار الكاميرات الحية</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#090d16">
+  
+  <!-- Fonts & Icons & Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- مشغل بث HLS المباشر -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+  <style>
+    body { font-family: 'Tajawal', sans-serif; }
+    .ratio-16-9 { aspect-ratio: 16 / 9; }
+    .active-btn { background-color: #059669 !important; border-color: #10b981 !important; color: white !important; }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0b0f19; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #334155; }
+  </style>
+</head>
+<body class="bg-[#070a12] text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-black">
+
+  <!-- Header -->
+  <header class="bg-[#0d1322]/95 backdrop-blur-md border-b border-slate-800/80 sticky top-0 z-40 shadow-xl">
+    <div class="max-w-7xl mx-auto px-4 py-2.5 flex flex-wrap justify-between items-center gap-3">
+      
+      <!-- Brand Logo & Title -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shadow-lg shadow-emerald-500/20 text-white font-black text-xl">
+          <i class="fa-solid fa-satellite-dish"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base sm:text-lg font-black tracking-wide text-white">الباسم سات</h1>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/30 animate-pulse">
+              ● بث حي
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-400">رادار كاميرات الطرق والطقس المباشرة</p>
+        </div>
+      </div>
+
+      <!-- Quick Action Controls -->
+      <div class="flex items-center gap-2">
+        <!-- Layout Switchers (Desktop) -->
+        <div class="hidden sm:flex items-center bg-[#141c30] p-1 rounded-lg border border-slate-800 text-xs">
+          <button id="btn-grid-1" onclick="changeLayout(1)" class="px-2.5 py-1 rounded transition text-slate-400 hover:text-white" title="شاشة واحدة">
+            <i class="fa-solid fa-square"></i>
+          </button>
+          <button id="btn-grid-2" onclick="changeLayout(2)" class="px-2.5 py-1 rounded transition active-btn text-white" title="شاشتان">
+            <i class="fa-solid fa-table-cells-large"></i>
+          </button>
+          <button id="btn-grid-3" onclick="changeLayout(3)" class="px-2.5 py-1 rounded transition text-slate-400 hover:text-white" title="شبكة ثلاثية">
+            <i class="fa-solid fa-table-cells"></i>
+          </button>
+        </div>
+
+        <!-- زر تثبيت التطبيق للجوال (يظهر تلقائياً إذا مدعوم) -->
+        <button id="install-btn" class="hidden bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 rounded-lg text-xs font-bold items-center gap-1.5 transition">
+          <i class="fa-solid fa-download"></i>
+          <span>تثبيت التطبيق</span>
+        </button>
+
+        <!-- زر التواصل واتساب -->
+        <a href="https://wa.me/9725XXXXXXXX?text=مرحباً%20الباسم%20سات،%20معني%20بخدمات%20تركيب%20وصيانة%20كاميرات%20المراقبة" target="_blank" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 shadow-lg shadow-emerald-600/20 transition transform active:scale-95">
+          <i class="fa-brands fa-whatsapp text-sm"></i>
+          <span class="hidden xs:inline">اتصل بالفني</span>
+        </a>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Categories / Areas Filter Bar -->
+  <div class="bg-[#0b101d] border-b border-slate-800/60 px-4 py-2 sticky top-[57px] z-30">
+    <div class="max-w-7xl mx-auto flex items-center gap-2 overflow-x-auto text-xs py-1" id="filter-buttons">
+      <button onclick="filterByArea('all')" class="filter-chip active-btn px-3 py-1 rounded-full border border-slate-700 font-medium whitespace-nowrap transition">
+        جميع الكاميرات
+      </button>
+      <!-- الأزرار الثانية بتنزل تلقائياً حسب المناطق الموجودة بملف streams.json -->
+    </div>
+  </div>
+
+  <!-- CCTV Streams Grid -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-4">
+    <div id="cams-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- Cams cards dynamically inserted here -->
+    </div>
+  </main>
+
+  <!-- Modal Fullscreen View -->
+  <div id="cam-modal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex items-center justify-center p-2 sm:p-6">
+    <div class="bg-[#0f172a] border border-slate-700 w-full max-w-5xl rounded-2xl overflow-hidden shadow-2xl flex flex-col">
+      <div class="px-4 py-3 bg-slate-900 flex justify-between items-center border-b border-slate-800">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
+          <h3 id="modal-title" class="text-sm sm:text-base font-bold text-white"></h3>
+        </div>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-white p-1 rounded-lg transition">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <div id="modal-content" class="bg-black ratio-16-9 w-full flex items-center justify-center">
+        <!-- Active stream in modal -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-[#090d16] border-t border-slate-800/80 py-4 px-4 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
+      <p>خدمة البث المباشر مقدمة من <span class="text-emerald-400 font-bold">الباسم سات</span> لأنظمة المراقبة والستلايت</p>
+      <p class="text-[11px] text-slate-600">الرام - كفر عقب - القدس وضواحيها</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
