@@ -1,11 +1,9 @@
 // مراقبة التحديث التلقائي للـ Service Worker لكسر الكاش ذاتياً
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').then((reg) => {
-    // فحص دوري عند فتح الصفحة
     reg.update();
   }).catch(err => console.log('SW fail', err));
 
-  // أول ما الـ Service Worker يتحدث، حدّث الصفحة فوراً على أجهزة الجميع
   let refreshing = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (!refreshing) {
@@ -37,7 +35,7 @@ let streamsData = [];
 let currentFilter = 'all';
 let currentCols = 2;
 
-// مراقبة الدخول والخروج مع حفظ الجلسة
+// مراقبة حالة تسجيل الدخول
 auth.onAuthStateChanged((user) => {
   currentUser = user;
   const authBtn = document.getElementById('auth-btn');
@@ -99,15 +97,21 @@ async function handleAdminLogout() {
   alert("تم تسجيل الخروج وإخفاء أزرار التحكم.");
 }
 
-// 2. المزامنة الحية مع Firebase
+// 2. المزامنة المباشرة الحقيقية مع Firebase
 function initRealtimeSync() {
   streamsRef.on('value', (snapshot) => {
     const data = snapshot.val();
-    if (!data) return;
+    if (!data) {
+      streamsData = [];
+      setupFilters();
+      renderCams();
+      return;
+    }
 
+    // تثبيت المعرّف الحقيقي الخاص بفايربيس لمنع أي خطأ بالحذف أو التعديل
     streamsData = Object.keys(data).map(key => ({
-      id: key,
-      ...data[key]
+      ...data[key],
+      id: key
     }));
 
     setupFilters();
@@ -115,7 +119,7 @@ function initRealtimeSync() {
   });
 }
 
-// 3. بناء شبكة الكاميرات وأزرار التحكم المباشرة
+// 3. بناء الفلاتر وشبكة الكاميرات
 function setupFilters() {
   const filterBox = document.getElementById('filter-buttons');
   if (!filterBox) return;
@@ -147,7 +151,7 @@ function renderCams() {
     : streamsData.filter(s => s.area === currentFilter);
 
   if (filtered.length === 0) {
-    grid.innerHTML = `<div class="col-span-full py-12 text-center text-slate-500 text-xs">لا توجد كاميرات في هذا القسم حالياً.</div>`;
+    grid.innerHTML = `<div class="col-span-full py-16 text-center text-slate-500 text-xs">لا توجد كاميرات معروضة حالياً.</div>`;
     return;
   }
 
@@ -155,7 +159,7 @@ function renderCams() {
     const card = document.createElement('div');
     card.className = 'bg-[#0f172a] border border-slate-800/90 rounded-xl overflow-hidden shadow-xl flex flex-col transition hover:border-slate-700';
 
-    // أزرار التحكم المباشرة (فقط لأبو باسم)
+    // أزرار التعديل والحذف المباشرة
     const adminActions = currentUser ? `
       <div class="flex items-center gap-1.5 ml-2 border-l border-slate-700 pl-2">
         <button onclick="openEditModal('${stream.id}')" class="bg-blue-600/30 hover:bg-blue-600 text-blue-300 hover:text-white px-2 py-0.5 rounded text-[11px] transition" title="تعديل">
@@ -229,7 +233,7 @@ function renderCams() {
   });
 }
 
-// 4. نوافذ الإضافة والتعديل
+// 4. العمليات الإدارية (الحفظ والحذف الدقيق)
 function openAddModal() {
   document.getElementById('edit-stream-id').value = '';
   document.getElementById('edit-form').reset();
@@ -273,7 +277,7 @@ async function handleSaveStream(e) {
 
   try {
     if (streamId) {
-      await db.ref('streams/' + streamId).update(payload);
+      await db.ref('streams/' + streamId).set(payload);
       alert("✓ تم حفظ التعديل بنجاح!");
     } else {
       await streamsRef.push(payload);
@@ -287,13 +291,17 @@ async function handleSaveStream(e) {
 
 async function deleteStream(id, title) {
   if (!confirm(`هل أنت متأكد من حذف كاميرا "${title}" نهائياً من الموقع؟`)) return;
-  if (!currentUser) return;
+  if (!currentUser) {
+    alert("⚠️ يجب تسجيل الدخول كمسؤول أولاً!");
+    return;
+  }
 
   try {
+    // الحذف المباشر والدقيق لمفتاح فايربيس
     await db.ref('streams/' + id).remove();
-    alert("✓ تم حذف الكاميرا فوراً.");
+    alert("✓ تم حذف الكاميرا من السيرفر بنجاح!");
   } catch (err) {
-    alert("خطأ: " + err.message);
+    alert("خطأ أثناء الحذف: " + err.message);
   }
 }
 
