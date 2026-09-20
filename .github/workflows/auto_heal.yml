@@ -2,24 +2,27 @@ name: Albasem Sat Auto-Heal Engine
 
 on:
   schedule:
-    # الفحص التلقائي كل 6 ساعات يومياً
     - cron: '0 */6 * * *'
-  # إتاحة زر التشغيل اليدوي من الجوال والكمبيوتر بأي وقت
   workflow_dispatch:
 
 jobs:
-  health-check:
+  health-check-and-heal:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
+      - name: جلب كود المشروع
         uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: تجهيز بيئة بايثون
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Run Auto Heal Engine
+      - name: تثبيت مكتبات القنص ومتصفح Chromium بالسحابة
+        run: |
+          pip install playwright
+          playwright install --with-deps chromium
+
+      - name: تشغيل محرك الفحص والإنعاش التلقائي
         env:
           ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
