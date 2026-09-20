@@ -1,3 +1,4 @@
+let activeModalHlsInstance = null;
 // مراقبة وتسجيل الـ Service Worker لكسر الكاش وتثبيت PWA
 let deferredPrompt = null;
 const installBtn = document.getElementById('pwa-install-btn');
@@ -607,7 +608,10 @@ function openModal(streamId) {
     }
     modalBox.innerHTML = `<iframe class="w-full h-full border-0" src="${ytUrl}?autoplay=1&mute=0&controls=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
   } else if (stream.type === 'hls') {
-    launchHlsStream(modalBox, stream.url, true);
+    const vid = launchHlsStream(modalBox, stream.url, true);
+    if (window.Hls && Hls.isSupported() && vid && vid._hls) {
+      activeModalHlsInstance = vid._hls;
+    }
   } else if (stream.type === 'image') {
     modalBox.innerHTML = `<img src="${stream.url}?t=${Date.now()}" class="w-full h-full object-contain">`;
   }
@@ -618,15 +622,37 @@ function openModal(streamId) {
 
 function closeModal(fromHistory = false) {
   const modal = document.getElementById('cam-modal');
-  if (!modal.classList.contains('hidden')) {
-    const video = modal.querySelector('video');
-    if (video) {
-      video.pause();
-      video.removeAttribute('src');
-      try { video.load(); } catch(e){}
+  if (modal && !modal.classList.contains('hidden')) {
+    // 1. تدمير مشغل HLS النشط بالكامل من الذاكرة
+    if (activeModalHlsInstance) {
+      try {
+        activeModalHlsInstance.stopLoad();
+        activeModalHlsInstance.detachMedia();
+        activeModalHlsInstance.destroy();
+      } catch(e){}
+      activeModalHlsInstance = null;
     }
-    document.getElementById('modal-content').innerHTML = '';
+
+    // 2. كتم وإيقاف وتفريغ أي عنصر فيديو داخل المودال
+    const videos = modal.querySelectorAll('video');
+    videos.forEach(v => {
+      try {
+        v.muted = true;
+        v.pause();
+        if (v._hls) {
+          try { v._hls.destroy(); } catch(e){}
+        }
+        v.removeAttribute('src');
+        v.load();
+      } catch(e){}
+    });
+
+    // 3. مسح وتفريغ أي iframe أو مشغل تماماً
+    const modalBox = document.getElementById('modal-content');
+    if (modalBox) modalBox.innerHTML = '';
+
     modal.classList.add('hidden');
+
     if (!fromHistory && history.state && history.state.modalOpen) {
       history.back();
     }
