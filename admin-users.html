@@ -285,7 +285,7 @@
   }
 
   async function saveSubscriber() {
-    const username = document.getElementById("sub-username").value.trim().toLowerCase();
+    const username = document.getElementById("sub-username").value.trim().toLowerCase(); document.getElementById("sub-username").disabled = false;
     const password = document.getElementById("sub-password").value.trim();
     const fullName = document.getElementById("sub-fullname").value.trim();
     const phone = document.getElementById("sub-phone").value.trim();
@@ -333,10 +333,18 @@
     }
   }
 
+  
+  let isEditing = false;
+
   async function loadSubscribers() {
     try {
-      const resp = await fetch(`${FIREBASE_DB}/subscribers.json`);
-      const data = await resp.json() || {};
+      const [subsResp, presResp] = await Promise.all([
+        fetch(`${FIREBASE_DB}/subscribers.json`),
+        fetch(`${FIREBASE_DB}/presence.json`)
+      ]);
+      const data = await subsResp.json() || {};
+      const presenceData = await presResp.json() || {};
+
       const tDesktop = document.getElementById("subscribers-table-desktop");
       const cMobile = document.getElementById("subscribers-cards-mobile");
       tDesktop.innerHTML = "";
@@ -350,7 +358,18 @@
         let statusText = sub.status === "blocked" ? "محظور" : (isExpired ? "منتهي" : "نشط");
         let areasBadge = sub.allowedAreas.includes('all') ? '<span class="badge badge-active">جميع الأقسام</span>' : sub.allowedAreas.join(', ');
 
-        // 1. إضافة سطر الكمبيوتر
+        let pInfo = presenceData[key] || {};
+        let now = Date.now();
+        let lastSeenTime = pInfo.lastSeen ? new Date(pInfo.lastSeen).getTime() : 0;
+        let isOnline = pInfo.isOnline && (now - lastSeenTime < 120000);
+
+        let onlineBadge = isOnline 
+          ? '<span style="color:#10b981; font-size:0.78rem; font-weight:bold;"><i class="fas fa-circle" style="font-size:0.55rem;"></i> متصل الآن</span>'
+          : `<span style="color:#94a3b8; font-size:0.75rem;"><i class="far fa-clock"></i> ${pInfo.lastSeen ? new Date(pInfo.lastSeen).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'}) : 'لم يدخل بعد'}</span>`;
+
+        let subJson = JSON.stringify(sub).replace(/'/g, "&apos;");
+
+        // 1. كمبيوتر
         let row = `
           <tr>
             <td><strong>${sub.fullName || key}</strong></td>
@@ -358,11 +377,12 @@
             <td>${sub.phone || '-'}</td>
             <td>${areasBadge}</td>
             <td>${sub.expireDate}</td>
-            <td><span class="badge ${badgeClass}">${statusText}</span></td>
+            <td><span class="badge ${badgeClass}">${statusText}</span><br>${onlineBadge}</td>
             <td>
-              <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                <button class="btn btn-share" onclick='shareSubscriber(${JSON.stringify(sub)})'><i class="fas fa-share-alt"></i> مشاركة</button>
-                <button class="btn btn-warning" onclick="renewSubscriber('${key}', '${sub.expireDate}')"><i class="fas fa-redo"></i> +30 يوم</button>
+              <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                <button class="btn btn-warning" onclick='editSubscriber(${subJson})' title="تعديل"><i class="fas fa-pen"></i></button>
+                <button class="btn btn-share" onclick='shareSubscriber(${subJson})'><i class="fas fa-share-alt"></i></button>
+                <button class="btn btn-warning" onclick="renewSubscriber('${key}', '${sub.expireDate}')">+30</button>
                 <button class="btn btn-danger" onclick="toggleBlock('${key}', '${sub.status}')"><i class="fas ${sub.status === 'blocked' ? 'fa-unlock' : 'fa-ban'}"></i></button>
                 <button class="btn btn-danger" onclick="deleteSubscriber('${key}')"><i class="fas fa-trash"></i></button>
               </div>
@@ -371,21 +391,15 @@
         `;
         tDesktop.innerHTML += row;
 
-        let now = Date.now();
-        let lastSeenTime = sub.lastSeen ? new Date(sub.lastSeen).getTime() : 0;
-        let isOnline = sub.isOnline && (now - lastSeenTime < 120000); // متصل خلال آخر دقيقتين
-        let onlineBadge = isOnline 
-          ? '<span style="color:#10b981; font-size:0.75rem; font-weight:bold;"><i class="fas fa-circle" style="font-size:0.6rem;"></i> متصل الآن</span>'
-          : `<span style="color:#94a3b8; font-size:0.75rem;"><i class="far fa-clock"></i> ${sub.lastSeen ? new Date(sub.lastSeen).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'}) : 'لم يدخل بعد'}</span>`;
-
-        // 2. إضافة بطاقة الجوال (خاصة بالشاومي)
+        // 2. بطاقة الشاومي
         let card = `
           <div class="sub-card">
             <div class="sub-card-header">
               <div>
                 <div class="sub-card-title">${sub.fullName || key}</div>
                 <div style="display:flex; align-items:center; gap:8px; margin-top:2px;">
-                  <span style="font-size:0.8rem; color:var(--primary); font-weight:600;">@${sub.username}</span>${onlineBadge}
+                  <span style="font-size:0.8rem; color:var(--primary); font-weight:600;">@${sub.username}</span>
+                  ${onlineBadge}
                 </div>
               </div>
               <span class="badge ${badgeClass}">${statusText}</span>
@@ -397,10 +411,10 @@
               <div><strong>الأقسام:</strong> ${areasBadge}</div>
             </div>
             <div class="sub-card-actions">
-              <button class="btn btn-share" onclick='shareSubscriber(${JSON.stringify(sub)})'><i class="fas fa-share-alt"></i> مشاركة</button>
+              <button class="btn btn-warning" onclick='editSubscriber(${subJson})'><i class="fas fa-pen"></i> تعديل</button>
+              <button class="btn btn-share" onclick='shareSubscriber(${subJson})'><i class="fas fa-share-alt"></i> مشاركة</button>
               <button class="btn btn-warning" onclick="renewSubscriber('${key}', '${sub.expireDate}')"><i class="fas fa-redo"></i> +30 يوم</button>
               <button class="btn btn-danger" onclick="toggleBlock('${key}', '${sub.status}')"><i class="fas ${sub.status === 'blocked' ? 'fa-unlock' : 'fa-ban'}"></i> ${sub.status === 'blocked' ? 'تفعيل' : 'حظر'}</button>
-              <button class="btn btn-danger" onclick="deleteSubscriber('${key}')"><i class="fas fa-trash"></i> حذف</button>
             </div>
           </div>
         `;
@@ -409,6 +423,35 @@
     } catch(e) {
       console.error(e);
     }
+  }
+
+  function editSubscriber(sub) {
+    document.getElementById("sub-username").value = sub.username;
+    document.getElementById("sub-username").disabled = true; // تثبيت اليوزر
+    document.getElementById("sub-password").value = sub.password;
+    document.getElementById("sub-fullname").value = sub.fullName || "";
+    document.getElementById("sub-phone").value = sub.phone || "";
+    document.getElementById("sub-expire").value = sub.expireDate;
+    
+    // ضبط الأقسام
+    if (sub.allowedAreas.includes("all")) {
+      document.getElementById("area-all").checked = true;
+      toggleAllAreas(document.getElementById("area-all"));
+    } else {
+      document.getElementById("area-all").checked = false;
+      toggleAllAreas(document.getElementById("area-all"));
+      document.querySelectorAll(".area-item").forEach(cb => {
+        cb.checked = sub.allowedAreas.includes(cb.value);
+      });
+    }
+
+    const saveBtn = document.querySelector("button[onclick='saveSubscriber()']");
+    if (saveBtn) {
+      saveBtn.innerHTML = '<i class="fas fa-check"></i> حفظ وتحديث التعديلات';
+      saveBtn.style.background = '#00e5ff';
+      saveBtn.style.color = '#000';
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   async function renewSubscriber(username, currentExpire) {

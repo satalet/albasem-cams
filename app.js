@@ -309,7 +309,16 @@ function launchHlsStream(container, url, isModal = false) {
 
   const video = document.createElement('video');
   video.className = isModal ? 'w-full h-full object-contain' : 'absolute inset-0 w-full h-full object-cover';
-  video.autoplay = true;
+  video.autoplay = isModal;
+  if (!isModal) {
+    video.preload = "metadata";
+    container.addEventListener('mouseenter', () => {
+      video.play().catch(()=>{});
+    });
+    container.addEventListener('mouseleave', () => {
+      video.pause();
+    });
+  }
   video.controls = isModal;
   video.playsInline = true;
   video.muted = isModal ? false : true;

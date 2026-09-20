@@ -22,7 +22,20 @@
 
   <link rel="stylesheet" href="style.css">
 </head>
-<body class="bg-[#070a12] text-slate-100 min-h-screen flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
+<body
+
+  <!-- شريط ترحيب المشترك وتسجيل الخروج -->
+  <div id="sub-welcome-bar" style="display:none; background:#1e293b; border-bottom:2px solid #00e5ff; padding:8px 15px; font-size:0.85rem; color:#fff; display:none; justify-content:space-between; align-items:center;">
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+      <span>👋 مرحباً: <strong id="sub-display-name" style="color:#00e5ff;"></strong></span>
+      <span style="color:#94a3b8;">|</span>
+      <span>📅 الاشتراك ينتهي: <strong id="sub-display-expire" style="color:#10b981;"></strong></span>
+    </div>
+    <button onclick="handleSubscriberLogout()" style="background:#ef4444; color:#fff; border:none; padding:4px 10px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:0.8rem;">
+      <i class="fa-solid fa-arrow-right-from-bracket"></i> تسجيل خروج
+    </button>
+  </div>
+ class="bg-[#070a12] text-slate-100 min-h-screen flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
 
   <header class="sticky top-0 z-40 bg-[#0c1222]/90 backdrop-blur-md border-b border-slate-800/80 px-4 py-3 transition">
     <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
@@ -365,7 +378,42 @@
       });
     }
 
+    function handleSubscriberLogout() {
+      if (currentSubscriber) {
+        navigator.sendBeacon(`https://albasem-cams-default-rtdb.firebaseio.com/presence/${currentSubscriber.username}.json`, JSON.stringify({ isOnline: false, lastSeen: new Date().toISOString() }));
+      }
+      localStorage.removeItem("albasem_subscriber");
+      location.reload();
+    }
+
+    function showSubscriberBar(sub) {
+      const bar = document.getElementById("sub-welcome-bar");
+      if (bar) {
+        document.getElementById("sub-display-name").textContent = sub.fullName || sub.username;
+        document.getElementById("sub-display-expire").textContent = sub.expireDate;
+        bar.style.display = "flex";
+      }
+    }
+
+    function startHeartbeat(username) {
+      const sendBeat = () => {
+        fetch(`https://albasem-cams-default-rtdb.firebaseio.com/presence/${username}.json`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ isOnline: true, lastSeen: new Date().toISOString() })
+        }).catch(()=>{});
+      };
+      sendBeat();
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+      heartbeatTimer = setInterval(sendBeat, 45000);
+      
+      window.addEventListener("beforeunload", () => {
+        navigator.sendBeacon(`https://albasem-cams-default-rtdb.firebaseio.com/presence/${username}.json`, JSON.stringify({ isOnline: false, lastSeen: new Date().toISOString() }));
+      });
+    }
+
     function filterStreamsForSubscriber(sub) {
+      showSubscriberBar(sub);
       if (!sub || sub.allowedAreas.includes("all")) return;
       document.querySelectorAll("[data-area]").forEach(el => {
         let area = el.getAttribute("data-area");
