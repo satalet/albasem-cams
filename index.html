@@ -226,78 +226,112 @@
   <script src="app.js"></script>
 
   <!-- نظام إدارة دخول المشتركين وفحص الجلسة -->
-  <div id="sub-login-modal" style="display:none; position:fixed; inset:0; background:rgba(11,17,32,0.95); z-index:9999; justify-content:center; align-items:center; padding:15px;">
-    <div style="background:#1e293b; border:1px solid #00e5ff; border-radius:14px; max-width:380px; width:100%; padding:22px; text-align:center; box-shadow:0 8px 30px rgba(0,0,0,0.5);">
-      <h2 style="color:#00e5ff; font-size:1.3rem; margin-bottom:10px;"><i class="fa-solid fa-satellite-dish"></i> منصة الباسم سات</h2>
-      <p style="color:#94a3b8; font-size:0.85rem; margin-bottom:18px;">يرجى تسجيل الدخول لمشاهدة البث المباشر المخصص</p>
+  <div id="sub-login-modal" style="display:none; position:fixed; inset:0; background:rgba(11,17,32,0.96); z-index:9999; justify-content:center; align-items:center; padding:15px;">
+    <div style="background:#1e293b; border:1px solid #00e5ff; border-radius:14px; max-width:380px; width:100%; padding:24px; text-align:center; box-shadow:0 8px 30px rgba(0,0,0,0.5);">
+      <h2 style="color:#00e5ff; font-size:1.3rem; margin-bottom:8px;"><i class="fa-solid fa-satellite-dish"></i> منصة الباسم سات</h2>
+      <p style="color:#94a3b8; font-size:0.85rem; margin-bottom:18px;">تسجيل الدخول للمشتركين وإدارة المنصة</p>
       
-      <input type="text" id="client-user" placeholder="اسم المستخدم" style="width:100%; padding:10px; margin-bottom:10px; background:#0f172a; border:1px solid #334155; border-radius:8px; color:#fff; outline:none; text-align:center;">
-      <input type="password" id="client-pass" placeholder="كلمة المرور" style="width:100%; padding:10px; margin-bottom:15px; background:#0f172a; border:1px solid #334155; border-radius:8px; color:#fff; outline:none; text-align:center;">
+      <div style="margin-bottom:12px; text-align:right;">
+        <input type="text" id="client-user" placeholder="اسم المستخدم أو بريد الأدمن" dir="ltr" style="width:100%; padding:11px; background:#0f172a; border:1px solid #334155; border-radius:8px; color:#fff; outline:none; text-align:center; font-size:0.95rem;">
+      </div>
+
+      <div style="margin-bottom:15px; position:relative; text-align:right;">
+        <input type="password" id="client-pass" placeholder="كلمة المرور" dir="ltr" style="width:100%; padding:11px; background:#0f172a; border:1px solid #334155; border-radius:8px; color:#fff; outline:none; text-align:center; font-size:0.95rem;">
+        <button type="button" onclick="togglePassView()" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:#94a3b8; cursor:pointer;"><i id="eye-icon" class="fa-solid fa-eye"></i></button>
+      </div>
       
-      <button onclick="handleSubscriberLogin()" style="width:100%; padding:10px; background:#00e5ff; color:#000; border:none; border-radius:8px; font-weight:bold; cursor:pointer; font-size:0.95rem; margin-bottom:10px;">دخول للمنصة</button>
-      <div id="login-error-msg" style="color:#ef4444; font-size:0.8rem; min-height:18px;"></div>
+      <button onclick="handleSmartLogin()" style="width:100%; padding:11px; background:#00e5ff; color:#000; border:none; border-radius:8px; font-weight:bold; cursor:pointer; font-size:0.95rem; margin-bottom:10px;">دخول للمنصة</button>
+      <div id="login-error-msg" style="color:#ef4444; font-size:0.82rem; min-height:20px; font-weight:600;"></div>
     </div>
   </div>
 
   <script>
+    const FIREBASE_API_KEY = "AIzaSyD4U4DFTtO8zuqIlrJp19ji1ESptfuVr9E";
     let currentSubscriber = JSON.parse(localStorage.getItem("albasem_subscriber") || "null");
     let heartbeatTimer = null;
 
-    window.addEventListener("DOMContentLoaded", () => {
-      // فحص إذا كان الداخل أدمن رسمي
-      let adminToken = localStorage.getItem("albasem_admin_token");
-      if (!adminToken) {
-        checkSubscriberAuth();
+    function togglePassView() {
+      const p = document.getElementById("client-pass");
+      const icon = document.getElementById("eye-icon");
+      if (p.type === "password") {
+        p.type = "text";
+        icon.classList.replace("fa-eye", "fa-eye-slash");
+      } else {
+        p.type = "password";
+        icon.classList.replace("fa-eye-slash", "fa-eye");
       }
-    });
+    }
 
-    function checkSubscriberAuth() {
+    window.addEventListener("DOMContentLoaded", () => {
+      let adminToken = localStorage.getItem("albasem_admin_token");
+      if (adminToken) {
+        return; // الأدمن مسجل وموثق مسبقاً
+      }
       if (!currentSubscriber) {
         document.getElementById("sub-login-modal").style.display = "flex";
       } else {
         verifySubscriberStatus(currentSubscriber.username);
       }
-    }
+    });
 
-    async function handleSubscriberLogin() {
-      const u = document.getElementById("client-user").value.trim().toLowerCase();
+    async function handleSmartLogin() {
+      const u = document.getElementById("client-user").value.trim();
       const p = document.getElementById("client-pass").value.trim();
       const err = document.getElementById("login-error-msg");
       err.innerText = "";
 
       if (!u || !p) {
-        err.innerText = "يرجى كتابة اسم المستخدم وكلمة المرور";
+        err.innerText = "يرجى كتابة اسم الحساب وكلمة المرور";
         return;
       }
 
+      // 1. فحص إذا كان الداخل هو الأدمن الرسمي (بريد إلكتروني)
+      if (u.includes("@")) {
+        try {
+          const resp = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: u, password: p, returnSecureToken: true })
+          });
+          const data = await resp.json();
+          if (data.idToken) {
+            localStorage.setItem("albasem_admin_token", data.idToken);
+            document.getElementById("sub-login-modal").style.display = "none";
+            location.reload();
+            return;
+          }
+        } catch(e) {}
+      }
+
+      // 2. فحص إذا كان مشترك زبون عادي
       try {
-        const resp = await fetch(`https://albasem-cams-default-rtdb.firebaseio.com/subscribers/${u}.json`);
+        const usernameClean = u.toLowerCase();
+        const resp = await fetch(`https://albasem-cams-default-rtdb.firebaseio.com/subscribers/${usernameClean}.json`);
         const sub = await resp.json();
 
-        if (!sub || sub.password !== p) {
+        if (!sub || String(sub.password).trim() !== p) {
           err.innerText = "بيانات الدخول غير صحيحة!";
           return;
         }
 
         if (sub.status === "blocked") {
-          err.innerText = "الحساب موقف مؤقتاً، راجع إدارة الباسم سات";
+          err.innerText = "الحساب موقف مؤقتاً، يرجى مراجعة إدارة الباسم سات";
           return;
         }
 
         const today = new Date().toISOString().split('T')[0];
         if (sub.expireDate < today) {
-          err.innerText = "انتهت فترة الاشتراك، تواصل معنا للتجديد";
+          err.innerText = "انتهت فترة اشتراكك، يرجى التواصل للتجديد";
           return;
         }
 
-        // حفظ بيانات المشترك وبدء الجلسة
         localStorage.setItem("albasem_subscriber", JSON.stringify(sub));
         currentSubscriber = sub;
         document.getElementById("sub-login-modal").style.display = "none";
-        startHeartbeat(u);
+        startHeartbeat(usernameClean);
         filterStreamsForSubscriber(sub);
       } catch(e) {
-        err.innerText = "خطأ في الاتصال بالشبكة";
+        err.innerText = "خطأ في الاتصال بقاعدة البيانات";
       }
     }
 
@@ -324,7 +358,7 @@
       };
       sendBeat();
       if (heartbeatTimer) clearInterval(heartbeatTimer);
-      heartbeatTimer = setInterval(sendBeat, 60000); // تحديث كل دقيقة
+      heartbeatTimer = setInterval(sendBeat, 60000);
       
       window.addEventListener("beforeunload", () => {
         navigator.sendBeacon(`https://albasem-cams-default-rtdb.firebaseio.com/subscribers/${username}/isOnline.json`, JSON.stringify(false));
@@ -333,7 +367,6 @@
 
     function filterStreamsForSubscriber(sub) {
       if (!sub || sub.allowedAreas.includes("all")) return;
-      // إخفاء الأقسام غير المصرح بها
       document.querySelectorAll("[data-area]").forEach(el => {
         let area = el.getAttribute("data-area");
         if (area && !sub.allowedAreas.includes(area)) {
@@ -342,6 +375,4 @@
       });
     }
   </script>
-
 </body>
-</html>
