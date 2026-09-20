@@ -224,5 +224,124 @@
   </div>
 
   <script src="app.js"></script>
+
+  <!-- نظام إدارة دخول المشتركين وفحص الجلسة -->
+  <div id="sub-login-modal" style="display:none; position:fixed; inset:0; background:rgba(11,17,32,0.95); z-index:9999; justify-content:center; align-items:center; padding:15px;">
+    <div style="background:#1e293b; border:1px solid #00e5ff; border-radius:14px; max-width:380px; width:100%; padding:22px; text-align:center; box-shadow:0 8px 30px rgba(0,0,0,0.5);">
+      <h2 style="color:#00e5ff; font-size:1.3rem; margin-bottom:10px;"><i class="fa-solid fa-satellite-dish"></i> منصة الباسم سات</h2>
+      <p style="color:#94a3b8; font-size:0.85rem; margin-bottom:18px;">يرجى تسجيل الدخول لمشاهدة البث المباشر المخصص</p>
+      
+      <input type="text" id="client-user" placeholder="اسم المستخدم" style="width:100%; padding:10px; margin-bottom:10px; background:#0f172a; border:1px solid #334155; border-radius:8px; color:#fff; outline:none; text-align:center;">
+      <input type="password" id="client-pass" placeholder="كلمة المرور" style="width:100%; padding:10px; margin-bottom:15px; background:#0f172a; border:1px solid #334155; border-radius:8px; color:#fff; outline:none; text-align:center;">
+      
+      <button onclick="handleSubscriberLogin()" style="width:100%; padding:10px; background:#00e5ff; color:#000; border:none; border-radius:8px; font-weight:bold; cursor:pointer; font-size:0.95rem; margin-bottom:10px;">دخول للمنصة</button>
+      <div id="login-error-msg" style="color:#ef4444; font-size:0.8rem; min-height:18px;"></div>
+    </div>
+  </div>
+
+  <script>
+    let currentSubscriber = JSON.parse(localStorage.getItem("albasem_subscriber") || "null");
+    let heartbeatTimer = null;
+
+    window.addEventListener("DOMContentLoaded", () => {
+      // فحص إذا كان الداخل أدمن رسمي
+      let adminToken = localStorage.getItem("albasem_admin_token");
+      if (!adminToken) {
+        checkSubscriberAuth();
+      }
+    });
+
+    function checkSubscriberAuth() {
+      if (!currentSubscriber) {
+        document.getElementById("sub-login-modal").style.display = "flex";
+      } else {
+        verifySubscriberStatus(currentSubscriber.username);
+      }
+    }
+
+    async function handleSubscriberLogin() {
+      const u = document.getElementById("client-user").value.trim().toLowerCase();
+      const p = document.getElementById("client-pass").value.trim();
+      const err = document.getElementById("login-error-msg");
+      err.innerText = "";
+
+      if (!u || !p) {
+        err.innerText = "يرجى كتابة اسم المستخدم وكلمة المرور";
+        return;
+      }
+
+      try {
+        const resp = await fetch(`https://albasem-cams-default-rtdb.firebaseio.com/subscribers/${u}.json`);
+        const sub = await resp.json();
+
+        if (!sub || sub.password !== p) {
+          err.innerText = "بيانات الدخول غير صحيحة!";
+          return;
+        }
+
+        if (sub.status === "blocked") {
+          err.innerText = "الحساب موقف مؤقتاً، راجع إدارة الباسم سات";
+          return;
+        }
+
+        const today = new Date().toISOString().split('T')[0];
+        if (sub.expireDate < today) {
+          err.innerText = "انتهت فترة الاشتراك، تواصل معنا للتجديد";
+          return;
+        }
+
+        // حفظ بيانات المشترك وبدء الجلسة
+        localStorage.setItem("albasem_subscriber", JSON.stringify(sub));
+        currentSubscriber = sub;
+        document.getElementById("sub-login-modal").style.display = "none";
+        startHeartbeat(u);
+        filterStreamsForSubscriber(sub);
+      } catch(e) {
+        err.innerText = "خطأ في الاتصال بالشبكة";
+      }
+    }
+
+    async function verifySubscriberStatus(username) {
+      try {
+        const resp = await fetch(`https://albasem-cams-default-rtdb.firebaseio.com/subscribers/${username}.json`);
+        const sub = await resp.json();
+        const today = new Date().toISOString().split('T')[0];
+
+        if (!sub || sub.status === "blocked" || sub.expireDate < today) {
+          localStorage.removeItem("albasem_subscriber");
+          location.reload();
+          return;
+        }
+        startHeartbeat(username);
+        filterStreamsForSubscriber(sub);
+      } catch(e) {}
+    }
+
+    function startHeartbeat(username) {
+      const sendBeat = () => {
+        fetch(`https://albasem-cams-default-rtdb.firebaseio.com/subscribers/${username}/isOnline.json`, { method: 'PUT', body: JSON.stringify(true) });
+        fetch(`https://albasem-cams-default-rtdb.firebaseio.com/subscribers/${username}/lastSeen.json`, { method: 'PUT', body: JSON.stringify(new Date().toISOString()) });
+      };
+      sendBeat();
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+      heartbeatTimer = setInterval(sendBeat, 60000); // تحديث كل دقيقة
+      
+      window.addEventListener("beforeunload", () => {
+        navigator.sendBeacon(`https://albasem-cams-default-rtdb.firebaseio.com/subscribers/${username}/isOnline.json`, JSON.stringify(false));
+      });
+    }
+
+    function filterStreamsForSubscriber(sub) {
+      if (!sub || sub.allowedAreas.includes("all")) return;
+      // إخفاء الأقسام غير المصرح بها
+      document.querySelectorAll("[data-area]").forEach(el => {
+        let area = el.getAttribute("data-area");
+        if (area && !sub.allowedAreas.includes(area)) {
+          el.style.display = "none";
+        }
+      });
+    }
+  </script>
+
 </body>
 </html>

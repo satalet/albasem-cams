@@ -371,13 +371,22 @@
         `;
         tDesktop.innerHTML += row;
 
+        let now = Date.now();
+        let lastSeenTime = sub.lastSeen ? new Date(sub.lastSeen).getTime() : 0;
+        let isOnline = sub.isOnline && (now - lastSeenTime < 120000); // متصل خلال آخر دقيقتين
+        let onlineBadge = isOnline 
+          ? '<span style="color:#10b981; font-size:0.75rem; font-weight:bold;"><i class="fas fa-circle" style="font-size:0.6rem;"></i> متصل الآن</span>'
+          : `<span style="color:#94a3b8; font-size:0.75rem;"><i class="far fa-clock"></i> ${sub.lastSeen ? new Date(sub.lastSeen).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'}) : 'لم يدخل بعد'}</span>`;
+
         // 2. إضافة بطاقة الجوال (خاصة بالشاومي)
         let card = `
           <div class="sub-card">
             <div class="sub-card-header">
               <div>
                 <div class="sub-card-title">${sub.fullName || key}</div>
-                <div style="font-size:0.8rem; color:var(--primary); font-weight:600;">@${sub.username}</div>
+                <div style="display:flex; align-items:center; gap:8px; margin-top:2px;">
+                  <span style="font-size:0.8rem; color:var(--primary); font-weight:600;">@${sub.username}</span>${onlineBadge}
+                </div>
               </div>
               <span class="badge ${badgeClass}">${statusText}</span>
             </div>
