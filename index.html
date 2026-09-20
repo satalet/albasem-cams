@@ -376,9 +376,15 @@
       });
     }
 
-    function handleSubscriberLogout() {
-      if (currentSubscriber) {
-        navigator.sendBeacon(`https://albasem-cams-default-rtdb.firebaseio.com/presence/${currentSubscriber.username}.json`, JSON.stringify({ isOnline: false, lastSeen: new Date().toISOString() }));
+    async function handleSubscriberLogout() {
+      if (currentSubscriber && currentSubscriber.username) {
+        try {
+          await fetch(`https://albasem-cams-default-rtdb.firebaseio.com/presence/${currentSubscriber.username}.json`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ isOnline: false, lastSeen: new Date().toISOString() })
+          });
+        } catch(e){}
       }
       localStorage.removeItem("albasem_subscriber");
       location.reload();

@@ -166,7 +166,12 @@
 
     <!-- قائمة المشتركين (جدول على الكمبيوتر وبطاقات على الهاتف) -->
     <div class="card">
-      <div class="card-title" style="color: var(--primary);"><i class="fas fa-list"></i> قائمة المشتركين الفعالين</div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
+        <div class="card-title" style="color: var(--primary); margin-bottom:0;"><i class="fas fa-list"></i> قائمة المشتركين الفعالين</div>
+        <button class="btn btn-primary" onclick="loadSubscribers(true)" style="padding:6px 12px; font-size:0.8rem;">
+          <i id="sync-icon" class="fas fa-rotate"></i> <span>تحديث فوري للحالة</span>
+        </button>
+      </div>
       
       <!-- عرض الجدول للشاشات الكبيرة -->
       <table class="table-view">
@@ -236,6 +241,7 @@
     document.getElementById("main-panel").style.display = "block";
     loadAreas();
     loadSubscribers();
+    setInterval(loadSubscribers, 10000); // فحص تلقائي كل 10 ثواني
     
     let d = new Date();
     d.setDate(d.getDate() + 30);
@@ -325,6 +331,7 @@
         alert(`تم تفعيل حساب [${username}] بنجاح!`);
         shareSubscriber(payload);
         loadSubscribers();
+    setInterval(loadSubscribers, 10000); // فحص تلقائي كل 10 ثواني
       } else {
         alert("فشل الحفظ في فايربيس.");
       }
@@ -361,7 +368,7 @@
         let pInfo = presenceData[key] || {};
         let now = Date.now();
         let lastSeenTime = pInfo.lastSeen ? new Date(pInfo.lastSeen).getTime() : 0;
-        let isOnline = pInfo.isOnline && (now - lastSeenTime < 120000);
+        let isOnline = (pInfo.isOnline === true) && (now - lastSeenTime < 60000);
 
         let onlineBadge = isOnline 
           ? '<span style="color:#10b981; font-size:0.78rem; font-weight:bold;"><i class="fas fa-circle" style="font-size:0.55rem;"></i> متصل الآن</span>'
@@ -469,6 +476,7 @@
     });
     alert(`تم تمديد اشتراك [${username}] لغاية: ${newExpire}`);
     loadSubscribers();
+    setInterval(loadSubscribers, 10000); // فحص تلقائي كل 10 ثواني
   }
 
   async function toggleBlock(username, currentStatus) {
@@ -478,6 +486,7 @@
       body: JSON.stringify(nextStatus)
     });
     loadSubscribers();
+    setInterval(loadSubscribers, 10000); // فحص تلقائي كل 10 ثواني
   }
 
   async function deleteSubscriber(username) {
@@ -486,6 +495,7 @@
       method: 'DELETE'
     });
     loadSubscribers();
+    setInterval(loadSubscribers, 10000); // فحص تلقائي كل 10 ثواني
   }
 
   function shareSubscriber(sub) {
