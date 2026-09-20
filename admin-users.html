@@ -243,21 +243,31 @@
   }
 
   async function loadAreas() {
+    let dynamicAreas = new Set();
     try {
       const resp = await fetch(`${FIREBASE_DB}/streams.json`);
       const data = await resp.json();
-      if(data) {
-        let set = new Set(availableAreas);
-        Object.values(data).forEach(s => { if(s.area) set.add(s.area); });
-        availableAreas = Array.from(set);
+      if (data) {
+        Object.values(data).forEach(item => {
+          if (item && item.area && item.area.trim() !== "") {
+            dynamicAreas.add(item.area.trim());
+          }
+        });
       }
-    } catch(e) {}
-    
+    } catch(e) {
+      console.error("فشل جلب الأقسام من فايربيس:", e);
+    }
+
     const container = document.getElementById("areas-container");
     container.innerHTML = `<label><input type="checkbox" id="area-all" checked onchange="toggleAllAreas(this)"> <strong>جميع الأقسام (الكل)</strong></label>`;
-    availableAreas.forEach(a => {
-      container.innerHTML += `<label><input type="checkbox" class="area-item" value="${a}" disabled> ${a}</label>`;
-    });
+    
+    if (dynamicAreas.size === 0) {
+      container.innerHTML += `<span style="font-size:0.8rem; color:var(--text-muted);">لا توجد أقسام مسجلة في البث حالياً</span>`;
+    } else {
+      Array.from(dynamicAreas).sort().forEach(a => {
+        container.innerHTML += `<label><input type="checkbox" class="area-item" value="${a}" disabled> ${a}</label>`;
+      });
+    }
   }
 
   function toggleAllAreas(allBox) {
