@@ -289,6 +289,12 @@ async function saveCategoryOrder() {
 }
 
 function launchHlsStream(container, url, isModal = false) {
+  // إذا لم يكن في وضع التكبير، نلغي أي صوت مسبق نهائياً
+  if (!isModal) {
+    container.querySelectorAll('video, audio').forEach(el => {
+      try { el.muted = true; el.pause(); } catch(e){}
+    });
+  }
   container.innerHTML = '';
   
   const loadingIndicator = document.createElement('div');
@@ -369,7 +375,7 @@ function launchHlsStream(container, url, isModal = false) {
   });
 
   if (Hls.isSupported()) {
-    const hls = new Hls({
+    const hls = new Hls(isModal ? {} : { maxBufferLength: 1, maxMaxBufferLength: 2 }, {
       manifestLoadingMaxRetry: 3,
       manifestLoadingRetryDelay: 1500,
       levelLoadingMaxRetry: 3,
