@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-محرك الباسم سات الذكي للإنعاش السحابي التلقائي (الاسم + الرابط)
-Albasem Sat - Autonomous Cloud Auto-Heal & Sniffer Engine
+محرك الباسم سات الذكي المطور (فصل السيرفرات ومنع التكرار)
+Albasem Sat - Autonomous Cloud Auto-Heal Engine
 """
 
 import os
@@ -17,16 +17,16 @@ FIREBASE_URL = "https://albasem-cams-default-rtdb.firebaseio.com/streams"
 API_KEY = "AIzaSyD4U4DFTtO8zuqIlrJp19ji1ESptfuVr9E"
 CONFIG_FILE = "/home/kali/albasem-cams/config.json"
 
-# مصادر احتياطية في حال تعذر فتح الصفحة
+# سيرفرات معتمدة ومفصولة 100% لكل قناة بدون أي تكرار
 KNOWN_FALLBACKS = {
     "إذاعة وتلفزيون القرآن الكريم (نابلس)": ("إذاعة وتلفزيون القرآن الكريم", "https://htvint.mada.ps/shababquran/index.m3u8"),
     "تلفزيون شباب FM (سيرفر 1 - رئيسي)": ("تلفزيون شباب FM", "https://streaming.zaytonatube.com:8081/ShababFM/shabab/index.m3u8"),
-    "سما نابلس": ("جولة نابلسية 2", "https://streaming.zaytonatube.com:8081/nb/nb/tracks-v1a1/mono.m3u8")
+    "جولة نابلسيه": ("جولة نابلسية", "https://streaming.zaytonatube.com:8081/nb/nb/tracks-v1a1/mono.m3u8"),
+    "جولة نابلسية 2": ("جولة نابلسية 2", "https://cam.showtv.ps:443/live/C0698BA41EC6F31A49BD382BA68983A0/17.m3u8")
 }
 
-# روابط مصادر افتراضية للقنوات التي لا تملك source_url مسجل
 DEFAULT_SOURCES = {
-    "-P1vHx_57OF_MfGom_um": "https://nablusmix.live/channel/40",
+    "-P1vHx_57OF_MfGom_um": "https://nablusmix.live/channel/3",
     "-P1v9AE8ENv9y8MvmyNm": "https://nablusmix.live/channel/38",
     "-P1vNoy1UKgtW9bP0nfC": "https://nablusmix.live/channel/37",
     "-P1vcgQws4j0ignPYt7I": "https://shababfm.ps/shabab-tv-ar/"
@@ -36,7 +36,6 @@ def get_admin_token():
     email = os.environ.get("ADMIN_EMAIL")
     password = os.environ.get("ADMIN_PASSWORD")
 
-    # في حال التشغيل المحلي على كالي وقراءة config.json
     if (not email or not password) and os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
@@ -107,7 +106,6 @@ def check_stream_health(stream):
     return True, "غير محدد"
 
 async def sniff_source(target_url):
-    """فتح صفحة المصدر واستخراج الاسم الرسمي والرابط الحي معاً"""
     from playwright.async_api import async_playwright
     captured = []
     official_title = None
@@ -115,13 +113,12 @@ async def sniff_source(target_url):
     try:
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
-            page = await browser.new_page(user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36")
+            page = await browser.new_page(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
             page.on("response", lambda r: captured.append(r.url) if ".m3u8" in r.url else None)
 
             await page.goto(target_url, timeout=30000, wait_until="domcontentloaded")
-            await asyncio.sleep(3)
+            await asyncio.sleep(4)
 
-            # استخراج الاسم الرسمي من الصفحة
             official_title = await page.evaluate('''() => {
                 const h1 = document.querySelector('h1');
                 if (h1 && h1.innerText.trim()) return h1.innerText.trim();
@@ -131,7 +128,6 @@ async def sniff_source(target_url):
                 return t.replace(/NABLUS LIVE|نابلس مباشر|بث حي|مباشر|شباب FM|-|\\|/gi, '').trim() || null;
             }''')
 
-            # الضغط التلقائي على زر التحديث إن وجد
             r_btn = page.locator("button:has-text('تحديث البث'), a:has-text('تحديث البث')")
             if await r_btn.count() > 0:
                 await r_btn.first.click()
@@ -139,11 +135,12 @@ async def sniff_source(target_url):
 
             await browser.close()
     except Exception as e:
-        print(f"   ⚠️ خطأ أثناء تشغيل القناص السحابي: {e}")
+        print(f"   ⚠️ خطأ أثناء تشغيل القناص: {e}")
 
     valid_url = None
+    # إعطاء أولوية للسيرفر المباشر وتفادي المسارات العامة
     for u in set(captured):
-        if "mono.m3u8" in u or "index.m3u8" in u or "playlist.m3u8" in u:
+        if "cam.showtv.ps" in u or "mono.m3u8" in u or "index.m3u8" in u:
             valid_url = u
             break
     if not valid_url and captured:
@@ -165,15 +162,10 @@ def update_firebase_stream(stream_id, new_title, new_url, token):
 
 async def main():
     print("=" * 70)
-    print("🚀 محرك الباسم سات الذكي للإنعاش السحابي (الاسم + الرابط)")
+    print("🚀 محرك الباسم سات الذكي للإنعاش السحابي الدقيق")
     print("=" * 70)
 
     token = get_admin_token()
-    if token:
-        print("🔐 تم توثيق صلاحيات الأدمن السحابية بنجاح.")
-    else:
-        print("⚠️ تنبيه: لم يتم توثيق الصلاحيات (لن يتم تحديث فايربيس في حال التوقف).")
-
     streams = fetch_streams()
     print(f"📡 جاري فحص {len(streams)} قناة...\n")
 
@@ -191,32 +183,22 @@ async def main():
             print(f"🔴 [متوقف] {title:<35} | {reason}")
             source_url = stream.get('source_url') or DEFAULT_SOURCES.get(sid)
 
-            if token and source_url:
-                print(f"   ⚡ بدء القنص الذاتي لصفحة المصدر: {source_url}")
-                new_title, new_url = await sniff_source(source_url)
-
-                # إذا لم يُلتقط اسم جديد نحتفظ بالاسم الحالي
-                final_title = new_title or title
-
-                if new_url:
-                    print(f"   🎯 تم قنص الاسم الجديد: [{final_title}] والرابط الجديد بنجاح!")
-                    if update_firebase_stream(sid, final_title, new_url, token):
-                        print(f"   🟢 تم تحديث القناة بفايربيس (الاسم + الرابط معاً)!")
+            if token:
+                if title in KNOWN_FALLBACKS:
+                    fb_title, fb_url = KNOWN_FALLBACKS[title]
+                    print(f"   🩹 اعتماد السيرفر المستقل المعتمد: [{fb_title}]")
+                    if update_firebase_stream(sid, fb_title, fb_url, token):
                         healed += 1
-                    else:
-                        print("   ❌ فشل إرسال التحديث لفايربيس.")
-                else:
-                    # فحص السيرفرات الاحتياطية المعتمدة
-                    if title in KNOWN_FALLBACKS:
-                        fb_title, fb_url = KNOWN_FALLBACKS[title]
-                        print(f"   🩹 اعتماد السيرفر الاحتياطي: [{fb_title}]")
-                        update_firebase_stream(sid, fb_title, fb_url, token)
+                elif source_url:
+                    print(f"   ⚡ قنص صفحة المصدر: {source_url}")
+                    new_title, new_url = await sniff_source(source_url)
+                    final_title = new_title or title
+                    if new_url and update_firebase_stream(sid, final_title, new_url, token):
+                        print(f"   🟢 تم قنص وتحديث القناة بنجاح: [{final_title}]")
                         healed += 1
-                    else:
-                        print(f"   ⚠️ القناة متوقفة من المصدر الأصلي.")
 
     print("\n" + "=" * 70)
-    print(f"📊 النتيجة: {healthy} شغال | {healed} تم إنعاشها وتحديث اسمها ورابطها تلقائياً.")
+    print(f"📊 النتيجة: {healthy} شغال | {healed} تم إنعاشها بدقة.")
     print("=" * 70)
 
 if __name__ == "__main__":
