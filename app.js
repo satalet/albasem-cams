@@ -58,12 +58,21 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const auth = firebase.auth();
 const streamsRef = db.ref('streams');
-// حفظ الترتيب داخل مجلد streams لتخطي خطأ الصلاحيات نهائياً
 const orderRef = db.ref('streams/_config_categories');
 
 let currentUser = null;
 let streamsData = [];
-let currentFilter = 'all';
+
+// استرجاع الفولدر المحفوظ تلقائياً من الرابط أو من ذاكرة الجلسة
+function getSavedCategory() {
+  if (window.location.hash) {
+    const fromHash = decodeURIComponent(window.location.hash.substring(1)).trim();
+    if (fromHash) return fromHash;
+  }
+  return sessionStorage.getItem('albasem_active_cat') || 'all';
+}
+
+let currentFilter = getSavedCategory();
 let currentCols = 2;
 let customCategoryOrder = [];
 
@@ -143,7 +152,6 @@ function initRealtimeSync() {
       return;
     }
 
-    // استثناء ملف الإعدادات _config_categories والتأكد من أنها كاميرا فعلية
     streamsData = Object.keys(data)
       .filter(key => !key.startsWith('_') && data[key] && data[key].title)
       .map(key => ({
@@ -151,11 +159,18 @@ function initRealtimeSync() {
         id: key
       }));
 
+    // التأكد إذا كان الفولدر المحفوظ موجود فعلياً
+    const availableAreas = ['all', ...new Set(streamsData.map(s => s.area))];
+    if (!availableAreas.includes(currentFilter)) {
+      currentFilter = 'all';
+    }
+
     setupFilters();
     renderCams();
   });
 }
 
+// بناء الفلاتر وترتيبها مع تظليل الفولدر النشط
 function setupFilters() {
   const filterBox = document.getElementById('filter-buttons');
   if (!filterBox) return;
@@ -175,24 +190,40 @@ function setupFilters() {
   filterBox.innerHTML = '';
   areas.forEach(area => {
     const btn = document.createElement('button');
-    btn.className = `filter-chip px-3 py-1 rounded-full border border-slate-800 text-slate-300 hover:bg-slate-800 font-medium whitespace-nowrap transition text-xs ${area === currentFilter ? 'active-btn' : 'bg-slate-900'}`;
+    const isActive = area === currentFilter;
+    btn.className = `filter-chip px-3 py-1 rounded-full border border-slate-800 text-slate-300 hover:bg-slate-800 font-medium whitespace-nowrap transition text-xs ${isActive ? 'active-btn' : 'bg-slate-900'}`;
     btn.textContent = area === 'all' ? 'جميع الكاميرات' : area;
     btn.onclick = () => filterByArea(area);
     filterBox.appendChild(btn);
   });
 }
 
+// تثبيت مكان الزبون وتحديث رابط الصفحة لحفظ الفولدر
 function filterByArea(area) {
   currentFilter = area;
+  sessionStorage.setItem('albasem_active_cat', area);
+  if (area === 'all') {
+    history.replaceState(null, '', window.location.pathname);
+  } else {
+    history.replaceState(null, '', '#' + encodeURIComponent(area));
+  }
   setupFilters();
   renderCams();
 }
+
+window.addEventListener('hashchange', () => {
+  const fromHash = getSavedCategory();
+  if (fromHash !== currentFilter) {
+    currentFilter = fromHash;
+    setupFilters();
+    renderCams();
+  }
+});
 
 let tempCategoryOrder = [];
 
 function openCategoryOrderModal() {
   const allAreas = [...new Set(streamsData.map(s => s.area))];
-  
   tempCategoryOrder = customCategoryOrder.filter(a => allAreas.includes(a));
   allAreas.forEach(a => {
     if (!tempCategoryOrder.includes(a)) tempCategoryOrder.push(a);
@@ -246,7 +277,6 @@ async function saveCategoryOrder() {
     return;
   }
   try {
-    // حفظ الترتيب بسلاسة داخل صلاحيات المجلد المعتمد
     await orderRef.set(tempCategoryOrder);
     customCategoryOrder = [...tempCategoryOrder];
     setupFilters();
@@ -400,7 +430,7 @@ function renderCams() {
     : streamsData.filter(s => s.area === currentFilter);
 
   if (filtered.length === 0) {
-    grid.innerHTML = `<div class="col-span-full py-16 text-center text-slate-500 text-xs">لا توجد قنوات معروضة حالياً.</div>`;
+    grid.innerHTML = `<div class="col-span-full py-16 text-center text-slate-500 text-xs">لا توجد قنوات معروضة حالياً في هذا القسم.</div>`;
     return;
   }
 
