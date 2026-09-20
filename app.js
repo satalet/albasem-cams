@@ -58,24 +58,13 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const auth = firebase.auth();
 const streamsRef = db.ref('streams');
+const orderRef = db.ref('category_order');
 
 let currentUser = null;
 let streamsData = [];
 let currentFilter = 'all';
 let currentCols = 2;
-
-// مصفوفة أولويات ترتيب الأقسام والفولدرات (القرآن وشباب اف ام بالصدارة دائماً)
-const CATEGORY_PRIORITY = [
-  'القرآن الكريم',
-  'إذاعة وتلفزيون القرآن الكريم',
-  'شباب اف ام نابلس',
-  'نابلس',
-  'قنوات أخبار',
-  'القدس',
-  'كفر عقب',
-  'الرام',
-  'عام'
-];
+let customCategoryOrder = [];
 
 auth.onAuthStateChanged((user) => {
   currentUser = user;
@@ -139,6 +128,12 @@ async function handleAdminLogout() {
 }
 
 function initRealtimeSync() {
+  // جلب ترتيب الأقسام المحفوظ في فايربيس
+  orderRef.on('value', (snap) => {
+    customCategoryOrder = snap.val() || [];
+    setupFilters();
+  });
+
   streamsRef.on('value', (snapshot) => {
     const data = snapshot.val();
     if (!data) {
@@ -158,17 +153,17 @@ function initRealtimeSync() {
   });
 }
 
-// بناء الفلاتر وترتيبها الذكي حسب الأولوية المعتمدة
+// بناء الفلاتر وترتيبها حسب الترتيب المخصص المحفوظ في فايربيس
 function setupFilters() {
   const filterBox = document.getElementById('filter-buttons');
   if (!filterBox) return;
   
   const rawAreas = [...new Set(streamsData.map(s => s.area))];
 
-  // فرز الأقسام: الأقسام المحددة في الأولويات تأتي أولاً بنفس ترتيبها
+  // فرز الأقسام حسب ما تم ترتيبه في اللوحة
   rawAreas.sort((a, b) => {
-    let indexA = CATEGORY_PRIORITY.indexOf(a);
-    let indexB = CATEGORY_PRIORITY.indexOf(b);
+    let indexA = customCategoryOrder.indexOf(a);
+    let indexB = customCategoryOrder.indexOf(b);
     if (indexA === -1) indexA = 999;
     if (indexB === -1) indexB = 999;
     return indexA - indexB;
@@ -190,6 +185,73 @@ function filterByArea(area) {
   currentFilter = area;
   setupFilters();
   renderCams();
+}
+
+// نظام نافذة ترتيب الأقسام (تقديم وتأخير الأقسام وحفظها بفايربيس)
+let tempCategoryOrder = [];
+
+function openCategoryOrderModal() {
+  const allAreas = [...new Set(streamsData.map(s => s.area))];
+  
+  // دمج الترتيب الحالي مع أي أقسام جديدة
+  tempCategoryOrder = customCategoryOrder.filter(a => allAreas.includes(a));
+  allAreas.forEach(a => {
+    if (!tempCategoryOrder.includes(a)) tempCategoryOrder.push(a);
+  });
+
+  renderCategoryOrderList();
+  document.getElementById('category-order-modal').classList.remove('hidden');
+}
+
+function closeCategoryOrderModal() {
+  document.getElementById('category-order-modal').classList.add('hidden');
+}
+
+function renderCategoryOrderList() {
+  const listEl = document.getElementById('category-order-list');
+  listEl.innerHTML = '';
+
+  tempCategoryOrder.forEach((cat, idx) => {
+    const item = document.createElement('div');
+    item.className = 'flex items-center justify-between bg-slate-900 border border-slate-800 px-3 py-2 rounded-lg text-xs';
+    item.innerHTML = `
+      <span class="font-bold text-slate-200 flex items-center gap-2">
+        <span class="w-5 h-5 rounded-full bg-slate-800 text-emerald-400 flex items-center justify-center text-[10px]">${idx + 1}</span>
+        ${cat}
+      </span>
+      <div class="flex items-center gap-1">
+        <button onclick="moveCategory(${idx}, -1)" class="w-7 h-7 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded flex items-center justify-center transition" ${idx === 0 ? 'disabled style="opacity:0.3"' : ''} title="تقديم">
+          <i class="fa-solid fa-arrow-up text-[10px]"></i>
+        </button>
+        <button onclick="moveCategory(${idx}, 1)" class="w-7 h-7 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded flex items-center justify-center transition" ${idx === tempCategoryOrder.length - 1 ? 'disabled style="opacity:0.3"' : ''} title="تأخير">
+          <i class="fa-solid fa-arrow-down text-[10px]"></i>
+        </button>
+      </div>
+    `;
+    listEl.appendChild(item);
+  });
+}
+
+function moveCategory(index, direction) {
+  const newIndex = index + direction;
+  if (newIndex < 0 || newIndex >= tempCategoryOrder.length) return;
+  const temp = tempCategoryOrder[index];
+  tempCategoryOrder[index] = tempCategoryOrder[newIndex];
+  tempCategoryOrder[newIndex] = temp;
+  renderCategoryOrderList();
+}
+
+async function saveCategoryOrder() {
+  if (!currentUser) return;
+  try {
+    await orderRef.set(tempCategoryOrder);
+    customCategoryOrder = [...tempCategoryOrder];
+    setupFilters();
+    closeCategoryOrderModal();
+    alert("✓ تم حفظ ترتيب الأقسام الجديد وتطبيقه للجميع بنجاح!");
+  } catch (e) {
+    alert("خطأ أثناء حفظ الترتيب: " + e.message);
+  }
 }
 
 // محرك التشغيل الذكي: التقاط أول لقطة ثم تجميد البث فوراً لتوفير الإنترنت والمعالج
@@ -253,18 +315,16 @@ function launchHlsStream(container, url, isModal = false) {
     }
   }, 14000);
 
-  // عند نجاح البث والتقاط أول فريم
   const onStreamReady = () => {
     if (isPlaying) return;
     isPlaying = true;
     clearTimeout(safetyTimer);
     if (loadingIndicator) loadingIndicator.remove();
 
-    // التجميد الذكي: إذا كان العرض في الشبكة العادية (مش تكبير)، جمد الفيديو فوراً بعد لقطة البداية!
     if (!isModal) {
       setTimeout(() => {
         if (!video.paused) {
-          video.pause(); // تجميد البث بالصورة الحية وحفظ 100% من استهلاك النت
+          video.pause(); // تجميد المشهد وتوفير النت
         }
       }, 800);
     }
@@ -374,21 +434,30 @@ function renderCams() {
     `;
 
     const feedContainer = document.createElement('div');
-    feedContainer.className = 'w-full aspect-video bg-black relative flex items-center justify-center overflow-hidden cursor-pointer';
+    feedContainer.className = 'w-full aspect-video bg-black relative flex items-center justify-center overflow-hidden cursor-pointer group';
     feedContainer.onclick = () => openModal(stream.id);
 
     if (stream.type === 'youtube') {
+      // الحل الثوري لليوتيوب: صورة الغلاف HD + شارة مباشرة بدون تحميل البث، وتوفير 100% نت ومعالج
       let ytUrl = stream.url;
-      if (!ytUrl.includes('/embed/')) {
-        const idMatch = ytUrl.match(/(?:v=|\/embed\/|youtu\.be\/)([\w-]{11})/);
-        if (idMatch) ytUrl = `https://www.youtube-nocookie.com/embed/${idMatch[1]}`;
-      }
+      let vidId = '';
+      const idMatch = ytUrl.match(/(?:v=|\/embed\/|youtu\.be\/)([\w-]{11})/);
+      if (idMatch) vidId = idMatch[1];
+
+      const thumbUrl = vidId 
+        ? `https://img.youtube.com/vi/${vidId}/hqdefault.jpg` 
+        : './icons/icon-ios.png';
+
       feedContainer.innerHTML = `
-        <iframe class="absolute inset-0 w-full h-full border-0 pointer-events-none" 
-          src="${ytUrl}?autoplay=1&mute=1&controls=0&rel=0" 
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture">
-        </iframe>
-        <div class="absolute inset-0 bg-transparent"></div>
+        <img src="${thumbUrl}" alt="${stream.title}" class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition duration-500">
+        <div class="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition flex items-center justify-center">
+          <div class="w-12 h-12 rounded-full bg-emerald-600/90 text-white flex items-center justify-center shadow-2xl group-hover:scale-110 transition">
+            <i class="fa-solid fa-play text-lg ml-0.5"></i>
+          </div>
+        </div>
+        <div class="absolute bottom-2 right-2 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span> يوتيوب مباشر
+        </div>
       `;
     } else if (stream.type === 'hls') {
       launchHlsStream(feedContainer, stream.url, false);
@@ -492,7 +561,7 @@ function changeLayout(cols) {
   if (cols === 3) grid.classList.add('grid-cols-1', 'md:grid-cols-2', 'lg:grid-cols-3');
 }
 
-// 5. عند التكبير: إطلاق البث الحي الكامل مع الصوت 100%
+// 5. التكبير مع البث الكامل والصوت 100%
 function openModal(streamId) {
   const stream = streamsData.find(s => s.id === streamId);
   if (!stream) return;
@@ -506,6 +575,7 @@ function openModal(streamId) {
       const idMatch = ytUrl.match(/(?:v=|\/embed\/|youtu\.be\/)([\w-]{11})/);
       if (idMatch) ytUrl = `https://www.youtube-nocookie.com/embed/${idMatch[1]}`;
     }
+    // عند التكبير يشتغل يوتيوب بكامل دقته وصوته فوراً
     modalBox.innerHTML = `<iframe class="w-full h-full border-0" src="${ytUrl}?autoplay=1&mute=0&controls=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
   } else if (stream.type === 'hls') {
     launchHlsStream(modalBox, stream.url, true);
@@ -517,7 +587,6 @@ function openModal(streamId) {
   history.pushState({ modalOpen: true }, "");
 }
 
-// عند الإغلاق: إيقاف البث بالكامل فوراً وتفريغ الذاكرة
 function closeModal(fromHistory = false) {
   const modal = document.getElementById('cam-modal');
   if (!modal.classList.contains('hidden')) {
