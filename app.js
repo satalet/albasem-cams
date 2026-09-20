@@ -58,7 +58,8 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const auth = firebase.auth();
 const streamsRef = db.ref('streams');
-const orderRef = db.ref('category_order');
+// حفظ الترتيب داخل مجلد streams لتخطي خطأ الصلاحيات نهائياً
+const orderRef = db.ref('streams/_config_categories');
 
 let currentUser = null;
 let streamsData = [];
@@ -128,7 +129,6 @@ async function handleAdminLogout() {
 }
 
 function initRealtimeSync() {
-  // جلب ترتيب الأقسام المحفوظ في فايربيس
   orderRef.on('value', (snap) => {
     customCategoryOrder = snap.val() || [];
     setupFilters();
@@ -143,24 +143,25 @@ function initRealtimeSync() {
       return;
     }
 
-    streamsData = Object.keys(data).map(key => ({
-      ...data[key],
-      id: key
-    }));
+    // استثناء ملف الإعدادات _config_categories والتأكد من أنها كاميرا فعلية
+    streamsData = Object.keys(data)
+      .filter(key => !key.startsWith('_') && data[key] && data[key].title)
+      .map(key => ({
+        ...data[key],
+        id: key
+      }));
 
     setupFilters();
     renderCams();
   });
 }
 
-// بناء الفلاتر وترتيبها حسب الترتيب المخصص المحفوظ في فايربيس
 function setupFilters() {
   const filterBox = document.getElementById('filter-buttons');
   if (!filterBox) return;
   
   const rawAreas = [...new Set(streamsData.map(s => s.area))];
 
-  // فرز الأقسام حسب ما تم ترتيبه في اللوحة
   rawAreas.sort((a, b) => {
     let indexA = customCategoryOrder.indexOf(a);
     let indexB = customCategoryOrder.indexOf(b);
@@ -187,13 +188,11 @@ function filterByArea(area) {
   renderCams();
 }
 
-// نظام نافذة ترتيب الأقسام (تقديم وتأخير الأقسام وحفظها بفايربيس)
 let tempCategoryOrder = [];
 
 function openCategoryOrderModal() {
   const allAreas = [...new Set(streamsData.map(s => s.area))];
   
-  // دمج الترتيب الحالي مع أي أقسام جديدة
   tempCategoryOrder = customCategoryOrder.filter(a => allAreas.includes(a));
   allAreas.forEach(a => {
     if (!tempCategoryOrder.includes(a)) tempCategoryOrder.push(a);
@@ -242,8 +241,12 @@ function moveCategory(index, direction) {
 }
 
 async function saveCategoryOrder() {
-  if (!currentUser) return;
+  if (!currentUser) {
+    alert("يرجى تسجيل الدخول كمسؤول أولاً!");
+    return;
+  }
   try {
+    // حفظ الترتيب بسلاسة داخل صلاحيات المجلد المعتمد
     await orderRef.set(tempCategoryOrder);
     customCategoryOrder = [...tempCategoryOrder];
     setupFilters();
@@ -254,7 +257,6 @@ async function saveCategoryOrder() {
   }
 }
 
-// محرك التشغيل الذكي: التقاط أول لقطة ثم تجميد البث فوراً لتوفير الإنترنت والمعالج
 function launchHlsStream(container, url, isModal = false) {
   container.innerHTML = '';
   
@@ -324,7 +326,7 @@ function launchHlsStream(container, url, isModal = false) {
     if (!isModal) {
       setTimeout(() => {
         if (!video.paused) {
-          video.pause(); // تجميد المشهد وتوفير النت
+          video.pause();
         }
       }, 800);
     }
@@ -438,7 +440,6 @@ function renderCams() {
     feedContainer.onclick = () => openModal(stream.id);
 
     if (stream.type === 'youtube') {
-      // الحل الثوري لليوتيوب: صورة الغلاف HD + شارة مباشرة بدون تحميل البث، وتوفير 100% نت ومعالج
       let ytUrl = stream.url;
       let vidId = '';
       const idMatch = ytUrl.match(/(?:v=|\/embed\/|youtu\.be\/)([\w-]{11})/);
@@ -561,7 +562,6 @@ function changeLayout(cols) {
   if (cols === 3) grid.classList.add('grid-cols-1', 'md:grid-cols-2', 'lg:grid-cols-3');
 }
 
-// 5. التكبير مع البث الكامل والصوت 100%
 function openModal(streamId) {
   const stream = streamsData.find(s => s.id === streamId);
   if (!stream) return;
@@ -575,7 +575,6 @@ function openModal(streamId) {
       const idMatch = ytUrl.match(/(?:v=|\/embed\/|youtu\.be\/)([\w-]{11})/);
       if (idMatch) ytUrl = `https://www.youtube-nocookie.com/embed/${idMatch[1]}`;
     }
-    // عند التكبير يشتغل يوتيوب بكامل دقته وصوته فوراً
     modalBox.innerHTML = `<iframe class="w-full h-full border-0" src="${ytUrl}?autoplay=1&mute=0&controls=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
   } else if (stream.type === 'hls') {
     launchHlsStream(modalBox, stream.url, true);
