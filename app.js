@@ -64,6 +64,19 @@ let streamsData = [];
 let currentFilter = 'all';
 let currentCols = 2;
 
+// مصفوفة أولويات ترتيب الأقسام والفولدرات (القرآن وشباب اف ام بالصدارة دائماً)
+const CATEGORY_PRIORITY = [
+  'القرآن الكريم',
+  'إذاعة وتلفزيون القرآن الكريم',
+  'شباب اف ام نابلس',
+  'نابلس',
+  'قنوات أخبار',
+  'القدس',
+  'كفر عقب',
+  'الرام',
+  'عام'
+];
+
 auth.onAuthStateChanged((user) => {
   currentUser = user;
   const authBtn = document.getElementById('auth-btn');
@@ -145,10 +158,23 @@ function initRealtimeSync() {
   });
 }
 
+// بناء الفلاتر وترتيبها الذكي حسب الأولوية المعتمدة
 function setupFilters() {
   const filterBox = document.getElementById('filter-buttons');
   if (!filterBox) return;
-  const areas = ['all', ...new Set(streamsData.map(s => s.area))];
+  
+  const rawAreas = [...new Set(streamsData.map(s => s.area))];
+
+  // فرز الأقسام: الأقسام المحددة في الأولويات تأتي أولاً بنفس ترتيبها
+  rawAreas.sort((a, b) => {
+    let indexA = CATEGORY_PRIORITY.indexOf(a);
+    let indexB = CATEGORY_PRIORITY.indexOf(b);
+    if (indexA === -1) indexA = 999;
+    if (indexB === -1) indexB = 999;
+    return indexA - indexB;
+  });
+
+  const areas = ['all', ...rawAreas];
   
   filterBox.innerHTML = '';
   areas.forEach(area => {
@@ -166,6 +192,7 @@ function filterByArea(area) {
   renderCams();
 }
 
+// محرك التشغيل الذكي: التقاط أول لقطة ثم تجميد البث فوراً لتوفير الإنترنت والمعالج
 function launchHlsStream(container, url, isModal = false) {
   container.innerHTML = '';
   
@@ -174,7 +201,7 @@ function launchHlsStream(container, url, isModal = false) {
   loadingIndicator.innerHTML = `
     <div class="flex flex-col items-center gap-2">
       <span class="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></span>
-      <span class="text-[10px] text-slate-400 font-medium">جاري مزامنة البث...</span>
+      <span class="text-[10px] text-slate-400 font-medium">${isModal ? 'جاري فتح البث الحي المباشر...' : 'جاري التقاط المشهد الحي...'}</span>
     </div>
   `;
   container.appendChild(loadingIndicator);
@@ -182,7 +209,7 @@ function launchHlsStream(container, url, isModal = false) {
   const video = document.createElement('video');
   video.className = isModal ? 'w-full h-full object-contain' : 'absolute inset-0 w-full h-full object-cover';
   video.autoplay = true;
-  video.controls = true;
+  video.controls = isModal;
   video.playsInline = true;
   video.muted = isModal ? false : true;
   if (isModal) video.volume = 1.0;
@@ -226,10 +253,21 @@ function launchHlsStream(container, url, isModal = false) {
     }
   }, 14000);
 
+  // عند نجاح البث والتقاط أول فريم
   const onStreamReady = () => {
+    if (isPlaying) return;
     isPlaying = true;
     clearTimeout(safetyTimer);
     if (loadingIndicator) loadingIndicator.remove();
+
+    // التجميد الذكي: إذا كان العرض في الشبكة العادية (مش تكبير)، جمد الفيديو فوراً بعد لقطة البداية!
+    if (!isModal) {
+      setTimeout(() => {
+        if (!video.paused) {
+          video.pause(); // تجميد البث بالصورة الحية وحفظ 100% من استهلاك النت
+        }
+      }, 800);
+    }
   };
 
   video.addEventListener('playing', onStreamReady);
@@ -300,7 +338,7 @@ function renderCams() {
     : streamsData.filter(s => s.area === currentFilter);
 
   if (filtered.length === 0) {
-    grid.innerHTML = `<div class="col-span-full py-16 text-center text-slate-500 text-xs">لا توجد كاميرات معروضة حالياً.</div>`;
+    grid.innerHTML = `<div class="col-span-full py-16 text-center text-slate-500 text-xs">لا توجد قنوات معروضة حالياً.</div>`;
     return;
   }
 
@@ -328,16 +366,16 @@ function renderCams() {
         <div class="flex items-center gap-1.5 flex-shrink-0">
           ${adminActions}
           <span class="bg-slate-800/80 text-slate-400 px-2 py-0.5 rounded text-[10px] border border-slate-700/50">${stream.area}</span>
-          <button onclick="event.stopPropagation(); openModal('${stream.id}')" class="text-slate-400 hover:text-emerald-400 p-1 transition" title="تكبير الكاميرا">
-            <i class="fa-solid fa-expand"></i>
+          <button onclick="event.stopPropagation(); openModal('${stream.id}')" class="text-slate-400 hover:text-emerald-400 p-1 transition" title="تكبير وتشغيل البث">
+            <i class="fa-solid fa-play text-[10px] ml-1"></i> <i class="fa-solid fa-expand"></i>
           </button>
         </div>
       </div>
     `;
 
-    // تثبيت أبعاد 16:9 سينمائية متطابقة لجميع الكاميرات دون استثناء
     const feedContainer = document.createElement('div');
-    feedContainer.className = 'w-full aspect-video bg-black relative flex items-center justify-center overflow-hidden';
+    feedContainer.className = 'w-full aspect-video bg-black relative flex items-center justify-center overflow-hidden cursor-pointer';
+    feedContainer.onclick = () => openModal(stream.id);
 
     if (stream.type === 'youtube') {
       let ytUrl = stream.url;
@@ -346,11 +384,11 @@ function renderCams() {
         if (idMatch) ytUrl = `https://www.youtube-nocookie.com/embed/${idMatch[1]}`;
       }
       feedContainer.innerHTML = `
-        <iframe class="absolute inset-0 w-full h-full border-0" 
-          src="${ytUrl}?autoplay=1&mute=1&controls=1&rel=0" 
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-          allowfullscreen>
+        <iframe class="absolute inset-0 w-full h-full border-0 pointer-events-none" 
+          src="${ytUrl}?autoplay=1&mute=1&controls=0&rel=0" 
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture">
         </iframe>
+        <div class="absolute inset-0 bg-transparent"></div>
       `;
     } else if (stream.type === 'hls') {
       launchHlsStream(feedContainer, stream.url, false);
@@ -358,7 +396,6 @@ function renderCams() {
       const img = document.createElement('img');
       img.src = stream.url + '?t=' + Date.now();
       img.className = 'absolute inset-0 w-full h-full object-cover';
-      setInterval(() => { img.src = stream.url + '?t=' + Date.now(); }, 10000);
       feedContainer.appendChild(img);
     }
 
@@ -455,6 +492,7 @@ function changeLayout(cols) {
   if (cols === 3) grid.classList.add('grid-cols-1', 'md:grid-cols-2', 'lg:grid-cols-3');
 }
 
+// 5. عند التكبير: إطلاق البث الحي الكامل مع الصوت 100%
 function openModal(streamId) {
   const stream = streamsData.find(s => s.id === streamId);
   if (!stream) return;
@@ -479,9 +517,16 @@ function openModal(streamId) {
   history.pushState({ modalOpen: true }, "");
 }
 
+// عند الإغلاق: إيقاف البث بالكامل فوراً وتفريغ الذاكرة
 function closeModal(fromHistory = false) {
   const modal = document.getElementById('cam-modal');
   if (!modal.classList.contains('hidden')) {
+    const video = modal.querySelector('video');
+    if (video) {
+      video.pause();
+      video.removeAttribute('src');
+      try { video.load(); } catch(e){}
+    }
     document.getElementById('modal-content').innerHTML = '';
     modal.classList.add('hidden');
     if (!fromHistory && history.state && history.state.modalOpen) {
