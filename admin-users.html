@@ -2,78 +2,132 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>الباسم سات | إدارة المشتركين والزبائن</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root {
-      --bg: #0f172a;
+      --bg: #0b1120;
       --card-bg: #1e293b;
+      --card-inner: #0f172a;
       --primary: #00e5ff;
       --accent: #10b981;
       --danger: #ef4444;
       --warning: #f59e0b;
       --text: #f8fafc;
       --text-muted: #94a3b8;
+      --border: #334155;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    body { background: var(--bg); color: var(--text); padding: 15px; min-height: 100vh; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 12px; min-height: 100vh; }
     .container { max-width: 1100px; margin: 0 auto; }
-    header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: var(--card-bg); border-radius: 12px; margin-bottom: 20px; border-bottom: 2px solid var(--primary); }
-    h1 { font-size: 1.3rem; color: var(--primary); display: flex; align-items: center; gap: 10px; }
-    .btn { padding: 9px 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; transition: 0.2s; }
+    
+    header { 
+      display: flex; justify-content: space-between; align-items: center; 
+      padding: 14px 18px; background: var(--card-bg); border-radius: 14px; 
+      margin-bottom: 16px; border-bottom: 2px solid var(--primary);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    h1 { font-size: 1.15rem; color: var(--primary); display: flex; align-items: center; gap: 8px; font-weight: 800; }
+    
+    .btn { 
+      padding: 9px 14px; border: none; border-radius: 8px; font-weight: 700; 
+      cursor: pointer; display: inline-flex; align-items: center; justify-content: center; 
+      gap: 6px; font-size: 0.85rem; transition: 0.15s ease-in-out; 
+    }
+    .btn:active { transform: scale(0.97); }
     .btn-primary { background: var(--primary); color: #000; }
     .btn-accent { background: var(--accent); color: #fff; }
     .btn-danger { background: var(--danger); color: #fff; }
     .btn-warning { background: var(--warning); color: #000; }
     .btn-share { background: #25d366; color: #fff; }
-    .card { background: var(--card-bg); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
-    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 15px; margin-bottom: 15px; }
+
+    .card { background: var(--card-bg); border-radius: 14px; padding: 16px; margin-bottom: 16px; border: 1px solid var(--border); }
+    .card-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 14px; }
     .form-group { display: flex; flex-direction: column; gap: 6px; }
-    .form-group label { font-size: 0.85rem; color: var(--text-muted); }
-    .form-group input { padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #fff; outline: none; font-size: 0.9rem; }
-    .checkbox-group { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 5px; background: #0f172a; padding: 10px; border-radius: 8px; border: 1px solid #334155; }
-    .checkbox-group label { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: #fff; cursor: pointer; }
-    .table-container { overflow-x: auto; margin-top: 10px; }
-    table { width: 100%; border-collapse: collapse; text-align: right; font-size: 0.9rem; }
-    th, td { padding: 12px; border-bottom: 1px solid #334155; vertical-align: middle; }
-    th { color: var(--primary); background: #131c2e; }
-    .badge { padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; }
-    .badge-active { background: rgba(16, 185, 129, 0.2); color: var(--accent); border: 1px solid var(--accent); }
-    .badge-blocked { background: rgba(239, 68, 68, 0.2); color: var(--danger); border: 1px solid var(--danger); }
-    .badge-expired { background: rgba(245, 158, 11, 0.2); color: var(--warning); border: 1px solid var(--warning); }
-    .actions { display: flex; gap: 6px; flex-wrap: wrap; }
-    #auth-panel { max-width: 420px; margin: 80px auto; }
+    .form-group label { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; }
+    .form-group input { 
+      padding: 11px; border-radius: 8px; border: 1px solid var(--border); 
+      background: var(--card-inner); color: #fff; outline: none; font-size: 0.9rem; 
+    }
+    .form-group input:focus { border-color: var(--primary); }
+
+    .checkbox-group { 
+      display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; 
+      background: var(--card-inner); padding: 12px; border-radius: 10px; border: 1px solid var(--border); 
+    }
+    .checkbox-group label { 
+      display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; 
+      color: #fff; cursor: pointer; background: rgba(255,255,255,0.05); padding: 6px 10px; border-radius: 6px;
+    }
+
+    /* شاشات الجوال: تحويل الجدول لبطاقات */
+    .table-view { width: 100%; border-collapse: collapse; text-align: right; }
+    .table-view th, .table-view td { padding: 12px; border-bottom: 1px solid var(--border); }
+    .table-view th { color: var(--primary); background: #131c2e; font-size: 0.85rem; }
+
+    .badge { padding: 4px 9px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; }
+    .badge-active { background: rgba(16, 185, 129, 0.15); color: var(--accent); border: 1px solid var(--accent); }
+    .badge-blocked { background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid var(--danger); }
+    .badge-expired { background: rgba(245, 158, 11, 0.15); color: var(--warning); border: 1px solid var(--warning); }
+
+    /* تصميم البطاقات الخاص بالشاومي والهواتف */
+    .mobile-cards { display: none; flex-direction: column; gap: 12px; }
+    .sub-card {
+      background: var(--card-inner); border: 1px solid var(--border); border-radius: 12px;
+      padding: 14px; display: flex; flex-direction: column; gap: 10px;
+    }
+    .sub-card-header { display: flex; justify-content: space-between; align-items: flex-start; }
+    .sub-card-title { font-size: 1rem; font-weight: 800; color: #fff; }
+    .sub-card-info { font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; }
+    .sub-card-info strong { color: var(--text); }
+    .sub-card-actions { 
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; 
+      padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.08); 
+    }
+    .sub-card-actions .btn { width: 100%; }
+
+    @media (max-width: 768px) {
+      .table-view { display: none; }
+      .mobile-cards { display: flex; }
+      header { flex-direction: column; gap: 10px; text-align: center; }
+      header h1 { font-size: 1.05rem; }
+      .form-grid { grid-template-columns: 1fr; }
+    }
+
+    #auth-panel { max-width: 380px; margin: 60px auto; }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <!-- نافذة تسجيل دخول الأدمن -->
+  <!-- نافذة تسجيل الدخول للأدمن -->
   <div id="auth-panel" class="card">
-    <h2 style="text-align: center; color: var(--primary); margin-bottom: 15px;"><i class="fas fa-user-shield"></i> بوابة الأدمن</h2>
-    <p style="color: var(--text-muted); font-size: 0.85rem; text-align: center; margin-bottom: 15px;">سجل دخول بحسابك لإدارة زبائن الباسم سات</p>
-    <div class="form-group" style="margin-bottom: 12px;">
+    <h2 style="text-align: center; color: var(--primary); margin-bottom: 10px; font-size: 1.2rem;"><i class="fas fa-user-shield"></i> بوابة الأدمن</h2>
+    <p style="color: var(--text-muted); font-size: 0.8rem; text-align: center; margin-bottom: 16px;">سجل دخول لإدارة المشتركين من الشاشة أو الهاتف</p>
+    <div class="form-group" style="margin-bottom: 10px;">
       <label>البريد الإلكتروني للأدمن</label>
       <input type="email" id="admin-email" placeholder="admin@example.com">
     </div>
-    <div class="form-group" style="margin-bottom: 15px;">
+    <div class="form-group" style="margin-bottom: 16px;">
       <label>كلمة المرور</label>
       <input type="password" id="admin-pass" placeholder="••••••••">
     </div>
-    <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="loginAdmin()">تسجيل الدخول</button>
+    <button class="btn btn-primary" style="width: 100%;" onclick="loginAdmin()">تسجيل الدخول</button>
   </div>
 
-  <!-- لوحة الإدارة بعد التوثيق -->
+  <!-- لوحة الإدارة الرئيسية -->
   <div id="main-panel" style="display: none;">
     <header>
-      <h1><i class="fas fa-users-cog"></i> الباسم سات | لوحة المشتركين والزبائن</h1>
-      <button class="btn btn-danger" onclick="logoutAdmin()"><i class="fas fa-sign-out-alt"></i> تسجيل خروج</button>
+      <h1><i class="fas fa-users-gear"></i> الباسم سات | إدارة المشتركين والزبائن</h1>
+      <button class="btn btn-danger" onclick="logoutAdmin()"><i class="fas fa-sign-out-alt"></i> خروج</button>
     </header>
 
-    <!-- نموذج إضافة مشترك -->
+    <!-- إضافة مشترك -->
     <div class="card">
-      <h3 style="margin-bottom: 15px; color: var(--accent);"><i class="fas fa-user-plus"></i> إضافة وتفعيل زبون جديد</h3>
+      <div class="card-title" style="color: var(--accent);"><i class="fas fa-user-plus"></i> إضافة وتفعيل زبون جديد</div>
       <div class="form-grid">
         <div class="form-group">
           <label>اسم المستخدم (Username)</label>
@@ -92,45 +146,46 @@
           <input type="text" id="sub-phone" placeholder="059xxxxxxx">
         </div>
         <div class="form-group">
-          <label>تاريخ انتهاء الاشتراك</label>
+          <label>تاريخ الانتهاء</label>
           <input type="date" id="sub-expire">
         </div>
       </div>
 
-      <div class="form-group" style="margin-bottom: 15px;">
+      <div class="form-group" style="margin-bottom: 14px;">
         <label>الأقسام المصرح له بمشاهدتها:</label>
         <div class="checkbox-group" id="areas-container">
           <label><input type="checkbox" id="area-all" checked onchange="toggleAllAreas(this)"> <strong>جميع الأقسام (الكل)</strong></label>
         </div>
       </div>
 
-      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-        <button class="btn btn-accent" onclick="saveSubscriber()"><i class="fas fa-save"></i> حفظ وتجهيز الحساب</button>
-        <button class="btn btn-warning" onclick="setTrialPeriod()"><i class="fas fa-stopwatch"></i> تفعيل تجريبي (24 ساعة)</button>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button class="btn btn-accent" style="flex: 1;" onclick="saveSubscriber()"><i class="fas fa-save"></i> حفظ وتجهيز الحساب</button>
+        <button class="btn btn-warning" onclick="setTrialPeriod()"><i class="fas fa-stopwatch"></i> تجربة (24 ساعة)</button>
       </div>
     </div>
 
-    <!-- جدول المشتركين -->
+    <!-- قائمة المشتركين (جدول على الكمبيوتر وبطاقات على الهاتف) -->
     <div class="card">
-      <h3 style="margin-bottom: 15px; color: var(--primary);"><i class="fas fa-list"></i> قائمة المشتركين الفعالين</h3>
-      <div class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>الزبون</th>
-              <th>بيانات الدخول</th>
-              <th>الهاتف</th>
-              <th>الأقسام المسموحة</th>
-              <th>تاريخ الانتهاء</th>
-              <th>الحالة</th>
-              <th>إجراءات وتحكم</th>
-            </tr>
-          </thead>
-          <tbody id="subscribers-table">
-            <!-- تحميل تلقائي -->
-          </tbody>
-        </table>
-      </div>
+      <div class="card-title" style="color: var(--primary);"><i class="fas fa-list"></i> قائمة المشتركين الفعالين</div>
+      
+      <!-- عرض الجدول للشاشات الكبيرة -->
+      <table class="table-view">
+        <thead>
+          <tr>
+            <th>الزبون</th>
+            <th>بيانات الدخول</th>
+            <th>الهاتف</th>
+            <th>الأقسام</th>
+            <th>تاريخ الانتهاء</th>
+            <th>الحالة</th>
+            <th>إجراءات</th>
+          </tr>
+        </thead>
+        <tbody id="subscribers-table-desktop"></tbody>
+      </table>
+
+      <!-- عرض البطاقات للشاومي والجوالات -->
+      <div class="mobile-cards" id="subscribers-cards-mobile"></div>
     </div>
   </div>
 </div>
@@ -182,7 +237,6 @@
     loadAreas();
     loadSubscribers();
     
-    // افتراضي 30 يوم من اليوم
     let d = new Date();
     d.setDate(d.getDate() + 30);
     document.getElementById("sub-expire").value = d.toISOString().split('T')[0];
@@ -258,7 +312,7 @@
         body: JSON.stringify(payload)
       });
       if(resp.ok) {
-        alert(`تم تفعيل حساب المشترك [${username}] بنجاح!`);
+        alert(`تم تفعيل حساب [${username}] بنجاح!`);
         shareSubscriber(payload);
         loadSubscribers();
       } else {
@@ -273,8 +327,10 @@
     try {
       const resp = await fetch(`${FIREBASE_DB}/subscribers.json`);
       const data = await resp.json() || {};
-      const tbody = document.getElementById("subscribers-table");
-      tbody.innerHTML = "";
+      const tDesktop = document.getElementById("subscribers-table-desktop");
+      const cMobile = document.getElementById("subscribers-cards-mobile");
+      tDesktop.innerHTML = "";
+      cMobile.innerHTML = "";
 
       const today = new Date().toISOString().split('T')[0];
 
@@ -282,26 +338,54 @@
         let isExpired = sub.expireDate < today;
         let badgeClass = sub.status === "blocked" ? "badge-blocked" : (isExpired ? "badge-expired" : "badge-active");
         let statusText = sub.status === "blocked" ? "محظور" : (isExpired ? "منتهي" : "نشط");
+        let areasBadge = sub.allowedAreas.includes('all') ? '<span class="badge badge-active">جميع الأقسام</span>' : sub.allowedAreas.join(', ');
 
+        // 1. إضافة سطر الكمبيوتر
         let row = `
           <tr>
             <td><strong>${sub.fullName || key}</strong></td>
             <td><code>${sub.username}</code> / <code>${sub.password}</code></td>
             <td>${sub.phone || '-'}</td>
-            <td>${sub.allowedAreas.includes('all') ? '<span class="badge badge-active">جميع الأقسام</span>' : sub.allowedAreas.join(', ')}</td>
+            <td>${areasBadge}</td>
             <td>${sub.expireDate}</td>
             <td><span class="badge ${badgeClass}">${statusText}</span></td>
             <td>
-              <div class="actions">
-                <button class="btn btn-share" onclick='shareSubscriber(${JSON.stringify(sub)})' title="مشاركة الحساب عبر التطبيقات"><i class="fas fa-share-alt"></i> مشاركة</button>
-                <button class="btn btn-warning" onclick="renewSubscriber('${key}', '${sub.expireDate}')" title="تمديد 30 يوم"><i class="fas fa-redo"></i> +30 يوم</button>
-                <button class="btn btn-danger" onclick="toggleBlock('${key}', '${sub.status}')" title="إيقاف / تشغيل"><i class="fas ${sub.status === 'blocked' ? 'fa-unlock' : 'fa-ban'}"></i></button>
-                <button class="btn btn-danger" onclick="deleteSubscriber('${key}')" title="حذف نهائي"><i class="fas fa-trash"></i></button>
+              <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                <button class="btn btn-share" onclick='shareSubscriber(${JSON.stringify(sub)})'><i class="fas fa-share-alt"></i> مشاركة</button>
+                <button class="btn btn-warning" onclick="renewSubscriber('${key}', '${sub.expireDate}')"><i class="fas fa-redo"></i> +30 يوم</button>
+                <button class="btn btn-danger" onclick="toggleBlock('${key}', '${sub.status}')"><i class="fas ${sub.status === 'blocked' ? 'fa-unlock' : 'fa-ban'}"></i></button>
+                <button class="btn btn-danger" onclick="deleteSubscriber('${key}')"><i class="fas fa-trash"></i></button>
               </div>
             </td>
           </tr>
         `;
-        tbody.innerHTML += row;
+        tDesktop.innerHTML += row;
+
+        // 2. إضافة بطاقة الجوال (خاصة بالشاومي)
+        let card = `
+          <div class="sub-card">
+            <div class="sub-card-header">
+              <div>
+                <div class="sub-card-title">${sub.fullName || key}</div>
+                <div style="font-size:0.8rem; color:var(--primary); font-weight:600;">@${sub.username}</div>
+              </div>
+              <span class="badge ${badgeClass}">${statusText}</span>
+            </div>
+            <div class="sub-card-info">
+              <div><strong>كلمة المرور:</strong> <code>${sub.password}</code></div>
+              <div><strong>الهاتف:</strong> ${sub.phone || 'غير مسجل'}</div>
+              <div><strong>الصلاحية:</strong> ينتهي في <strong>${sub.expireDate}</strong></div>
+              <div><strong>الأقسام:</strong> ${areasBadge}</div>
+            </div>
+            <div class="sub-card-actions">
+              <button class="btn btn-share" onclick='shareSubscriber(${JSON.stringify(sub)})'><i class="fas fa-share-alt"></i> مشاركة</button>
+              <button class="btn btn-warning" onclick="renewSubscriber('${key}', '${sub.expireDate}')"><i class="fas fa-redo"></i> +30 يوم</button>
+              <button class="btn btn-danger" onclick="toggleBlock('${key}', '${sub.status}')"><i class="fas ${sub.status === 'blocked' ? 'fa-unlock' : 'fa-ban'}"></i> ${sub.status === 'blocked' ? 'تفعيل' : 'حظر'}</button>
+              <button class="btn btn-danger" onclick="deleteSubscriber('${key}')"><i class="fas fa-trash"></i> حذف</button>
+            </div>
+          </div>
+        `;
+        cMobile.innerHTML += card;
       });
     } catch(e) {
       console.error(e);
