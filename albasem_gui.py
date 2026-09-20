@@ -1,3 +1,26 @@
+
+def detect_area_smart(url, text):
+    combined = (url + " " + text).lower()
+    if any(k in combined for k in ["ramallah", "رام الله", "المنارة", "بلدية رام الله"]):
+        return "رام الله"
+    elif any(k in combined for k in ["nablus", "نابلس", "رفيديا", "الفاطمية", "الدوار"]):
+        return "نابلس"
+    elif any(k in combined for k in ["quds", "jerusalem", "القدس", "الأقصى"]):
+        return "القدس"
+    elif any(k in combined for k in ["kafr", "كفر عقب"]):
+        return "كفر عقب"
+    elif any(k in combined for k in ["alram", "الرام"]):
+        return "الرام"
+    elif any(k in combined for k in ["jenin", "جنين"]):
+        return "جنين"
+    elif any(k in combined for k in ["tulkarm", "طولكرم"]):
+        return "طولكرم"
+    elif any(k in combined for k in ["hebron", "الخليل"]):
+        return "الخليل"
+    elif any(k in combined for k in ["news", "أخبار", "جزيرة", "حدث"]):
+        return "قنوات أخبار"
+    return "عام"
+
 #!/usr/bin/env python3
 import os
 import sys
@@ -252,12 +275,28 @@ class AlbasemWindow(Gtk.Window):
                         clean_u = u.split("?")[0] if ("index.m3u8" in u or "mono.m3u8" in u) else u
                         if clean_u not in seen_urls:
                             seen_urls.add(clean_u)
-                            found_streams.append({"label": "البث المباشر (سيرفر رئيسي)", "url": clean_u, "type": "hls"})
+                            dyn_label = f"{page_title} (سيرفر {len(found_streams)+1})" if page_title and len(found_streams) > 0 else (page_title or "البث المباشر")
+                            server_num = len(found_streams) + 1
+                            base_name = page_title if page_title else "بث حي"
+                            final_name = f"{base_name} (سيرفر {server_num})"
+                            found_streams.append({"label": final_name, "url": clean_u, "type": "hls", "area": detected_area})
 
+                page_title = "بلدية رام الله" if "ramallah" in target_url.lower() else ""
+                detected_area = detect_area_smart(target_url, "")
                 page.on("request", handle_req)
 
                 try:
                     page.goto(target_url, wait_until="commit", timeout=8000)
+                    try:
+                        page_title = page.evaluate("""() => {
+                            const h1 = document.querySelector("h1");
+                            if (h1 && h1.innerText.trim()) return h1.innerText.trim();
+                            let t = document.title || "";
+                            return t.replace(/NABLUS LIVE|نابلس مباشر|بث حي|مباشر|شباب FM|-|\\|/gi, "").trim();
+                        }""")
+                        detected_area = detect_area_smart(target_url, page_title or "")
+                    except:
+                        pass
                 except Exception:
                     pass
 
@@ -339,7 +378,7 @@ class AlbasemWindow(Gtk.Window):
             st = streams[0]
             self.title_entry.set_text(st["label"])
             self.stream_url_entry.set_text(st["url"])
-            self.area_combo.get_child().set_text(st.get("area", "شباب اف ام نابلس"))
+            self.area_combo.get_child().set_text(st.get("area", detect_area_smart(st.get("url", ""), st.get("label", ""))))
 
         self.status_lbl.set_text(f"✓ تم اكتشاف {len(streams)} قناة وسيرفر بنجاح!")
         self.show_dialog("صيد متكامل! 🎯", f"تم العثور على {len(streams)} قناة وسيرفر بنجاح!\n\nيمكنك الآن:\n1. الضغط على أي قناة ونشرها لحالها.\n2. أو الضغط على زر (نشر جميع القنوات دفعة واحدة) لتنزيلها كلها!", Gtk.MessageType.INFO)
