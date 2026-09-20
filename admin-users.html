@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>الباسم سات | إدارة المشتركين والزبائن</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --primary: #00e5ff;
+      --accent: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 15px; min-height: 100vh; }
+    .container { max-width: 1100px; margin: 0 auto; }
+    header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: var(--card-bg); border-radius: 12px; margin-bottom: 20px; border-bottom: 2px solid var(--primary); }
+    h1 { font-size: 1.3rem; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+    .btn { padding: 9px 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; transition: 0.2s; }
+    .btn-primary { background: var(--primary); color: #000; }
+    .btn-accent { background: var(--accent); color: #fff; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-warning { background: var(--warning); color: #000; }
+    .btn-share { background: #25d366; color: #fff; }
+    .card { background: var(--card-bg); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 15px; margin-bottom: 15px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { font-size: 0.85rem; color: var(--text-muted); }
+    .form-group input { padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #fff; outline: none; font-size: 0.9rem; }
+    .checkbox-group { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 5px; background: #0f172a; padding: 10px; border-radius: 8px; border: 1px solid #334155; }
+    .checkbox-group label { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: #fff; cursor: pointer; }
+    .table-container { overflow-x: auto; margin-top: 10px; }
+    table { width: 100%; border-collapse: collapse; text-align: right; font-size: 0.9rem; }
+    th, td { padding: 12px; border-bottom: 1px solid #334155; vertical-align: middle; }
+    th { color: var(--primary); background: #131c2e; }
+    .badge { padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; }
+    .badge-active { background: rgba(16, 185, 129, 0.2); color: var(--accent); border: 1px solid var(--accent); }
+    .badge-blocked { background: rgba(239, 68, 68, 0.2); color: var(--danger); border: 1px solid var(--danger); }
+    .badge-expired { background: rgba(245, 158, 11, 0.2); color: var(--warning); border: 1px solid var(--warning); }
+    .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    #auth-panel { max-width: 420px; margin: 80px auto; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- نافذة تسجيل دخول الأدمن -->
+  <div id="auth-panel" class="card">
+    <h2 style="text-align: center; color: var(--primary); margin-bottom: 15px;"><i class="fas fa-user-shield"></i> بوابة الأدمن</h2>
+    <p style="color: var(--text-muted); font-size: 0.85rem; text-align: center; margin-bottom: 15px;">سجل دخول بحسابك لإدارة زبائن الباسم سات</p>
+    <div class="form-group" style="margin-bottom: 12px;">
+      <label>البريد الإلكتروني للأدمن</label>
+      <input type="email" id="admin-email" placeholder="admin@example.com">
+    </div>
+    <div class="form-group" style="margin-bottom: 15px;">
+      <label>كلمة المرور</label>
+      <input type="password" id="admin-pass" placeholder="••••••••">
+    </div>
+    <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="loginAdmin()">تسجيل الدخول</button>
+  </div>
+
+  <!-- لوحة الإدارة بعد التوثيق -->
+  <div id="main-panel" style="display: none;">
+    <header>
+      <h1><i class="fas fa-users-cog"></i> الباسم سات | لوحة المشتركين والزبائن</h1>
+      <button class="btn btn-danger" onclick="logoutAdmin()"><i class="fas fa-sign-out-alt"></i> تسجيل خروج</button>
+    </header>
+
+    <!-- نموذج إضافة مشترك -->
+    <div class="card">
+      <h3 style="margin-bottom: 15px; color: var(--accent);"><i class="fas fa-user-plus"></i> إضافة وتفعيل زبون جديد</h3>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>اسم المستخدم (Username)</label>
+          <input type="text" id="sub-username" placeholder="مثلاً: tareq_store">
+        </div>
+        <div class="form-group">
+          <label>كلمة المرور (Password)</label>
+          <input type="text" id="sub-password" placeholder="أرقام أو حروف سرية">
+        </div>
+        <div class="form-group">
+          <label>اسم الزبون / المحل</label>
+          <input type="text" id="sub-fullname" placeholder="الاسم الكامل أو التجاري">
+        </div>
+        <div class="form-group">
+          <label>رقم الهاتف / واتساب</label>
+          <input type="text" id="sub-phone" placeholder="059xxxxxxx">
+        </div>
+        <div class="form-group">
+          <label>تاريخ انتهاء الاشتراك</label>
+          <input type="date" id="sub-expire">
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 15px;">
+        <label>الأقسام المصرح له بمشاهدتها:</label>
+        <div class="checkbox-group" id="areas-container">
+          <label><input type="checkbox" id="area-all" checked onchange="toggleAllAreas(this)"> <strong>جميع الأقسام (الكل)</strong></label>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <button class="btn btn-accent" onclick="saveSubscriber()"><i class="fas fa-save"></i> حفظ وتجهيز الحساب</button>
+        <button class="btn btn-warning" onclick="setTrialPeriod()"><i class="fas fa-stopwatch"></i> تفعيل تجريبي (24 ساعة)</button>
+      </div>
+    </div>
+
+    <!-- جدول المشتركين -->
+    <div class="card">
+      <h3 style="margin-bottom: 15px; color: var(--primary);"><i class="fas fa-list"></i> قائمة المشتركين الفعالين</h3>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>الزبون</th>
+              <th>بيانات الدخول</th>
+              <th>الهاتف</th>
+              <th>الأقسام المسموحة</th>
+              <th>تاريخ الانتهاء</th>
+              <th>الحالة</th>
+              <th>إجراءات وتحكم</th>
+            </tr>
+          </thead>
+          <tbody id="subscribers-table">
+            <!-- تحميل تلقائي -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const FIREBASE_DB = "https://albasem-cams-default-rtdb.firebaseio.com";
+  const API_KEY = "AIzaSyD4U4DFTtO8zuqIlrJp19ji1ESptfuVr9E";
+  let idToken = localStorage.getItem("albasem_admin_token") || null;
+  let availableAreas = ["رام الله", "نابلس", "شباب اف ام نابلس", "قنوات أخبار", "القدس", "كفر عقب", "الرام", "جنين", "الخليل", "عام"];
+
+  window.onload = () => {
+    if (idToken) {
+      showDashboard();
+    }
+  };
+
+  async function loginAdmin() {
+    const email = document.getElementById("admin-email").value.trim();
+    const password = document.getElementById("admin-pass").value.trim();
+    if(!email || !password) return alert("يرجى إدخال البريد وكلمة المرور!");
+
+    try {
+      const resp = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, returnSecureToken: true })
+      });
+      const data = await resp.json();
+      if (data.idToken) {
+        idToken = data.idToken;
+        localStorage.setItem("albasem_admin_token", idToken);
+        showDashboard();
+      } else {
+        alert("بيانات الدخول غير صحيحة!");
+      }
+    } catch (e) {
+      alert("خطأ بالاتصال: " + e.message);
+    }
+  }
+
+  function logoutAdmin() {
+    localStorage.removeItem("albasem_admin_token");
+    location.reload();
+  }
+
+  function showDashboard() {
+    document.getElementById("auth-panel").style.display = "none";
+    document.getElementById("main-panel").style.display = "block";
+    loadAreas();
+    loadSubscribers();
+    
+    // افتراضي 30 يوم من اليوم
+    let d = new Date();
+    d.setDate(d.getDate() + 30);
+    document.getElementById("sub-expire").value = d.toISOString().split('T')[0];
+  }
+
+  async function loadAreas() {
+    try {
+      const resp = await fetch(`${FIREBASE_DB}/streams.json`);
+      const data = await resp.json();
+      if(data) {
+        let set = new Set(availableAreas);
+        Object.values(data).forEach(s => { if(s.area) set.add(s.area); });
+        availableAreas = Array.from(set);
+      }
+    } catch(e) {}
+    
+    const container = document.getElementById("areas-container");
+    container.innerHTML = `<label><input type="checkbox" id="area-all" checked onchange="toggleAllAreas(this)"> <strong>جميع الأقسام (الكل)</strong></label>`;
+    availableAreas.forEach(a => {
+      container.innerHTML += `<label><input type="checkbox" class="area-item" value="${a}" disabled> ${a}</label>`;
+    });
+  }
+
+  function toggleAllAreas(allBox) {
+    document.querySelectorAll(".area-item").forEach(cb => {
+      cb.disabled = allBox.checked;
+      if (allBox.checked) cb.checked = false;
+    });
+  }
+
+  function setTrialPeriod() {
+    let d = new Date();
+    d.setDate(d.getDate() + 1);
+    document.getElementById("sub-expire").value = d.toISOString().split('T')[0];
+    alert("تم ضبط الاشتراك كفترة تجريبية (24 ساعة).");
+  }
+
+  async function saveSubscriber() {
+    const username = document.getElementById("sub-username").value.trim().toLowerCase();
+    const password = document.getElementById("sub-password").value.trim();
+    const fullName = document.getElementById("sub-fullname").value.trim();
+    const phone = document.getElementById("sub-phone").value.trim();
+    const expireDate = document.getElementById("sub-expire").value;
+
+    if(!username || !password || !expireDate) {
+      return alert("يرجى إدخال اسم المستخدم وكلمة المرور وتاريخ الانتهاء!");
+    }
+
+    let allowed = [];
+    if(document.getElementById("area-all").checked) {
+      allowed = ["all"];
+    } else {
+      document.querySelectorAll(".area-item:checked").forEach(cb => allowed.push(cb.value));
+      if(allowed.length === 0) return alert("يرجى اختيار قسم واحد على الأقل!");
+    }
+
+    const payload = {
+      username,
+      password,
+      fullName: fullName || username,
+      phone: phone || "",
+      expireDate,
+      allowedAreas: allowed,
+      status: "active",
+      sessionToken: "",
+      updatedAt: new Date().toISOString()
+    };
+
+    try {
+      const resp = await fetch(`${FIREBASE_DB}/subscribers/${username}.json?auth=${idToken}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if(resp.ok) {
+        alert(`تم تفعيل حساب المشترك [${username}] بنجاح!`);
+        shareSubscriber(payload);
+        loadSubscribers();
+      } else {
+        alert("فشل الحفظ في فايربيس.");
+      }
+    } catch(e) {
+      alert("خطأ: " + e.message);
+    }
+  }
+
+  async function loadSubscribers() {
+    try {
+      const resp = await fetch(`${FIREBASE_DB}/subscribers.json`);
+      const data = await resp.json() || {};
+      const tbody = document.getElementById("subscribers-table");
+      tbody.innerHTML = "";
+
+      const today = new Date().toISOString().split('T')[0];
+
+      Object.entries(data).forEach(([key, sub]) => {
+        let isExpired = sub.expireDate < today;
+        let badgeClass = sub.status === "blocked" ? "badge-blocked" : (isExpired ? "badge-expired" : "badge-active");
+        let statusText = sub.status === "blocked" ? "محظور" : (isExpired ? "منتهي" : "نشط");
+
+        let row = `
+          <tr>
+            <td><strong>${sub.fullName || key}</strong></td>
+            <td><code>${sub.username}</code> / <code>${sub.password}</code></td>
+            <td>${sub.phone || '-'}</td>
+            <td>${sub.allowedAreas.includes('all') ? '<span class="badge badge-active">جميع الأقسام</span>' : sub.allowedAreas.join(', ')}</td>
+            <td>${sub.expireDate}</td>
+            <td><span class="badge ${badgeClass}">${statusText}</span></td>
+            <td>
+              <div class="actions">
+                <button class="btn btn-share" onclick='shareSubscriber(${JSON.stringify(sub)})' title="مشاركة الحساب عبر التطبيقات"><i class="fas fa-share-alt"></i> مشاركة</button>
+                <button class="btn btn-warning" onclick="renewSubscriber('${key}', '${sub.expireDate}')" title="تمديد 30 يوم"><i class="fas fa-redo"></i> +30 يوم</button>
+                <button class="btn btn-danger" onclick="toggleBlock('${key}', '${sub.status}')" title="إيقاف / تشغيل"><i class="fas ${sub.status === 'blocked' ? 'fa-unlock' : 'fa-ban'}"></i></button>
+                <button class="btn btn-danger" onclick="deleteSubscriber('${key}')" title="حذف نهائي"><i class="fas fa-trash"></i></button>
+              </div>
+            </td>
+          </tr>
+        `;
+        tbody.innerHTML += row;
+      });
+    } catch(e) {
+      console.error(e);
+    }
+  }
+
+  async function renewSubscriber(username, currentExpire) {
+    let d = new Date(currentExpire > new Date().toISOString().split('T')[0] ? currentExpire : new Date());
+    d.setDate(d.getDate() + 30);
+    const newExpire = d.toISOString().split('T')[0];
+
+    await fetch(`${FIREBASE_DB}/subscribers/${username}/expireDate.json?auth=${idToken}`, {
+      method: 'PUT',
+      body: JSON.stringify(newExpire)
+    });
+    await fetch(`${FIREBASE_DB}/subscribers/${username}/status.json?auth=${idToken}`, {
+      method: 'PUT',
+      body: JSON.stringify("active")
+    });
+    alert(`تم تمديد اشتراك [${username}] لغاية: ${newExpire}`);
+    loadSubscribers();
+  }
+
+  async function toggleBlock(username, currentStatus) {
+    const nextStatus = currentStatus === "blocked" ? "active" : "blocked";
+    await fetch(`${FIREBASE_DB}/subscribers/${username}/status.json?auth=${idToken}`, {
+      method: 'PUT',
+      body: JSON.stringify(nextStatus)
+    });
+    loadSubscribers();
+  }
+
+  async function deleteSubscriber(username) {
+    if(!confirm(`هل تريد بالتأكيد حذف حساب المشترك [${username}]؟`)) return;
+    await fetch(`${FIREBASE_DB}/subscribers/${username}.json?auth=${idToken}`, {
+      method: 'DELETE'
+    });
+    loadSubscribers();
+  }
+
+  function shareSubscriber(sub) {
+    const mainUrl = "https://satalet.github.io/albasem-cams/";
+    const msg = `مرحباً بك في منصة الباسم سات للبث المباشر 📡✨\n\n` +
+                `بيانات حسابك الخاص:\n` +
+                `👤 اسم المستخدم: ${sub.username}\n` +
+                `🔑 كلمة المرور: ${sub.password}\n` +
+                `📅 تاريخ انتهاء الاشتراك: ${sub.expireDate}\n\n` +
+                `🔗 رابط المنصة المباشر:\n${mainUrl}\n\n` +
+                `خدمة الدعم الفني وإدارة المنظومة: الباسم سات. مشاهدة ممتعة!`;
+
+    if (navigator.share) {
+      navigator.share({
+        title: 'اشتراك منصة الباسم سات',
+        text: msg,
+      }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(msg);
+      alert("تم نسخ رسالة وبيانات المشترك للحافظة بنجاح!");
+    }
+  }
+</script>
+</body>
+</html>
