@@ -1,61 +1,39 @@
 
-def extract_smart_channel_title(url, fallback_title="بث مباشر"):
-    u = url.lower()
-    mapping = [
-        ("syriatv", "تلفزيون سوريا"),
-        ("syria", "تلفزيون سوريا"),
-        ("mbc-1", "MBC 1"),
-        ("mbc1", "MBC 1"),
-        ("mbc-2", "MBC 2"),
-        ("mbc2", "MBC 2"),
-        ("mbc-3", "MBC 3"),
-        ("mbc3", "MBC 3"),
-        ("mbc-4", "MBC 4"),
-        ("mbc4", "MBC 4"),
-        ("mbc-action", "MBC Action"),
-        ("mbc-max", "MBC Max"),
-        ("mbc-masr-2", "MBC مصر 2"),
-        ("mbc-masr", "MBC مصر"),
-        ("mbc-drama", "MBC دراما"),
-        ("mixtv", "قناة ميكس MIX"),
-        ("mix", "قناة ميكس MIX"),
-        ("aljazeera", "قناة الجزيرة"),
-        ("alarabiya", "قناة العربية"),
-        ("alhadath", "قناة الحدث"),
-        ("alghad", "قناة الغد"),
-        ("almayadeen", "قناة الميادين"),
-        ("rotana-cinema", "روتانا سينما"),
-        ("rotana-classic", "روتانا كلاسيك"),
-        ("rotana-clip", "روتانا كليب"),
-        ("rotana", "شبكة روتانا"),
-        ("spacetoon", "سبيستون Spacetoon"),
-        ("cartoon", "كرتون نتورك"),
-        ("cn-arabic", "كرتون نتورك"),
-        ("fajrtv", "تلفزيون الفجر"),
-        ("alfajr", "تلفزيون الفجر"),
-        ("shababfm", "راديو وتلفزيون شباب FM"),
-        ("palestine", "تلفزيون فلسطين"),
-        ("musawa", "قناة مساواة"),
-        ("watan", "تلفزيون وطن"),
-    ]
-    for key, name in mapping:
-        if key in u:
-            return name
-
-    # محاولة استخراج اسم نظيف من مسار الرابط
+def extract_smart_channel_title(url, fallback_title=""):
     import re
-    match = re.search(r'/([^/?#]+)\.(smil|m3u8)', url)
-    if match:
-        clean = match.group(1).replace('_', ' ').replace('-', ' ').title()
-        if clean.lower() not in ['index', 'playlist', 'master', 'mono', 'live', 'stream']:
-            return clean
-            
-    if fallback_title and fallback_title not in ['بث مباشر', 'قنوات لايف']:
-        return fallback_title
-    return "بث حي"
+    from urllib.parse import urlparse
 
+    t = (fallback_title or "").strip()
+    if t and t not in ["بث مباشر", "بث حي", "قناة مباشرة"]:
+        noise = [
+            r"بث\s*مباشر", r"مشاهدة\s*قناة", r"مشاهدة", r"قناة", r"لايف",
+            r"أون\s*لاين", r"اون\s*لاين", r"اونلاين", r"حصريا",
+            r"جودة\s*عالية", r"بدون\s*تقطيع", r"سيرفر\s*\d+",
+            r"live\s*stream", r"live", r"watch", r"online", r"hls", r"hd", r"fhd"
+        ]
+        for pat in noise:
+            t = re.sub(pat, "", t, flags=re.IGNORECASE)
+        t = re.sub(r"[\s\-_\|:\/]+", " ", t).strip()
+        if len(t) >= 2:
+            return t
 
-import urllib.request, ssl
+    try:
+        path = urlparse(url).path
+        parts = [p for p in path.split("/") if p and not p.endswith((".m3u8", ".ts", ".mpd", ".mp4"))]
+        tech = {"live", "hls", "stream", "chunk", "manifest", "video", "playlist", "master", "mono", "index", "bitmovin", "gcp", "edge", "edgenextcdn", "token", "channel", "user"}
+        for seg in reversed(parts):
+            if len(seg) >= 8 and all(c in "0123456789abcdefABCDEF" for c in seg):
+                continue
+            words = [w for w in re.split(r"[-_.]", seg) if w.lower() not in tech and not w.isdigit() and len(w) > 1]
+            if words:
+                res = " ".join(words)
+                res = re.sub(r"\bmbc\b", "MBC", res, flags=re.IGNORECASE)
+                res = re.sub(r"\bbein\b", "beIN", res, flags=re.IGNORECASE)
+                return res.title()
+    except Exception:
+        pass
+
+    return "قناة مباشرة"
 
 def verify_live_stream(url, referer=""):
     """فحص فوري للرابط والتأكد أنه بث حي حقيقي وشغال في المتصفح"""
@@ -96,7 +74,7 @@ def detect_area_smart(url, text):
         return "نابلس"
     elif any(k in combined for k in ["quds", "jerusalem", "القدس", "الأقصى"]):
         return "القدس"
-    elif any(k in combined for k in ["kafr", "كفر عقب"]):
+    elif any(k in combined for k in ['عام', 'قنوات عربيه', 'رام الله', 'نابلس', 'شباب اف ام نابلس', 'قنوات أخبار']):
         return "كفر عقب"
     elif any(k in combined for k in ["alram", "الرام"]):
         return "الرام"
@@ -127,7 +105,81 @@ FIREBASE_API_KEY = "AIzaSyD4U4DFTtO8zuqIlrJp19ji1ESptfuVr9E"
 DB_URL = "https://albasem-cams-default-rtdb.firebaseio.com/streams.json"
 CONFIG_FILE = os.path.expanduser("~/albasem-cams/config.json")
 
+def get_firebase_url():
+    import os, json
+    try:
+        cfg = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+        if os.path.exists(cfg):
+            with open(cfg, "r", encoding="utf-8") as f:
+                d = json.load(f)
+                u = d.get("firebase_url") or d.get("databaseURL")
+                if u: return u.rstrip("/")
+    except Exception:
+        pass
+    return "https://albasem-cams-default-rtdb.firebaseio.com"
+
 class AlbasemWindow(Gtk.Window):
+
+    def sync_live_categories_from_firebase(self):
+        import tkinter as tk
+        from tkinter import ttk
+        import threading, json, urllib.request
+
+        def _fetch():
+            try:
+                db_url = get_firebase_url()
+                all_cats = ["عام"]
+                try:
+                    r1 = urllib.request.urlopen(f"{db_url}/categories.json", timeout=4)
+                    d1 = json.loads(r1.read().decode("utf-8"))
+                    if isinstance(d1, list): all_cats.extend([x for x in d1 if x])
+                    elif isinstance(d1, dict): all_cats.extend([x for x in d1.values() if x])
+                except Exception: pass
+
+                try:
+                    r2 = urllib.request.urlopen(f"{db_url}/streams.json?shallow=false", timeout=4)
+                    d2 = json.loads(r2.read().decode("utf-8"))
+                    if isinstance(d2, dict):
+                        for item in d2.values():
+                            if isinstance(item, dict) and item.get("area"):
+                                a = item.get("area").strip()
+                                if a and a not in all_cats: all_cats.append(a)
+                except Exception: pass
+
+                clean = []
+                for c in all_cats:
+                    if c and c not in clean and c != "جميع الكاميرات": clean.append(c)
+
+                def _apply():
+                    root_w = getattr(self, "root", None) or getattr(self, "master", None) or tk._default_root
+                    combos = []
+                    def _scan(w):
+                        try:
+                            for ch in w.winfo_children():
+                                if ch.winfo_class() in ("TCombobox", "Combobox"):
+                                    combos.append(ch)
+                                _scan(ch)
+                        except Exception: pass
+                    if root_w: _scan(root_w)
+
+                    for cb in combos:
+                        cb["values"] = clean
+                        if "عام" in clean:
+                            cb.set("عام")
+                        elif clean:
+                            cb.set(clean[0])
+                    print("✅ [فايربيس] تم تحديث القائمة المنسدلة بنجاح للأقسام الحقيقية:", clean)
+
+                root_w = getattr(self, "root", None) or getattr(self, "master", None) or tk._default_root
+                if root_w and hasattr(root_w, "after"):
+                    root_w.after(0, _apply)
+                else:
+                    _apply()
+            except Exception as e:
+                print("❌ خطأ المزامنة:", e)
+        threading.Thread(target=_fetch, daemon=True).start()
+
+
     def __init__(self):
         self.stop_sniff_flag = False
         super().__init__(title="الباسم سات | أداة إدارة وقنص الكاميرات الحية")
@@ -244,7 +296,7 @@ class AlbasemWindow(Gtk.Window):
         lbl_area = Gtk.Label(label="المنطقة / التبويب:")
         lbl_area.set_halign(Gtk.Align.END)
         self.area_combo = Gtk.ComboBoxText.new_with_entry()
-        for a in ["نابلس", "شباب اف ام نابلس", "قنوات أخبار", "القدس", "كفر عقب", "الرام", "رام الله", "طولكرم", "جنين", "عام"]:
+        for a in ['عام', 'قنوات عربيه', 'رام الله', 'نابلس', 'شباب اف ام نابلس', 'قنوات أخبار']:
             self.area_combo.append_text(a)
         self.area_combo.set_active(0)
         v_area.pack_start(lbl_area, False, False, 0)
@@ -271,6 +323,7 @@ class AlbasemWindow(Gtk.Window):
         self.status_lbl.set_halign(Gtk.Align.START)
         main_vbox.pack_end(self.status_lbl, False, False, 0)
 
+        self.sync_live_categories_from_firebase()
     def load_credentials(self):
         self.email = "satalet@gmail.com"
         self.password = ""
@@ -371,8 +424,8 @@ class AlbasemWindow(Gtk.Window):
                                 seen_urls.add(clean_u)
                                 server_num = len(found_streams) + 1
                                 ch_base_name = extract_smart_channel_title(u, extracted_title)
-                            same_ch_count = sum(1 for s in found_streams if ch_base_name in s['label'])
-                            lbl = f"{ch_base_name}" if same_ch_count == 0 else f"{ch_base_name} (سيرفر {same_ch_count + 1})"
+                                same_ch_count = sum(1 for s in found_streams if ch_base_name in s['label'])
+                                lbl = f"{ch_base_name}" if same_ch_count == 0 else f"{ch_base_name} (سيرفر {same_ch_count + 1})"
                                 print(f'\033[92m[✓] تم صيد رابط HLS شغال: {clean_u}\033[0m')
                                 found_streams.append({'label': lbl, 'url': u, 'type': 'hls', 'area': detected_area})
                     except Exception:
