@@ -23,7 +23,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 
-  <link rel="stylesheet" href="style.css?v=26.0922.0107">
+  <link rel="stylesheet" href="style.css?v=26.0922.0113">
 
     <style>
     .bulk-action-bar {
@@ -144,8 +144,11 @@ if ('caches' in window) {
       <div class="flex items-center gap-2">
         <button onclick="openCategoryOrderModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded transition shadow flex items-center gap-1">
           <i class="fa-solid fa-arrow-down-up-across-line"></i> <span>ترتيب الأقسام</span>
-<button id="addNewCatDirectBtn" type="button" onclick="addNewCategoryDirect()" style="background:#059669; color:#fff; font-weight:bold; padding:6px 12px; border-radius:6px; border:none; margin:0 4px; cursor:pointer;">➕ إضافة قسم جديد</button>
-<button id="toggleBulkSortBtn" type="button" onclick="toggleBulkSortMode()" style="background:#4f46e5; color:#fff; font-weight:bold; padding:6px 12px; border-radius:6px; border:none; margin:0 4px; cursor:pointer;">📋 فرز وترحيل القنوات</button>
+<button id="addNewCatDirectBtn" type="button" onclick="addNewCategoryDirect()" style="background:#059669; color:#fff; font-size:0.8rem; font-weight:600; padding:5px 10px; border-radius:6px; border:none; margin:0 3px; cursor:pointer; height:32px; display:inline-flex; align-items:center; gap:4px;">➕ قسم جديد</button>
+<button id="toggleBulkSortBtn" type="button" onclick="toggleBulkSortMode()" style="background:#4f46e5; color:#fff; font-size:0.8rem; font-weight:600; padding:5px 10px; border-radius:6px; border:none; margin:0 3px; cursor:pointer; height:32px; display:inline-flex; align-items:center; gap:4px;">📋 فرز وترحيل</button>
+
+
+
 
         </button>
         <a href="admin-users.html" class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold px-3 py-1 rounded transition shadow flex items-center gap-1" style="text-decoration: none;">
@@ -170,141 +173,7 @@ if ('caches' in window) {
 
 
 
-<!-- شريط الفرز والإجراءات الجماعية -->
-<div id="bulkActionBar" style="display: none; background:#111827; border:2px solid #4f46e5; border-radius:10px; padding:12px 18px; margin:15px auto; max-width:1200px; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; box-shadow:0 6px 20px rgba(0,0,0,0.6);">
-    <div style="color:#10b981; font-weight:bold; font-size:1.05rem;">
-        📌 تم تحديد: <span id="bulkSelectedCount" style="color:#fbbf24; font-size:1.2rem;">0</span> قناة
-    </div>
-    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-        <button type="button" onclick="selectAllBulk(true)" style="background:#374151; color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer;">تحديد الكل</button>
-        <button type="button" onclick="selectAllBulk(false)" style="background:#374151; color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer;">إلغاء التحديد</button>
-        <select id="bulkTargetArea" style="background:#1f2937; color:#fff; border:1px solid #4b5563; padding:6px 10px; border-radius:6px; font-weight:bold;"></select>
-        <button type="button" onclick="executeBulkMove()" style="background:#2563eb; color:#fff; border:none; padding:6px 14px; border-radius:6px; cursor:pointer; font-weight:bold;">📁 ترحيل إلى القسم</button>
-        <button type="button" onclick="executeBulkDelete()" style="background:#dc2626; color:#fff; border:none; padding:6px 14px; border-radius:6px; cursor:pointer; font-weight:bold;">🗑️ حذف المحددة</button>
-    </div>
-</div>
 
-<script>
-// ==================== منطق الفرز وإضافة الأقسام الذاتي ====================
-let isBulkSortActive = false;
-let selectedCamKeys = new Set();
-
-window.addNewCategoryDirect = async function() {
-    const catName = prompt('أدخل اسم القسم الجديد (مثلاً: أطفال، مسلسلات، رياضة):');
-    if (!catName || !catName.trim()) return;
-    const cleanName = catName.trim();
-
-    try {
-        if (!window.firebaseDb) {
-            alert('قاعدة البيانات غير متصلة حالياً!');
-            return;
-        }
-        const snap = await window.firebaseDb.ref('categories').once('value');
-        let currentCats = snap.val() || ['عام'];
-        if (!Array.isArray(currentCats)) currentCats = Object.values(currentCats);
-        if (currentCats.includes(cleanName)) {
-            alert('⚠️ هذا القسم موجود بالفعل!');
-            return;
-        }
-        currentCats.push(cleanName);
-        await window.firebaseDb.ref('categories').set(currentCats);
-        alert(`✅ تم إنشاء قسم [${cleanName}] بنجاح وهو فارغ الآن!`);
-        location.reload();
-    } catch(e) {
-        alert('حدث خطأ: ' + e.message);
-    }
-};
-
-window.toggleBulkSortMode = function() {
-    isBulkSortActive = !isBulkSortActive;
-    const bar = document.getElementById('bulkActionBar');
-    if (bar) bar.style.display = isBulkSortActive ? 'flex' : 'none';
-
-    // تعبئة قائمة الأقسام
-    const targetSelect = document.getElementById('bulkTargetArea');
-    if (targetSelect && window.categoriesList) {
-        const curTab = window.currentTab || 'عام';
-        targetSelect.innerHTML = window.categoriesList
-            .filter(c => c !== curTab && c !== 'جميع الكاميرات')
-            .map(c => `<option value="${c}">${c}</option>`).join('');
-    }
-
-    ensureCheckboxesOnCards();
-};
-
-function ensureCheckboxesOnCards() {
-    const cards = document.querySelectorAll('.card, .cam-card, .camera-card, .cam-box, [data-key]');
-    cards.forEach(card => {
-        let key = card.dataset.key;
-        if (!key) {
-            const btn = card.querySelector('button[onclick*="delete"], button[onclick*="edit"]');
-            if (btn) {
-                const m = btn.getAttribute('onclick').match(/['"]([^'"]+)['"]/);
-                if (m) key = m[1];
-            }
-        }
-        if (key && !card.querySelector('.bulk-chk-box')) {
-            const wrap = document.createElement('div');
-            wrap.className = 'bulk-chk-box';
-            wrap.style.css?v=26.0922.0107Text = 'position:absolute; top:8px; right:8px; z-index:40; background:rgba(17,24,39,0.9); padding:4px 8px; border-radius:6px; border:1px solid #10b981;';
-            wrap.innerHTML = `<label style="color:#fff; cursor:pointer; font-size:12px; display:flex; align-items:center; gap:6px;"><input type="checkbox" value="${key}" onchange="toggleSelectCard('${key}', this.checked)" style="width:16px; height:16px; cursor:pointer; accent-color:#10b981;"> تحديد</label>`;
-            card.style.position = 'relative';
-            card.prepend(wrap);
-        }
-    });
-
-    document.querySelectorAll('.bulk-chk-box').forEach(el => {
-        el.style.display = isBulkSortActive ? 'block' : 'none';
-    });
-}
-
-window.toggleSelectCard = function(key, isChecked) {
-    if (isChecked) selectedCamKeys.add(key);
-    else selectedCamKeys.delete(key);
-    document.getElementById('bulkSelectedCount').innerText = selectedCamKeys.size;
-};
-
-window.selectAllBulk = function(select) {
-    document.querySelectorAll('.bulk-chk-box input[type="checkbox"]').forEach(cb => {
-        cb.checked = select;
-        if (select) selectedCamKeys.add(cb.value);
-    });
-    if (!select) selectedCamKeys.clear();
-    document.getElementById('bulkSelectedCount').innerText = selectedCamKeys.size;
-};
-
-window.executeBulkMove = async function() {
-    if (selectedCamKeys.size === 0) return alert('يرجى تحديد قناة واحدة على الأقل!');
-    const target = document.getElementById('bulkTargetArea').value;
-    if (!target) return alert('يرجى اختيار القسم أولاً!');
-    if (!confirm(`هل أنت متأكد من ترحيل (${selectedCamKeys.size}) قنوات إلى قسم [${target}]؟`)) return;
-
-    try {
-        const updates = {};
-        selectedCamKeys.forEach(k => { updates[`cameras/${k}/area`] = target; });
-        await window.firebaseDb.ref().update(updates);
-        alert(`✅ تم بنجاح ترحيل ${selectedCamKeys.size} قناة إلى [${target}]!`);
-        location.reload();
-    } catch(e) {
-        alert('خطأ: ' + e.message);
-    }
-};
-
-window.executeBulkDelete = async function() {
-    if (selectedCamKeys.size === 0) return alert('يرجى تحديد قنوات لحذفها!');
-    if (!confirm(`⚠️ تحذير: هل أنت متأكد من حذف (${selectedCamKeys.size}) قنوات نهائياً؟`)) return;
-
-    try {
-        const updates = {};
-        selectedCamKeys.forEach(k => { updates[`cameras/${k}`] = null; });
-        await window.firebaseDb.ref().update(updates);
-        alert(`🗑️ تم حذف ${selectedCamKeys.size} قناة بنجاح!`);
-        location.reload();
-    } catch(e) {
-        alert('خطأ: ' + e.message);
-    }
-};
-</script>
 
 <div id="cams-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div class="col-span-full py-20 text-center text-slate-500 text-sm flex flex-col items-center justify-center gap-3">
@@ -439,7 +308,7 @@ window.executeBulkDelete = async function() {
     </div>
   </div>
 
-  <script src="app.js?v=26.0922.0107"></script>
+  <script src="app.js?v=26.0922.0113"></script>
 
   <!-- نظام إدارة دخول المشتركين وفحص الجلسة -->
   <div id="sub-login-modal" style="display:none; position:fixed; inset:0; background:rgba(11,17,32,0.96); z-index:9999; justify-content:center; align-items:center; padding:15px;">
@@ -632,4 +501,158 @@ window.executeBulkDelete = async function() {
       });
     }
   </script>
+
+<!-- شريط الفرز والتحكم الجماعي -->
+<div id="bulkActionBar" style="display: none; background: #111827; border: 1px solid #4f46e5; border-radius: 8px; padding: 10px 15px; margin: 12px auto; max-width: 1200px; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+    <div style="color: #10b981; font-weight: bold; font-size: 0.95rem; display: flex; align-items: center; gap: 6px;">
+        <span>📌 تم تحديد:</span>
+        <span id="bulkSelectedCount" style="color: #fbbf24; font-size: 1.15rem; background: #1f2937; padding: 2px 8px; border-radius: 4px;">0</span>
+        <span>قناة</span>
+    </div>
+    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <button type="button" onclick="selectAllBulk(true)" style="background: #374151; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">تحديد الكل</button>
+        <button type="button" onclick="selectAllBulk(false)" style="background: #374151; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">إلغاء التحديد</button>
+        <select id="bulkTargetArea" style="background: #1f2937; color: #fff; border: 1px solid #4b5563; padding: 6px 10px; border-radius: 6px; font-size: 0.85rem; font-weight: bold;"></select>
+        <button type="button" onclick="executeBulkMove()" style="background: #2563eb; color: #fff; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85rem;">📁 ترحيل للقسم</button>
+        <button type="button" onclick="executeBulkDelete()" style="background: #dc2626; color: #fff; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85rem;">🗑️ حذف المحددة</button>
+    </div>
+</div>
+
+<script>
+let isBulkSortActive = false;
+let selectedCamKeys = new Set();
+
+// 1. إضافة قسم جديد فارغ ومستقل
+window.addNewCategoryDirect = async function() {
+    const catName = prompt('أدخل اسم القسم الجديد (مثلاً: أطفال، مسلسلات، رياضة):');
+    if (!catName || !catName.trim()) return;
+    const cleanName = catName.trim();
+
+    try {
+        if (!window.firebaseDb) return alert('قاعدة البيانات غير متصلة!');
+        const snap = await window.firebaseDb.ref('categories').once('value');
+        let currentCats = snap.val() || ['عام'];
+        if (!Array.isArray(currentCats)) currentCats = Object.values(currentCats);
+        if (currentCats.includes(cleanName)) return alert('⚠️ هذا القسم موجود بالفعل!');
+
+        currentCats.push(cleanName);
+        await window.firebaseDb.ref('categories').set(currentCats);
+        alert(`✅ تم إنشاء قسم [${cleanName}] بنجاح وهو فارغ الآن!`);
+        location.reload();
+    } catch(e) {
+        alert('خطأ: ' + e.message);
+    }
+};
+
+// 2. تفعيل / إخفاء وضع الفرز والشريط
+window.toggleBulkSortMode = function() {
+    isBulkSortActive = !isBulkSortActive;
+    const bar = document.getElementById('bulkActionBar');
+    if (bar) bar.style.display = isBulkSortActive ? 'flex' : 'none';
+
+    // تعبئة قائمة الأقسام من التبويبات المتاحة
+    populateTargetAreas();
+
+    // إظهار أو إخفاء مربعات التحديد على كل الكروت (الشغالة والواقفة)
+    injectCheckboxesToAllCards();
+};
+
+function populateTargetAreas() {
+    const select = document.getElementById('bulkTargetArea');
+    if (!select) return;
+    let cats = [];
+
+    if (window.categoriesList && Array.isArray(window.categoriesList)) {
+        cats = [...window.categoriesList];
+    } else {
+        document.querySelectorAll('button[onclick*="switchTab"], .tab-btn').forEach(btn => {
+            const t = btn.innerText.trim();
+            if (t && !cats.includes(t) && t !== 'جميع الكاميرات') cats.push(t);
+        });
+    }
+
+    const currentTab = window.currentTab || 'عام';
+    const targets = cats.filter(c => c !== currentTab && c !== 'جميع الكاميرات');
+    select.innerHTML = targets.map(c => `<option value="${c}">${c}</option>`).join('');
+    if (targets.length === 0) select.innerHTML = '<option value="">(لا يوجد أقسام أخرى)</option>';
+}
+
+// 3. زرع مربعات التحديد على كل القنوات (سواء شغالة أو واقفة)
+function injectCheckboxesToAllCards() {
+    // كل كرت يحتوي زر تعديل أو حذف
+    const actionBtns = document.querySelectorAll('button[onclick*="delete"], button[onclick*="edit"]');
+    actionBtns.forEach(btn => {
+        const cardHeader = btn.parentElement;
+        if (!cardHeader.querySelector('.bulk-chk-label')) {
+            // استخراج مفتاح القناة من زر الحذف أو التعديل
+            const onclickAttr = btn.getAttribute('onclick') || '';
+            const m = onclickAttr.match(/['"]([^'"]+)['"]/);
+            if (m) {
+                const key = m[1];
+                const lbl = document.createElement('label');
+                lbl.className = 'bulk-chk-label';
+                lbl.style.css?v=26.0922.0113Text = 'display: inline-flex; align-items: center; gap: 4px; background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 11px; color: #10b981; margin-left: 6px;';
+                lbl.innerHTML = `<input type="checkbox" value="${key}" onchange="toggleSelectCard('${key}', this.checked)" style="width: 15px; height: 15px; cursor: pointer; accent-color: #10b981;"> تحديد`;
+                cardHeader.insertBefore(lbl, cardHeader.firstChild);
+            }
+        }
+    });
+
+    // تحديث ظهور المربعات حسب تفعيل وضع الفرز
+    document.querySelectorAll('.bulk-chk-label').forEach(el => {
+        el.style.display = isBulkSortActive ? 'inline-flex' : 'none';
+    });
+}
+
+window.toggleSelectCard = function(key, isChecked) {
+    if (isChecked) selectedCamKeys.add(key);
+    else selectedCamKeys.delete(key);
+    document.getElementById('bulkSelectedCount').innerText = selectedCamKeys.size;
+};
+
+window.selectAllBulk = function(select) {
+    document.querySelectorAll('.bulk-chk-label input[type="checkbox"]').forEach(cb => {
+        cb.checked = select;
+        if (select) selectedCamKeys.add(cb.value);
+    });
+    if (!select) selectedCamKeys.clear();
+    document.getElementById('bulkSelectedCount').innerText = selectedCamKeys.size;
+};
+
+// 4. تنفيذ الترحيل الجماعي
+window.executeBulkMove = async function() {
+    if (selectedCamKeys.size === 0) return alert('يرجى تحديد قناة واحدة على الأقل لترحيلها!');
+    const target = document.getElementById('bulkTargetArea').value;
+    if (!target) return alert('يرجى اختيار القسم المستهدف أولاً!');
+
+    if (!confirm(`هل أنت متأكد من ترحيل (${selectedCamKeys.size}) قنوات إلى قسم [${target}]؟`)) return;
+
+    try {
+        const updates = {};
+        selectedCamKeys.forEach(k => { updates[`cameras/${k}/area`] = target; });
+        await window.firebaseDb.ref().update(updates);
+        alert(`✅ تم ترحيل ${selectedCamKeys.size} قناة إلى قسم [${target}] بنجاح!`);
+        location.reload();
+    } catch(e) {
+        alert('خطأ أثناء الترحيل: ' + e.message);
+    }
+};
+
+// 5. تنفيذ الحذف الجماعي
+window.executeBulkDelete = async function() {
+    if (selectedCamKeys.size === 0) return alert('يرجى تحديد القنوات المراد حذفها أولاً!');
+    if (!confirm(`⚠️ تحذير نهائي: هل أنت متأكد من حذف (${selectedCamKeys.size}) قنوات نهائياً؟`)) return;
+
+    try {
+        const updates = {};
+        selectedCamKeys.forEach(k => { updates[`cameras/${k}`] = null; });
+        await window.firebaseDb.ref().update(updates);
+        alert(`🗑️ تم حذف ${selectedCamKeys.size} قناة بنجاح!`);
+        location.reload();
+    } catch(e) {
+        alert('خطأ أثناء الحذف: ' + e.message);
+    }
+};
+</script>
+
 </body>
