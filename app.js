@@ -243,14 +243,22 @@ function renderCategoryOrderList() {
   listEl.innerHTML = '';
 
   tempCategoryOrder.forEach((cat, idx) => {
+    const streamCount = streamsData.filter(s => s.area === cat).length;
     const item = document.createElement('div');
-    item.className = 'flex items-center justify-between bg-slate-900 border border-slate-800 px-3 py-2 rounded-lg text-xs';
+    item.className = 'flex items-center justify-between bg-slate-900 border border-slate-800 px-3 py-2 rounded-lg text-xs gap-2';
     item.innerHTML = `
-      <span class="font-bold text-slate-200 flex items-center gap-2">
-        <span class="w-5 h-5 rounded-full bg-slate-800 text-emerald-400 flex items-center justify-center text-[10px]">${idx + 1}</span>
-        ${cat}
-      </span>
-      <div class="flex items-center gap-1">
+      <div class="flex items-center gap-2 overflow-hidden">
+        <span class="w-5 h-5 rounded-full bg-slate-800 text-emerald-400 flex items-center justify-center text-[10px] shrink-0">${idx + 1}</span>
+        <span class="font-bold text-slate-200 truncate">${cat}</span>
+        <span class="text-[10px] text-slate-500 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 shrink-0">(${streamCount})</span>
+      </div>
+      <div class="flex items-center gap-1 shrink-0">
+        <button onclick="renameCategory('${cat.replace(/'/g, "\'")}')" class="w-7 h-7 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded flex items-center justify-center transition" title="إعادة تسمية القسم">
+          <i class="fa-solid fa-pen text-[10px]"></i>
+        </button>
+        <button onclick="deleteCategory('${cat.replace(/'/g, "\'")}')" class="w-7 h-7 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded flex items-center justify-center transition" title="حذف القسم بالكامل">
+          <i class="fa-solid fa-trash text-[10px]"></i>
+        </button>
         <button onclick="moveCategory(${idx}, -1)" class="w-7 h-7 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded flex items-center justify-center transition" ${idx === 0 ? 'disabled style="opacity:0.3"' : ''} title="تقديم">
           <i class="fa-solid fa-arrow-up text-[10px]"></i>
         </button>
@@ -261,6 +269,76 @@ function renderCategoryOrderList() {
     `;
     listEl.appendChild(item);
   });
+}
+
+async function renameCategory(oldName) {
+  if (!currentUser) {
+    alert("يرجى تسجيل الدخول كمسؤول أولاً!");
+    return;
+  }
+  const newName = prompt(`أدخل الاسم الجديد لقسم "${oldName}":`, oldName);
+  if (!newName || !newName.trim() || newName.trim() === oldName) return;
+
+  const cleanNewName = newName.trim();
+  if (tempCategoryOrder.includes(cleanNewName)) {
+    alert(`القسم "${cleanNewName}" موجود بالفعل!`);
+    return;
+  }
+
+  const targets = streamsData.filter(s => s.area === oldName);
+  if (!confirm(`هل أنت متأكد من تغيير اسم قسم "${oldName}" إلى "${cleanNewName}"؟
+سيتم تحديث (${targets.length}) قناة تابعة له.`)) return;
+
+  try {
+    const rootRef = orderRef.root;
+    const updatePromises = targets.map(s => rootRef.child(`streams/${s.id}/area`).set(cleanNewName));
+    await Promise.all(updatePromises);
+
+    targets.forEach(s => s.area = cleanNewName);
+    tempCategoryOrder = tempCategoryOrder.map(c => c === oldName ? cleanNewName : c);
+    customCategoryOrder = customCategoryOrder.map(c => c === oldName ? cleanNewName : c);
+    await orderRef.set(tempCategoryOrder);
+
+    renderCategoryOrderList();
+    setupFilters();
+    renderCams();
+    alert(`✓ تم تغيير اسم القسم إلى "${cleanNewName}" وتحديث قنواته بنجاح!`);
+  } catch (e) {
+    alert("خطأ أثناء إعادة تسمية القسم: " + e.message);
+  }
+}
+
+async function deleteCategory(catName) {
+  if (!currentUser) {
+    alert("يرجى تسجيل الدخول كمسؤول أولاً!");
+    return;
+  }
+
+  const targets = streamsData.filter(s => s.area === catName);
+  const confirmMsg = targets.length > 0
+    ? `⚠️ تحذير أمان: هل أنت متأكد تماماً من حذف قسم "${catName}"؟
+
+سيتم حذف جميع القنوات والبثوث التابعة له وعددهم (${targets.length} قناة) نهائياً من المنصة!`
+    : `هل تريد إزالة قسم "${catName}" الفارغ من القائمة؟`;
+
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    const rootRef = orderRef.root;
+    const deletePromises = targets.map(s => rootRef.child(`streams/${s.id}`).remove());
+    await Promise.all(deletePromises);
+
+    tempCategoryOrder = tempCategoryOrder.filter(c => c !== catName);
+    customCategoryOrder = customCategoryOrder.filter(c => c !== catName);
+    await orderRef.set(tempCategoryOrder);
+
+    renderCategoryOrderList();
+    setupFilters();
+    renderCams();
+    alert(`✓ تم حذف قسم "${catName}" وجميع قنواته بنجاح!`);
+  } catch (e) {
+    alert("خطأ أثناء حذف القسم: " + e.message);
+  }
 }
 
 function moveCategory(index, direction) {
