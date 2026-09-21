@@ -23,7 +23,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 
-  <link rel="stylesheet" href="style.css?v=26.0922.0049">
+  <link rel="stylesheet" href="style.css?v=26.0922.0055">
 
     <style>
     .bulk-action-bar {
@@ -66,6 +66,23 @@
     .card-checkbox-container input { cursor: pointer; width: 18px; height: 18px; accent-color: #10b981; }
     </style>
     
+
+<script>
+// إجبار المتصفح على تنظيف كاش PWA عند تغير الفيرجن
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for(let registration of registrations) {
+            registration.unregister();
+        }
+    });
+}
+if ('caches' in window) {
+    caches.keys().then(names => {
+        for (let name of names) caches.delete(name);
+    });
+}
+</script>
+
 </head>
 <body class="bg-[#070a12] text-slate-100 min-h-screen flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
 <!-- شريط ترحيب المشترك وتسجيل الخروج -->
@@ -146,7 +163,21 @@
       <div id="filter-buttons" class="flex items-center gap-1.5"></div>
     </div>
 
-    <div id="cams-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    
+<div id="bulkActionBar" class="bulk-action-bar" style="display: none; background:#111827; border:1px solid #374151; border-radius:10px; padding:10px 15px; margin:15px auto; max-width:1200px; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+    <div style="color:#10b981; font-weight:bold; font-size:1rem;">
+        تم تحديد: <span id="bulkSelectedCount">0</span> قناة
+    </div>
+    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <button id="bulkSelectAllBtn" style="background:#374151; color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer;">تحديد الكل</button>
+        <button id="bulkDeselectBtn" style="background:#374151; color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer;">إلغاء التحديد</button>
+        <select id="bulkTargetArea" style="background:#1f2937; color:#fff; border:1px solid #4b5563; padding:6px 10px; border-radius:6px;"></select>
+        <button id="bulkMoveBtn" style="background:#2563eb; color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:bold;">📁 ترحيل إلى القسم</button>
+        <button id="bulkDeleteBtn" style="background:#dc2626; color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:bold;">🗑️ حذف المحددة</button>
+    </div>
+</div>
+
+<div id="cams-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div class="col-span-full py-20 text-center text-slate-500 text-sm flex flex-col items-center justify-center gap-3">
         <span class="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></span>
         <span>جاري مزامنة قنوات البث المفتوحة...</span>
@@ -279,7 +310,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=26.0922.0049"></script>
+  <script src="app.js?v=26.0922.0055"></script>
 
   <!-- نظام إدارة دخول المشتركين وفحص الجلسة -->
   <div id="sub-login-modal" style="display:none; position:fixed; inset:0; background:rgba(11,17,32,0.96); z-index:9999; justify-content:center; align-items:center; padding:15px;">
