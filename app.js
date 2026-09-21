@@ -1,4 +1,54 @@
 
+// ==================== إضافة قسم مستقل ومزامنة الأقسام ====================
+function setupDirectCategoryCreation() {
+    const btn = document.getElementById('addNewCatDirectBtn');
+    if (!btn) return;
+    
+    btn.onclick = async () => {
+        const catName = prompt('أدخل اسم القسم الجديد (مثلاً: أطفال، مسلسلات، رياضة):');
+        if (!catName || !catName.trim()) return;
+        const cleanName = catName.trim();
+
+        // جلب الأقسام الحالية
+        let currentCats = window.categoriesList || ['عام'];
+        if (currentCats.includes(cleanName)) {
+            alert('⚠️ هذا القسم موجود بالفعل!');
+            return;
+        }
+
+        currentCats.push(cleanName);
+        try {
+            if (window.firebaseDb) {
+                await window.firebaseDb.ref('categories').set(currentCats);
+            }
+            alert(`✅ تم إنشاء قسم [${cleanName}] بنجاح وهو فارغ الآن وجاهز لترحيل القنوات إليه!`);
+            
+            // تحديث الواجهة والتبويبات فوراً
+            window.categoriesList = currentCats;
+            if (typeof renderTabs === 'function') renderTabs();
+            if (typeof updateBulkBarUI === 'function') updateBulkBarUI();
+            if (typeof switchTab === 'function') switchTab(cleanName);
+        } catch (e) {
+            alert('حدث خطأ أثناء حفظ القسم: ' + e.message);
+        }
+    };
+}
+
+// مزامنة الأقسام المستقلة تلقائياً من الفايربيس
+if (window.firebaseDb) {
+    window.firebaseDb.ref('categories').on('value', snap => {
+        const val = snap.val();
+        if (val && Array.isArray(val)) {
+            window.categoriesList = val;
+            if (typeof renderTabs === 'function') renderTabs();
+            if (typeof updateBulkBarUI === 'function') updateBulkBarUI();
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', setupDirectCategoryCreation);
+
+
 // ==================== نظام التحديد، الترحيل، والحذف الجماعي ====================
 let selectedCamKeys = new Set();
 
