@@ -1,4 +1,23 @@
 
+// الاستماع اللحظي لرقم الفيرجن عبر الفايربيس لتخطي كاش CDN
+if (window.firebaseDb) {
+    let localVersion = localStorage.getItem('albasem_cached_ver');
+    window.firebaseDb.ref('app_version').on('value', snap => {
+        const data = snap.val();
+        if (data && data.version) {
+            if (!localVersion) {
+                localStorage.setItem('albasem_cached_ver', data.version);
+            } else if (localVersion !== data.version) {
+                console.log('🔄 تحديث جديد للمنصة:', data.version);
+                localStorage.setItem('albasem_cached_ver', data.version);
+                // إعادة تحميل الصفحة مع تجاوز الكاش
+                window.location.reload(true);
+            }
+        }
+    });
+}
+
+
 // ==================== إضافة قسم مستقل ومزامنة الأقسام ====================
 function setupDirectCategoryCreation() {
     const btn = document.getElementById('addNewCatDirectBtn');
