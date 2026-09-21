@@ -1,4 +1,93 @@
 
+def extract_smart_channel_title(url, fallback_title="بث مباشر"):
+    u = url.lower()
+    mapping = [
+        ("syriatv", "تلفزيون سوريا"),
+        ("syria", "تلفزيون سوريا"),
+        ("mbc-1", "MBC 1"),
+        ("mbc1", "MBC 1"),
+        ("mbc-2", "MBC 2"),
+        ("mbc2", "MBC 2"),
+        ("mbc-3", "MBC 3"),
+        ("mbc3", "MBC 3"),
+        ("mbc-4", "MBC 4"),
+        ("mbc4", "MBC 4"),
+        ("mbc-action", "MBC Action"),
+        ("mbc-max", "MBC Max"),
+        ("mbc-masr-2", "MBC مصر 2"),
+        ("mbc-masr", "MBC مصر"),
+        ("mbc-drama", "MBC دراما"),
+        ("mixtv", "قناة ميكس MIX"),
+        ("mix", "قناة ميكس MIX"),
+        ("aljazeera", "قناة الجزيرة"),
+        ("alarabiya", "قناة العربية"),
+        ("alhadath", "قناة الحدث"),
+        ("alghad", "قناة الغد"),
+        ("almayadeen", "قناة الميادين"),
+        ("rotana-cinema", "روتانا سينما"),
+        ("rotana-classic", "روتانا كلاسيك"),
+        ("rotana-clip", "روتانا كليب"),
+        ("rotana", "شبكة روتانا"),
+        ("spacetoon", "سبيستون Spacetoon"),
+        ("cartoon", "كرتون نتورك"),
+        ("cn-arabic", "كرتون نتورك"),
+        ("fajrtv", "تلفزيون الفجر"),
+        ("alfajr", "تلفزيون الفجر"),
+        ("shababfm", "راديو وتلفزيون شباب FM"),
+        ("palestine", "تلفزيون فلسطين"),
+        ("musawa", "قناة مساواة"),
+        ("watan", "تلفزيون وطن"),
+    ]
+    for key, name in mapping:
+        if key in u:
+            return name
+
+    # محاولة استخراج اسم نظيف من مسار الرابط
+    import re
+    match = re.search(r'/([^/?#]+)\.(smil|m3u8)', url)
+    if match:
+        clean = match.group(1).replace('_', ' ').replace('-', ' ').title()
+        if clean.lower() not in ['index', 'playlist', 'master', 'mono', 'live', 'stream']:
+            return clean
+            
+    if fallback_title and fallback_title not in ['بث مباشر', 'قنوات لايف']:
+        return fallback_title
+    return "بث حي"
+
+
+import urllib.request, ssl
+
+def verify_live_stream(url, referer=""):
+    """فحص فوري للرابط والتأكد أنه بث حي حقيقي وشغال في المتصفح"""
+    urls_to_try = []
+    if url.startswith("http://"):
+        urls_to_try.append(url.replace("http://", "https://", 1))
+    urls_to_try.append(url)
+
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
+    for u in urls_to_try:
+        try:
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+                "Accept": "*/*"
+            }
+            if referer:
+                headers["Referer"] = referer
+            
+            req = urllib.request.Request(u, headers=headers)
+            with urllib.request.urlopen(req, timeout=3.5, context=ctx) as resp:
+                if resp.status in [200, 206]:
+                    content_start = resp.read(150).decode('utf-8', errors='ignore')
+                    if "#EXTM3U" in content_start or "#EXT-X" in content_start:
+                        return True, u
+        except Exception:
+            continue
+    return False, url
+
+
 def detect_area_smart(url, text):
     combined = (url + " " + text).lower()
     if any(k in combined for k in ["ramallah", "رام الله", "المنارة", "بلدية رام الله"]):
@@ -40,6 +129,7 @@ CONFIG_FILE = os.path.expanduser("~/albasem-cams/config.json")
 
 class AlbasemWindow(Gtk.Window):
     def __init__(self):
+        self.stop_sniff_flag = False
         super().__init__(title="الباسم سات | أداة إدارة وقنص الكاميرات الحية")
         self.set_default_size(620, 780)
         self.set_position(Gtk.WindowPosition.CENTER)
@@ -79,6 +169,9 @@ class AlbasemWindow(Gtk.Window):
         sniff_vbox.pack_start(self.page_url_entry, False, False, 0)
 
         self.sniff_btn = Gtk.Button(label="🚀 قنص وفحص جميع قنوات وسيرفرات الصفحة")
+        self.finish_btn = Gtk.Button(label="🎯 إنهاء الصيد واعتماد الروابط")
+        self.finish_btn.set_sensitive(False)
+        self.finish_btn.connect("clicked", self.on_force_finish_sniff)
         self.sniff_btn.connect("clicked", self.on_sniff_clicked)
         sniff_vbox.pack_start(self.sniff_btn, False, False, 0)
         main_vbox.pack_start(sniff_frame, False, False, 0)
@@ -257,93 +350,77 @@ class AlbasemWindow(Gtk.Window):
         try:
             from playwright.sync_api import sync_playwright
             with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True, args=['--autoplay-policy=no-user-gesture-required', '--no-sandbox', '--disable-gpu'])
-                context = browser.new_context(user_agent="Mozilla/5.0 (X11; Linux x86_64) Chrome/120.0.0.0 Safari/537.36")
+                browser = p.chromium.launch(headless=False, args=['--autoplay-policy=no-user-gesture-required', '--no-sandbox'])
+                context = browser.new_context(
+                    user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+                    viewport={'width': 1280, 'height': 720}
+                )
                 page = context.new_page()
 
-                # تسريع خيالي: منع تحميل الصور والفيديوهات والخطوط داخل المتصفح الخفي
-                def block_heavy(route):
-                    if route.request.resource_type in ["image", "media", "font"]:
-                        route.abort()
-                    else:
-                        route.continue_()
-                page.route("**/*", block_heavy)
-
-                def handle_req(req):
-                    u = req.url
-                    if ".m3u8" in u and not any(x in u for x in ["chunk", "segment"]):
-                        clean_u = u.split("?")[0] if ("index.m3u8" in u or "mono.m3u8" in u) else u
-                        if clean_u not in seen_urls:
-                            seen_urls.add(clean_u)
-                            dyn_label = f"{page_title} (سيرفر {len(found_streams)+1})" if page_title and len(found_streams) > 0 else (page_title or "البث المباشر")
-                            server_num = len(found_streams) + 1
-                            base_name = page_title if page_title else "بث حي"
-                            final_name = f"{base_name} (سيرفر {server_num})"
-                            found_streams.append({"label": final_name, "url": clean_u, "type": "hls", "area": detected_area})
-
-                page_title = "بلدية رام الله" if "ramallah" in target_url.lower() else ""
-                detected_area = detect_area_smart(target_url, "")
-                page.on("request", handle_req)
-
-                try:
-                    page.goto(target_url, wait_until="commit", timeout=8000)
+                def handle_response(response):
                     try:
-                        page_title = page.evaluate("""() => {
-                            const h1 = document.querySelector("h1");
-                            if (h1 && h1.innerText.trim()) return h1.innerText.trim();
-                            let t = document.title || "";
-                            return t.replace(/NABLUS LIVE|نابلس مباشر|بث حي|مباشر|شباب FM|-|\\|/gi, "").trim();
-                        }""")
-                        detected_area = detect_area_smart(target_url, page_title or "")
-                    except:
-                        pass
-                except Exception:
-                    pass
-
-                try:
-                    extracted_title = page.title().split("-")[0].split("|")[0].strip()
-                except Exception:
-                    extracted_title = "بث مباشر"
-
-                page.wait_for_timeout(1000)
-
-                # استخراج أزرار السيرفرات والروابط برمشة عين
-                js_extract = """
-                () => {
-                    const found = [];
-                    const html = document.documentElement.innerHTML;
-                    const matches = html.match(/https?:\\/\\/[^"'\\s<>]+\\.m3u8[^"'\\s<>]*/g) || [];
-                    matches.forEach(m => found.push({label: 'رابط مباشر', url: m}));
-
-                    document.querySelectorAll('button, a, .btn').forEach(el => {
-                        const txt = (el.innerText || el.textContent || '').trim();
-                        if (txt.includes('سيرفر') || txt.includes('القرآن') || txt.includes('قرآن')) {
-                            try { el.click(); } catch(e){}
-                        }
-                    });
-                    return found;
-                }
-                """
-                try:
-                    js_links = page.evaluate(js_extract)
-                    for item in js_links:
-                        u = item['url']
-                        if ".m3u8" in u and not any(x in u for x in ["chunk", "segment"]):
-                            clean_u = u.split("?")[0] if ("index.m3u8" in u or "mono.m3u8" in u) else u
-                            if clean_u not in seen_urls:
+                        u = response.url
+                        # حصر الصيد بروابط HLS المفتوحة فقط واستبعاد المقاطع الصغيرة
+                        # فلتر ذكي: استبعاد مسارات الصوت والصورة المجزأة وحصر الصيد بالرابط الأب الكامل
+                        sub_tracks = ['.ts', '.m4s', 'segment', 'chunk', '/video/', '/audio/', 'video.m3u8', 'audio.m3u8', 'manifest/video', 'manifest/audio', 'tracks-v', 'rendition']
+                        if '.m3u8' in u.lower() and not any(x in u.lower() for x in sub_tracks):
+                            clean_u = u.split('?')[0] if ('index.m3u8' in u or 'mono.m3u8' in u or 'playlist.m3u8' in u) else u
+                            base_stream_path = clean_u.rsplit('/', 1)[0]
+                            # منع تسجيل أكثر من تراك لنفس مسار القناة
+                            if clean_u not in seen_urls and not any(base_stream_path in s['url'] for s in found_streams) and response.status in [200, 206]:
                                 seen_urls.add(clean_u)
-                                lbl = "سيرفر مباشر"
-                                if "1.m3u8" in clean_u: lbl = "إذاعة وتلفزيون القرآن الكريم"
-                                elif "2.m3u8" in clean_u: lbl = "تلفزيون شباب FM (سيرفر 1)"
-                                found_streams.append({"label": f"{extracted_title} - {lbl}", "url": clean_u, "type": "hls"})
+                                server_num = len(found_streams) + 1
+                                ch_base_name = extract_smart_channel_title(u, extracted_title)
+                            same_ch_count = sum(1 for s in found_streams if ch_base_name in s['label'])
+                            lbl = f"{ch_base_name}" if same_ch_count == 0 else f"{ch_base_name} (سيرفر {same_ch_count + 1})"
+                                print(f'\033[92m[✓] تم صيد رابط HLS شغال: {clean_u}\033[0m')
+                                found_streams.append({'label': lbl, 'url': u, 'type': 'hls', 'area': detected_area})
+                    except Exception:
+                        pass
+
+                page.on('response', handle_response)
+                extracted_title = 'بث مباشر'
+                detected_area = detect_area_smart(target_url, '')
+
+                print('\n\033[96m🎮 المتصفح مفتوح قدامك يا أبو باسم...\033[0m')
+                print('\033[93m👉 شغل الفيديو وسكر أي إعلانات.. لما تخلص بس اضغط [Enter] بالترمينال هون أو سكر نافذة المتصفح!\033[0m\n')
+
+                try:
+                    page.goto(target_url, wait_until='commit', timeout=20000)
                 except Exception:
                     pass
+                self.stop_sniff_flag = False
+                GLib.idle_add(self.finish_btn.set_sensitive, True)
 
-                browser.close()
+                def update_counter():
+                    self.status_lbl.set_text(f"🟢 تم صيد {len(found_streams)} سيرفر HLS شغال حتى الآن...")
+                    return False
+
+                import select, sys, time
+                start_t = time.time()
+                while time.time() - start_t < 1200:
+                    if page.is_closed() or self.stop_sniff_flag:
+                        print("[-] تم طلب الإنهاء والاعتماد.")
+                        break
+                    if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
+                        sys.stdin.readline()
+                        print("[✓] تم تأكيد الانتهاء بضغط Enter من الترمينال.")
+                        break
+                    if len(found_streams) > 0:
+                        GLib.idle_add(update_counter)
+                    try:
+                        page.wait_for_timeout(300)
+                    except Exception:
+                        break
+
+                GLib.idle_add(self.finish_btn.set_sensitive, False)
+                try:
+                    browser.close()
+                except Exception:
+                    pass
         except Exception as e:
-            print("Sniff error:", e)
+            print('Sniff error:', e)
 
-        # دعم سيرفرات شباب FM وقناة القرآن الكريم تلقائياً
         if "shababfm" in target_url:
             s_list = [
                 ("تلفزيون شباب FM (سيرفر 1 - رئيسي)", "https://shabab.showtv.ps:443/shabab/fkJtYD2sJQ/2.m3u8"),
@@ -357,6 +434,13 @@ class AlbasemWindow(Gtk.Window):
                     found_streams.append({"label": name, "url": u, "type": "hls", "area": "شباب اف ام نابلس"})
 
         GLib.idle_add(self.apply_multi_results, found_streams)
+
+
+    def on_force_finish_sniff(self, widget=None):
+        self.stop_sniff_flag = True
+        self.status_lbl.set_text("⏳ جاري إنهاء الصيد وجلب الروابط...")
+        if hasattr(self, 'finish_btn'):
+            self.finish_btn.set_sensitive(False)
 
     def apply_multi_results(self, streams):
         self.sniff_btn.set_sensitive(True)

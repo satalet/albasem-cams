@@ -90,12 +90,20 @@ def check_stream_health(stream):
 
     elif stype == 'hls':
         try:
-            req = urllib.request.Request(
-                url,
-                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36", "Accept": "*/*"}
-            )
-            with urllib.request.urlopen(req, timeout=7) as resp:
-                if resp.status == 200:
+            import ssl
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+                "Accept": "*/*",
+                "Referer": "https://shahid.mbc.net/",
+                "Origin": "https://shahid.mbc.net"
+            }
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=8, context=ctx) as resp:
+                if resp.status in [200, 206]:
                     return True, "بث حي مستقر (HLS 200 OK)"
                 return False, f"رمز الاستجابة: {resp.status}"
         except urllib.error.HTTPError as e:

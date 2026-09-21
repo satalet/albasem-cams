@@ -1,3 +1,126 @@
+
+// ==================== نظام التحديد، الترحيل، والحذف الجماعي ====================
+let selectedCamKeys = new Set();
+
+function updateBulkBarUI() {
+    const bar = document.getElementById('bulkActionBar');
+    const countLbl = document.getElementById('bulkSelectedCount');
+    const targetSelect = document.getElementById('bulkTargetArea');
+    if (!bar || !countLbl) return;
+
+    if (window.isAdminMode) {
+        bar.style.display = 'flex';
+        countLbl.innerText = selectedCamKeys.size;
+        
+        // تعبئة الأقسام المتاحة للترحيل
+        if (targetSelect && window.categoriesList) {
+            const currentArea = window.currentTab || 'عام';
+            targetSelect.innerHTML = window.categoriesList
+                .filter(cat => cat !== currentArea && cat !== 'جميع الكاميرات')
+                .map(cat => `<option value="${cat}">${cat}</option>`).join('');
+        }
+        
+        // إظهار مربعات الاختيار في كروت القسم الحالي
+        document.querySelectorAll('.card-checkbox-container').forEach(el => el.style.display = 'block');
+    } else {
+        bar.style.display = 'none';
+        selectedCamKeys.clear();
+        document.querySelectorAll('.card-checkbox-container').forEach(el => el.style.display = 'none');
+    }
+}
+
+// تبديل اختيار كرت محدد
+window.toggleSelectCard = function(key, isChecked) {
+    if (isChecked) {
+        selectedCamKeys.add(key);
+    } else {
+        selectedCamKeys.delete(key);
+    }
+    const countLbl = document.getElementById('bulkSelectedCount');
+    if (countLbl) countLbl.innerText = selectedCamKeys.size;
+};
+
+// تهيئة أزرار الشريط الجماعي
+function setupBulkActionListeners() {
+    const selectAllBtn = document.getElementById('bulkSelectAllBtn');
+    const deselectBtn = document.getElementById('bulkDeselectBtn');
+    const moveBtn = document.getElementById('bulkMoveBtn');
+    const deleteBtn = document.getElementById('bulkDeleteBtn');
+
+    if (selectAllBtn) {
+        selectAllBtn.onclick = () => {
+            document.querySelectorAll('.card-checkbox-container input[type="checkbox"]').forEach(cb => {
+                cb.checked = true;
+                selectedCamKeys.add(cb.dataset.key);
+            });
+            updateBulkBarUI();
+        };
+    }
+
+    if (deselectBtn) {
+        deselectBtn.onclick = () => {
+            document.querySelectorAll('.card-checkbox-container input[type="checkbox"]').forEach(cb => {
+                cb.checked = false;
+            });
+            selectedCamKeys.clear();
+            updateBulkBarUI();
+        };
+    }
+
+    if (moveBtn) {
+        moveBtn.onclick = async () => {
+            if (selectedCamKeys.size === 0) {
+                alert('يرجى تحديد قناة واحدة على الأقل لترحيلها!');
+                return;
+            }
+            const target = document.getElementById('bulkTargetArea').value;
+            if (!target) {
+                alert('يرجى اختيار القسم المستهدف أولاً!');
+                return;
+            }
+            if (confirm(`هل أنت متأكد من نقل (${selectedCamKeys.size}) قنوات إلى قسم [${target}]؟`)) {
+                try {
+                    const updates = {};
+                    selectedCamKeys.forEach(k => {
+                        updates[`cameras/${k}/area`] = target;
+                    });
+                    await window.firebaseDb.ref().update(updates);
+                    alert(`✅ تم بنجاح ترحيل ${selectedCamKeys.size} قناة إلى قسم [${target}]!`);
+                    selectedCamKeys.clear();
+                    updateBulkBarUI();
+                } catch (e) {
+                    alert('خطأ أثناء الترحيل: ' + e.message);
+                }
+            }
+        };
+    }
+
+    if (deleteBtn) {
+        deleteBtn.onclick = async () => {
+            if (selectedCamKeys.size === 0) {
+                alert('يرجى تحديد القنوات المراد حذفها أولاً!');
+                return;
+            }
+            if (confirm(`⚠️ تحذير: هل أنت متأكد من حذف (${selectedCamKeys.size}) قنوات نهائياً من هذا القسم؟`)) {
+                try {
+                    const updates = {};
+                    selectedCamKeys.forEach(k => {
+                        updates[`cameras/${k}`] = null;
+                    });
+                    await window.firebaseDb.ref().update(updates);
+                    alert(`🗑️ تم حذف ${selectedCamKeys.size} قناة بنجاح!`);
+                    selectedCamKeys.clear();
+                    updateBulkBarUI();
+                } catch (e) {
+                    alert('خطأ أثناء الحذف: ' + e.message);
+                }
+            }
+        };
+    }
+}
+
+document.addEventListener('DOMContentLoaded', setupBulkActionListeners);
+
 let activeModalHlsInstance = null;
 // مراقبة وتسجيل الـ Service Worker لكسر الكاش وتثبيت PWA
 let deferredPrompt = null;

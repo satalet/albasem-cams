@@ -21,6 +21,48 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 
   <link rel="stylesheet" href="style.css">
+
+    <style>
+    .bulk-action-bar {
+        position: sticky;
+        top: 70px;
+        z-index: 100;
+        background: #111827;
+        border: 1px solid #374151;
+        border-radius: 10px;
+        padding: 10px 15px;
+        margin: 10px auto 20px auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    }
+    .bulk-info span { color: #10b981; font-weight: bold; font-size: 0.95rem; }
+    .bulk-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .btn-action { padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-family: inherit; font-weight: 500; }
+    .btn-action.secondary { background: #374151; color: #f3f4f6; }
+    .btn-action.secondary:hover { background: #4b5563; }
+    .btn-action.move-btn { background: #2563eb; color: #fff; }
+    .btn-action.move-btn:hover { background: #1d4ed8; }
+    .btn-action.danger { background: #dc2626; color: #fff; }
+    .btn-action.danger:hover { background: #b91c1c; }
+    .admin-select { background: #1f2937; color: #f3f4f6; border: 1px solid #4b5563; padding: 6px 10px; border-radius: 6px; font-family: inherit; }
+    .card-checkbox-container {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 25;
+        background: rgba(17, 24, 39, 0.85);
+        border-radius: 6px;
+        padding: 3px 6px;
+        border: 1px solid #4b5563;
+        display: none;
+    }
+    .card-checkbox-container input { cursor: pointer; width: 18px; height: 18px; accent-color: #10b981; }
+    </style>
+    
 </head>
 <body class="bg-[#070a12] text-slate-100 min-h-screen flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
 <!-- شريط ترحيب المشترك وتسجيل الخروج -->
