@@ -23,7 +23,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 
-  <link rel="stylesheet" href="style.css?v=26.0922.0130">
+  <link rel="stylesheet" href="style.css?v=26.0922.0135">
 
     <style>
     .bulk-action-bar {
@@ -337,7 +337,7 @@ if ('caches' in window) {
     </div>
   </div>
 
-  <script src="app.js?v=26.0922.0130"></script>
+  <script src="app.js?v=26.0922.0135"></script>
 
   <!-- نظام إدارة دخول المشتركين وفحص الجلسة -->
   <div id="sub-login-modal" style="display:none; position:fixed; inset:0; background:rgba(11,17,32,0.96); z-index:9999; justify-content:center; align-items:center; padding:15px;">
@@ -615,7 +615,7 @@ function injectCheckboxesToAllCards() {
                 const key = m[1];
                 const lbl = document.createElement('label');
                 lbl.className = 'bulk-chk-label';
-                lbl.style.css?v=26.0922.0130'display: inline-flex; align-items: center; gap: 4px; background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 11px; color: #10b981; margin-left: 6px;';
+                lbl.style.css?v=26.0922.0135'display: inline-flex; align-items: center; gap: 4px; background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 11px; color: #10b981; margin-left: 6px;';
                 lbl.innerHTML = `<input type="checkbox" value="${key}" onchange="toggleSelectCard('${key}', this.checked)" style="width: 15px; height: 15px; cursor: pointer; accent-color: #10b981;"> تحديد`;
                 cardHeader.insertBefore(lbl, cardHeader.firstChild);
             }

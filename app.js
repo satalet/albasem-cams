@@ -1,7 +1,6 @@
 
-// ==================== محرك الفرز والترحيل الجماعي الآمن ====================
+// ==================== محرك الفرز والترحيل المباشر من الشاشة ====================
 window.isBulkSortActive = false;
-window.selectedBulkStreams = new Set();
 
 window.toggleBulkSortMode = function() {
     window.isBulkSortActive = !window.isBulkSortActive;
@@ -15,6 +14,7 @@ window.toggleBulkSortMode = function() {
         else el.classList.add('hidden');
     });
     populateTargetAreas();
+    window.updateBulkSelectedCount();
 };
 
 function populateTargetAreas() {
@@ -36,61 +36,61 @@ function populateTargetAreas() {
     if (valid.length === 0) sel.innerHTML = '<option value="">(لا يوجد أقسام أخرى)</option>';
 }
 
-window.toggleSelectCard = function(id, isChecked) {
-    if (isChecked) window.selectedBulkStreams.add(id);
-    else window.selectedBulkStreams.delete(id);
+// دالة جلب المعرّفات المحددة فعلياً من الشاشة بدون تخزين وسيط
+function getActiveSelectedIds() {
+    const checkboxes = document.querySelectorAll('.bulk-stream-chk:checked');
+    return Array.from(checkboxes).map(cb => cb.value);
+}
+
+window.updateBulkSelectedCount = function() {
+    const ids = getActiveSelectedIds();
     const countLbl = document.getElementById('bulkSelectedCount');
-    if (countLbl) countLbl.innerText = window.selectedBulkStreams.size;
+    if (countLbl) countLbl.innerText = ids.length;
 };
 
 window.selectAllBulk = function(select) {
     document.querySelectorAll('.bulk-stream-chk').forEach(cb => {
         cb.checked = select;
-        if (select) window.selectedBulkStreams.add(cb.value);
     });
-    if (!select) window.selectedBulkStreams.clear();
-    const countLbl = document.getElementById('bulkSelectedCount');
-    if (countLbl) countLbl.innerText = window.selectedBulkStreams.size;
+    window.updateBulkSelectedCount();
 };
 
+// تنفيذ الترحيل الجماعي بقراءة الـ DOM المباشرة
 window.executeBulkMove = async function() {
-    if (!window.selectedBulkStreams || window.selectedBulkStreams.size === 0) return alert('⚠️ يرجى تحديد قناة واحدة على الأقل!');
+    const selectedIds = getActiveSelectedIds();
+    if (selectedIds.length === 0) return alert('⚠️ يرجى تحديد قناة واحدة على الأقل بالضغط على المربع الأخضر!');
     const target = document.getElementById('bulkTargetArea').value;
-    if (!target) return alert('⚠️ يرجى اختيار القسم أولاً!');
+    if (!target) return alert('⚠️ يرجى اختيار القسم المستهدف أولاً!');
 
-    if (!confirm(`هل أنت متأكد من ترحيل (${window.selectedBulkStreams.size}) قنوات إلى قسم [${target}]؟`)) return;
+    if (!confirm(`هل أنت متأكد من ترحيل (${selectedIds.length}) قنوات إلى قسم [${target}]؟`)) return;
 
     try {
         const updates = {};
-        window.selectedBulkStreams.forEach(id => {
+        selectedIds.forEach(id => {
             updates[`streams/${id}/area`] = target;
         });
         await db.ref().update(updates);
-        alert(`✅ تم بنجاح ترحيل ${window.selectedBulkStreams.size} قناة إلى قسم [${target}]!`);
-        window.selectedBulkStreams.clear();
-        if (typeof renderCams === 'function') renderCams();
-        const countLbl = document.getElementById('bulkSelectedCount');
-        if (countLbl) countLbl.innerText = '0';
+        alert(`✅ تم بنجاح ترحيل ${selectedIds.length} قناة إلى قسم [${target}]!`);
+        window.selectAllBulk(false);
     } catch(err) {
         alert('خطأ أثناء الترحيل: ' + err.message);
     }
 };
 
+// تنفيذ الحذف الجماعي بقراءة الـ DOM المباشرة
 window.executeBulkDelete = async function() {
-    if (!window.selectedBulkStreams || window.selectedBulkStreams.size === 0) return alert('⚠️ يرجى تحديد القنوات المراد حذفها أولاً!');
-    if (!confirm(`⚠️ تحذير: هل أنت متأكد من حذف (${window.selectedBulkStreams.size}) قنوات نهائياً من الموقع؟`)) return;
+    const selectedIds = getActiveSelectedIds();
+    if (selectedIds.length === 0) return alert('⚠️ يرجى تحديد القنوات المراد حذفها أولاً!');
+    if (!confirm(`⚠️ تحذير: هل أنت متأكد من حذف (${selectedIds.length}) قنوات نهائياً من الموقع؟`)) return;
 
     try {
         const updates = {};
-        window.selectedBulkStreams.forEach(id => {
+        selectedIds.forEach(id => {
             updates[`streams/${id}`] = null;
         });
         await db.ref().update(updates);
-        alert(`🗑️ تم حذف ${window.selectedBulkStreams.size} قناة بنجاح!`);
-        window.selectedBulkStreams.clear();
-        if (typeof renderCams === 'function') renderCams();
-        const countLbl = document.getElementById('bulkSelectedCount');
-        if (countLbl) countLbl.innerText = '0';
+        alert(`🗑️ تم بنجاح حذف ${selectedIds.length} قناة من السيرفر!`);
+        window.selectAllBulk(false);
     } catch(err) {
         alert('خطأ أثناء الحذف: ' + err.message);
     }
@@ -115,6 +115,9 @@ window.addNewCategoryDirect = async function() {
         alert('حدث خطأ: ' + e.message);
     }
 };
+
+
+
 
 
 // الاستماع اللحظي لرقم الفيرجن عبر الفايربيس لتخطي كاش CDN
@@ -845,7 +848,7 @@ function renderCams() {
     const adminActions = currentUser ? `
       <div class="flex items-center gap-1.5 ml-2 border-l border-slate-700 pl-2" onclick="event.stopPropagation()">
         <label class="bulk-chk-label ${window.isBulkSortActive ? 'inline-flex' : 'hidden'} items-center gap-1 text-[11px] text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 px-1.5 py-0.5 rounded cursor-pointer select-none">
-          <input type="checkbox" class="bulk-stream-chk accent-emerald-500 cursor-pointer w-3.5 h-3.5" value="${stream.id}" onchange="toggleSelectCard('${stream.id}', this.checked)" ${(window.selectedBulkStreams && window.selectedBulkStreams.has(stream.id)) ? 'checked' : ''}>
+          <input type="checkbox" class="bulk-stream-chk accent-emerald-500 cursor-pointer w-3.5 h-3.5" value="${stream.id}" onchange="updateBulkSelectedCount()" ${(window.selectedBulkStreams && window.selectedBulkStreams.has(stream.id)) ? 'checked' : ''}>
           <span>تحديد</span>
         </label>
         <button onclick="openEditModal('${stream.id}')" class="bg-blue-600/30 hover:bg-blue-600 text-blue-300 hover:text-white px-2 py-0.5 rounded text-[11px] transition" title="تعديل">
