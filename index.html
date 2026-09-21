@@ -23,7 +23,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 
-  <link rel="stylesheet" href="style.css?v=26.0922.0113">
+  <link rel="stylesheet" href="style.css?v=26.0922.0124">
 
     <style>
     .bulk-action-bar {
@@ -144,13 +144,21 @@ if ('caches' in window) {
       <div class="flex items-center gap-2">
         <button onclick="openCategoryOrderModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded transition shadow flex items-center gap-1">
           <i class="fa-solid fa-arrow-down-up-across-line"></i> <span>ترتيب الأقسام</span>
-<button id="addNewCatDirectBtn" type="button" onclick="addNewCategoryDirect()" style="background:#059669; color:#fff; font-size:0.8rem; font-weight:600; padding:5px 10px; border-radius:6px; border:none; margin:0 3px; cursor:pointer; height:32px; display:inline-flex; align-items:center; gap:4px;">➕ قسم جديد</button>
-<button id="toggleBulkSortBtn" type="button" onclick="toggleBulkSortMode()" style="background:#4f46e5; color:#fff; font-size:0.8rem; font-weight:600; padding:5px 10px; border-radius:6px; border:none; margin:0 3px; cursor:pointer; height:32px; display:inline-flex; align-items:center; gap:4px;">📋 فرز وترحيل</button>
+
+
 
 
 
 
         </button>
+        <button id="addNewCatDirectBtn" type="button" onclick="addNewCategoryDirect()" class="bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold px-3 py-1 rounded transition shadow flex items-center gap-1">
+          <i class="fa-solid fa-folder-plus text-xs"></i> <span>قسم جديد</span>
+        </button>
+        <button id="toggleBulkSortBtn" type="button" onclick="toggleBulkSortMode()" class="bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold px-3 py-1 rounded transition shadow flex items-center gap-1">
+          <i class="fa-solid fa-list-check text-xs"></i> <span>فرز وترحيل</span>
+        </button>
+        
+        
         <a href="admin-users.html" class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold px-3 py-1 rounded transition shadow flex items-center gap-1" style="text-decoration: none;">
           <i class="fa-solid fa-users-gear"></i> <span>إدارة المشتركين</span>
         </a>
@@ -175,7 +183,30 @@ if ('caches' in window) {
 
 
 
-<div id="cams-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+    <!-- شريط الفرز والترحيل الجماعي -->
+    <div id="bulkActionBar" class="hidden bg-slate-900/95 border border-violet-500/50 backdrop-blur-md rounded-xl p-3 mb-4 shadow-2xl flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div class="flex items-center gap-2 text-slate-200 font-bold">
+        <span class="text-violet-400"><i class="fa-solid fa-list-check"></i> فرز وترحيل القنوات:</span>
+        <span>تم تحديد <strong id="bulkSelectedCount" class="text-amber-400 text-sm font-extrabold px-2 py-0.5 bg-slate-950 rounded border border-slate-800">0</strong> قناة</span>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <button type="button" onclick="selectAllBulk(true)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded border border-slate-700 transition">تحديد الكل</button>
+        <button type="button" onclick="selectAllBulk(false)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded border border-slate-700 transition">إلغاء التحديد</button>
+        <div class="flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+          <span class="text-slate-400">ترحيل إلى:</span>
+          <select id="bulkTargetArea" class="bg-slate-900 text-slate-100 font-semibold px-2 py-1 rounded border border-slate-700 text-xs focus:outline-none"></select>
+        </div>
+        <button type="button" onclick="executeBulkMove()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 py-1 rounded transition shadow flex items-center gap-1">
+          <i class="fa-solid fa-folder-arrow-up"></i> <span>ترحيل للقسم</span>
+        </button>
+        <button type="button" onclick="executeBulkDelete()" class="bg-rose-600 hover:bg-rose-500 text-white font-bold px-3 py-1 rounded transition shadow flex items-center gap-1">
+          <i class="fa-solid fa-trash"></i> <span>حذف المحددة</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="cams-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div class="col-span-full py-20 text-center text-slate-500 text-sm flex flex-col items-center justify-center gap-3">
         <span class="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></span>
         <span>جاري مزامنة قنوات البث المفتوحة...</span>
@@ -308,7 +339,7 @@ if ('caches' in window) {
     </div>
   </div>
 
-  <script src="app.js?v=26.0922.0113"></script>
+  <script src="app.js?v=26.0922.0124"></script>
 
   <!-- نظام إدارة دخول المشتركين وفحص الجلسة -->
   <div id="sub-login-modal" style="display:none; position:fixed; inset:0; background:rgba(11,17,32,0.96); z-index:9999; justify-content:center; align-items:center; padding:15px;">
@@ -503,20 +534,7 @@ if ('caches' in window) {
   </script>
 
 <!-- شريط الفرز والتحكم الجماعي -->
-<div id="bulkActionBar" style="display: none; background: #111827; border: 1px solid #4f46e5; border-radius: 8px; padding: 10px 15px; margin: 12px auto; max-width: 1200px; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
-    <div style="color: #10b981; font-weight: bold; font-size: 0.95rem; display: flex; align-items: center; gap: 6px;">
-        <span>📌 تم تحديد:</span>
-        <span id="bulkSelectedCount" style="color: #fbbf24; font-size: 1.15rem; background: #1f2937; padding: 2px 8px; border-radius: 4px;">0</span>
-        <span>قناة</span>
-    </div>
-    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-        <button type="button" onclick="selectAllBulk(true)" style="background: #374151; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">تحديد الكل</button>
-        <button type="button" onclick="selectAllBulk(false)" style="background: #374151; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">إلغاء التحديد</button>
-        <select id="bulkTargetArea" style="background: #1f2937; color: #fff; border: 1px solid #4b5563; padding: 6px 10px; border-radius: 6px; font-size: 0.85rem; font-weight: bold;"></select>
-        <button type="button" onclick="executeBulkMove()" style="background: #2563eb; color: #fff; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85rem;">📁 ترحيل للقسم</button>
-        <button type="button" onclick="executeBulkDelete()" style="background: #dc2626; color: #fff; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85rem;">🗑️ حذف المحددة</button>
-    </div>
-</div>
+
 
 <script>
 let isBulkSortActive = false;
@@ -591,7 +609,7 @@ function injectCheckboxesToAllCards() {
                 const key = m[1];
                 const lbl = document.createElement('label');
                 lbl.className = 'bulk-chk-label';
-                lbl.style.css?v=26.0922.0113Text = 'display: inline-flex; align-items: center; gap: 4px; background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 11px; color: #10b981; margin-left: 6px;';
+                lbl.style.css?v=26.0922.0124'display: inline-flex; align-items: center; gap: 4px; background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 11px; color: #10b981; margin-left: 6px;';
                 lbl.innerHTML = `<input type="checkbox" value="${key}" onchange="toggleSelectCard('${key}', this.checked)" style="width: 15px; height: 15px; cursor: pointer; accent-color: #10b981;"> تحديد`;
                 cardHeader.insertBefore(lbl, cardHeader.firstChild);
             }
