@@ -797,7 +797,17 @@ function launchHlsStream(container, url, isModal = false, isIptv = false) {
     }
   };
 
-  video.addEventListener('playing', onStreamReady);
+  video.addEventListener('playing', () => {
+    onStreamReady();
+    // إسكات وإيقاف أي فيديو آخر شغال بالصفحة فوراً لمنع تداخل الأصوات
+    document.querySelectorAll('video').forEach(otherVid => {
+      if (otherVid !== video && !otherVid.paused) {
+        try {
+          otherVid.pause();
+        } catch(e){}
+      }
+    });
+  });
   video.addEventListener('timeupdate', () => {
     if (video.currentTime > 0.2) onStreamReady();
   });
