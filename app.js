@@ -712,9 +712,8 @@ async function saveCategoryOrder() {
   }
 }
 
-function launchHlsStream(container, url, isModal = false) {
-  // إذا لم يكن في وضع التكبير، نلغي أي صوت مسبق نهائياً
-  if (!isModal) {
+function launchHlsStream(container, url, isModal = false, isIptv = false) {
+  if (!isModal && !isIptv) {
     container.querySelectorAll('video, audio').forEach(el => {
       try { el.muted = true; el.pause(); } catch(e){}
     });
@@ -726,27 +725,25 @@ function launchHlsStream(container, url, isModal = false) {
   loadingIndicator.innerHTML = `
     <div class="flex flex-col items-center gap-2">
       <span class="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></span>
-      <span class="text-[10px] text-slate-400 font-medium">${isModal ? 'جاري فتح البث الحي المباشر...' : 'جاري التقاط المشهد الحي...'}</span>
+      <span class="text-[10px] text-slate-400 font-medium">${(isModal || isIptv) ? 'جاري فتح البث الحي المباشر...' : 'جاري التقاط المشهد الحي...'}</span>
     </div>
   `;
   container.appendChild(loadingIndicator);
 
   const video = document.createElement('video');
-  video.className = isModal ? 'w-full h-full object-contain' : 'absolute inset-0 w-full h-full object-cover';
-  video.autoplay = isModal;
-  if (!isModal) {
-    video.preload = "metadata";
-    container.addEventListener('mouseenter', () => {
-      video.play().catch(()=>{});
-    });
-    container.addEventListener('mouseleave', () => {
-      video.pause();
-    });
-  }
-  video.controls = isModal;
+  video.className = (isModal || isIptv) ? 'w-full h-full object-contain' : 'absolute inset-0 w-full h-full object-cover';
+  video.autoplay = true;
+  video.controls = (isModal || isIptv);
   video.playsInline = true;
-  video.muted = isModal ? false : true;
-  if (isModal) video.volume = 1.0;
+  video.muted = isModal ? false : (isIptv ? false : true);
+  if (isModal || isIptv) video.volume = 1.0;
+  
+  if (!isModal && !isIptv) {
+    video.preload = "metadata";
+    container.addEventListener('mouseenter', () => { video.play().catch(()=>{}); });
+    container.addEventListener('mouseleave', () => { video.pause(); });
+  }
+
   container.appendChild(video);
 
   let isPlaying = false;
@@ -765,9 +762,9 @@ function launchHlsStream(container, url, isModal = false) {
       <div class="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-4 text-center z-20" onclick="event.stopPropagation()">
         <i class="fa-solid fa-circle-exclamation text-amber-400 text-2xl mb-1.5"></i>
         <span class="text-slate-200 text-xs font-bold mb-1">البث متوقف حالياً</span>
-        <span class="text-slate-400 text-[10px] mb-3">تم إيقاف المحاولات لتوفير الإنترنت والبطارية</span>
+        <span class="text-slate-400 text-[10px] mb-3">سيرفر القناة لا يستجيب للمتصفح</span>
         <button class="retry-single-btn bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-[11px] font-bold px-4 py-1.5 rounded-lg transition shadow-lg flex items-center gap-1.5">
-          <i class="fa-solid fa-rotate-right"></i> تشغيل يدوي
+          <i class="fa-solid fa-rotate-right"></i> إعادة المحاولة
         </button>
       </div>
     `;
@@ -776,7 +773,7 @@ function launchHlsStream(container, url, isModal = false) {
     if (retryBtn) {
       retryBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        launchHlsStream(container, url, isModal);
+        launchHlsStream(container, url, isModal, isIptv);
       });
     }
   };
@@ -785,7 +782,7 @@ function launchHlsStream(container, url, isModal = false) {
     if (!isPlaying && (video.currentTime === 0 || video.paused || video.readyState < 2)) {
       showOfflineBox();
     }
-  }, 14000);
+  }, 12000);
 
   const onStreamReady = () => {
     if (isPlaying) return;
@@ -793,11 +790,9 @@ function launchHlsStream(container, url, isModal = false) {
     clearTimeout(safetyTimer);
     if (loadingIndicator) loadingIndicator.remove();
 
-    if (!isModal) {
+    if (!isModal && !isIptv) {
       setTimeout(() => {
-        if (!video.paused) {
-          video.pause();
-        }
+        if (!video.paused) video.pause();
       }, 800);
     }
   };
@@ -808,55 +803,52 @@ function launchHlsStream(container, url, isModal = false) {
   });
 
   if (Hls.isSupported()) {
-    const hls = new Hls(isModal ? {} : { maxBufferLength: 1, maxMaxBufferLength: 2 }, {
-      manifestLoadingMaxRetry: 3,
-      manifestLoadingRetryDelay: 1500,
-      levelLoadingMaxRetry: 3,
-      fragLoadingMaxRetry: 3,
-      fragLoadingRetryDelay: 1500,
+    const hlsConfig = (isModal || isIptv) ? {
+      enableWorker: true,
+      lowLatencyMode: false,
+      manifestLoadingMaxRetry: 4,
+      levelLoadingMaxRetry: 4,
+      fragLoadingMaxRetry: 4
+    } : {
+      maxBufferLength: 1,
+      maxMaxBufferLength: 2,
       enableWorker: true,
       lowLatencyMode: true
-    });
+    };
+    
+    const hls = new Hls(hlsConfig);
     hlsInstance = hls;
 
     let retryCount = 0;
     hls.loadSource(url);
     hls.attachMedia(video);
 
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      video.play().catch(() => {
+        video.muted = true;
+        video.play().catch(()=>{});
+      });
+    });
+
     hls.on(Hls.Events.ERROR, (event, data) => {
       if (data.fatal) {
         retryCount++;
-        if (retryCount >= 3) {
+        if (retryCount >= 2) {
           clearTimeout(safetyTimer);
           showOfflineBox();
         } else {
-          if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-            hls.startLoad();
-          } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-            hls.recoverMediaError();
-          } else {
-            clearTimeout(safetyTimer);
-            showOfflineBox();
-          }
+          hls.startLoad();
         }
       }
     });
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
     video.src = url;
-    video.onerror = () => {
-      clearTimeout(safetyTimer);
-      showOfflineBox();
-    };
-  }
-
-  if (isModal) {
-    const p = video.play();
-    if (p !== undefined) {
-      p.catch(() => {
+    video.addEventListener('loadedmetadata', () => {
+      video.play().catch(() => {
         video.muted = true;
-        video.play();
+        video.play().catch(()=>{});
       });
-    }
+    });
   }
 }
 
@@ -953,10 +945,10 @@ function renderCams() {
         feedContainer.onclick = (e) => {
           e.stopPropagation();
           feedContainer.innerHTML = '';
-          launchHlsStream(feedContainer, stream.url, false);
+          launchHlsStream(feedContainer, stream.url, false, true);
         };
       } else {
-        launchHlsStream(feedContainer, stream.url, false);
+        launchHlsStream(feedContainer, stream.url, false, true);
       }
     } else if (stream.type === 'image') {
       const img = document.createElement('img');
