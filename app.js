@@ -1,4 +1,29 @@
 
+// قراءة وتثبيت الحالة عند فتح أو رفرش الصفحة
+function getSavedNavigationState() {
+  const hash = decodeURIComponent(window.location.hash.replace(/^#/, ''));
+  if (hash) {
+    const parts = hash.split('/');
+    return { area: parts[0] || '', sub: parts[1] || 'all' };
+  }
+  const savedArea = localStorage.getItem('albasem_active_cat') || '';
+  const savedSub = localStorage.getItem('albasem_active_sub') || 'all';
+  return { area: savedArea, sub: savedSub };
+}
+
+function updateNavigationHistory(area, sub = 'all', push = true) {
+  const hashStr = sub && sub !== 'all' ? `#${encodeURIComponent(area)}/${encodeURIComponent(sub)}` : `#${encodeURIComponent(area)}`;
+  localStorage.setItem('albasem_active_cat', area);
+  localStorage.setItem('albasem_active_sub', sub);
+
+  if (push) {
+    history.pushState({ area: area, sub: sub }, '', hashStr);
+  } else {
+    history.replaceState({ area: area, sub: sub }, '', hashStr);
+  }
+}
+
+
 // ==================== محرك الفرز والترحيل المباشر من الشاشة ====================
 window.isBulkSortActive = false;
 
@@ -488,14 +513,11 @@ function initRealtimeSync() {
 function setupFilters() {
   const filterBox = document.getElementById('filter-buttons');
   if (!filterBox) return;
-  
-  const rawAreas = [...new Set(streamsData.map(s => s.area))].filter(Boolean);
-  if (!currentFilter || currentFilter === 'all' || !rawAreas.includes(currentFilter)) {
-    // اختيار أول مجلد كاميرات فعلي بدلاً من عرض كل شيء
-    currentFilter = rawAreas.find(a => a !== 'IPTV') || rawAreas[0] || '';
-    sessionStorage.setItem('albasem_active_cat', currentFilter);
-  }
 
+  // شريط أفقي ناعم يمنع النزول لسطر جديد ويدعم السحب السلس
+  filterBox.className = "flex items-center gap-2 overflow-x-auto no-scrollbar py-1 flex-nowrap w-full";
+
+  const rawAreas = [...new Set(streamsData.map(s => s.area))].filter(Boolean);
   rawAreas.sort((a, b) => {
     let indexA = customCategoryOrder.indexOf(a);
     let indexB = customCategoryOrder.indexOf(b);
@@ -504,24 +526,43 @@ function setupFilters() {
     return indexA - indexB;
   });
 
-  const areas = rawAreas;
-  
+  // إذا لم يكن هناك فلتر محدد، نقرأ المحفوظ أو نفتح أول مجلد
+  if (!currentFilter || !rawAreas.includes(currentFilter)) {
+    const saved = getSavedNavigationState();
+    if (saved.area && rawAreas.includes(saved.area)) {
+      currentFilter = saved.area;
+      currentSubFilter = saved.sub || 'all';
+    } else {
+      currentFilter = rawAreas.find(a => a !== 'IPTV') || rawAreas[0] || '';
+      currentSubFilter = 'all';
+    }
+    updateNavigationHistory(currentFilter, currentSubFilter, false);
+  }
+
   filterBox.innerHTML = '';
-  areas.forEach(area => {
+  rawAreas.forEach(area => {
     const btn = document.createElement('button');
     const isActive = area === currentFilter;
-    btn.className = `filter-chip px-3 py-1 rounded-full border border-slate-800 text-slate-300 hover:bg-slate-800 font-medium whitespace-nowrap transition text-xs ${isActive ? 'active-btn' : 'bg-slate-900'}`;
-    btn.textContent = area === 'all' ? 'جميع الكاميرات' : (area === 'IPTV' ? '📺 IPTV - قنوات فضائية' : area);
-    btn.onclick = () => filterByArea(area);
+    btn.className = `filter-chip flex-shrink-0 px-3.5 py-1.5 rounded-full border text-xs font-semibold whitespace-nowrap transition shadow-sm ${isActive ? 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-950/50' : 'bg-slate-900/90 text-slate-300 border-slate-800 hover:bg-slate-800'}`;
+    btn.textContent = area === 'IPTV' ? '📺 IPTV - قنوات فضائية' : area;
+    btn.onclick = () => {
+      if (currentFilter !== area) {
+        currentFilter = area;
+        currentSubFilter = 'all';
+        updateNavigationHistory(area, 'all', true);
+        setupFilters();
+        renderCams();
+      }
+    };
     filterBox.appendChild(btn);
   });
 
-  // إضافة أو إخفاء شريط الفلترة الفرعية لـ IPTV
+  // شريط التصنيفات الفرعية لـ IPTV (سحب أفقي ناعم بسطر واحد)
   let subBox = document.getElementById('iptv-sub-filters');
   if (!subBox) {
     subBox = document.createElement('div');
     subBox.id = 'iptv-sub-filters';
-    subBox.className = 'mt-2.5 flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar';
+    subBox.className = 'mt-2 flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar flex-nowrap w-full';
     filterBox.parentElement.appendChild(subBox);
   }
 
@@ -535,12 +576,15 @@ function setupFilters() {
     subCats.forEach(sub => {
       const sBtn = document.createElement('button');
       const isSubActive = sub === currentSubFilter;
-      sBtn.className = `px-2.5 py-0.5 rounded-lg border text-[11px] font-semibold transition ${isSubActive ? 'bg-emerald-600 text-white border-emerald-500 shadow-md' : 'bg-slate-800/80 text-slate-400 border-slate-700/60 hover:bg-slate-700'}`;
+      sBtn.className = `flex-shrink-0 px-3 py-1 rounded-lg border text-[11px] font-semibold whitespace-nowrap transition ${isSubActive ? 'bg-emerald-600 text-white border-emerald-500 shadow-md' : 'bg-slate-800/80 text-slate-400 border-slate-700/60 hover:bg-slate-700'}`;
       sBtn.textContent = sub === 'all' ? 'الكل 🌐' : sub;
       sBtn.onclick = () => {
-        currentSubFilter = sub;
-        setupFilters();
-        renderCams();
+        if (currentSubFilter !== sub) {
+          currentSubFilter = sub;
+          updateNavigationHistory(currentFilter, sub, true);
+          setupFilters();
+          renderCams();
+        }
       };
       subBox.appendChild(sBtn);
     });
@@ -1220,3 +1264,22 @@ window.onload = initRealtimeSync;
     }
     setInterval(applyAdminHorizontalRibbon, 1000);
     
+
+// معالجة زر الرجوع الفيزيائي / إيماءات الهاتف خطوة بخطوة
+window.addEventListener('popstate', (e) => {
+  // 1. إذا كان المودال مفتوحاً، أغلقه أولاً دون مغادرة القسم
+  const modal = document.getElementById('cam-modal');
+  if (modal && !modal.classList.contains('hidden')) {
+    if (typeof closeModal === 'function') closeModal();
+    return;
+  }
+
+  // 2. الرجوع التدريجي حسب الرابط والذاكرة
+  const state = getSavedNavigationState();
+  if (state.area && (state.area !== currentFilter || state.sub !== currentSubFilter)) {
+    currentFilter = state.area;
+    currentSubFilter = state.sub;
+    setupFilters();
+    renderCams();
+  }
+});
