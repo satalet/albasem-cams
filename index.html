@@ -230,24 +230,25 @@ if ('caches' in window) {
   <header class="sticky top-0 z-40 bg-[#0c1222]/90 backdrop-blur-md border-b border-slate-800/80 px-4 py-3 transition">
     <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
       
-      <div class="flex items-center gap-3">
-        <img src="./icons/icon-ios.png" alt="الباسم سات" class="w-10 h-10 rounded-xl shadow-lg border border-slate-700/60 object-cover">
+      <div class="flex items-center gap-2.5">
+        <a href="https://cutt.ly/abu-basem" target="_blank" title="زيارة الكرت الرقمي">
+          <img src="./icons/icon-ios.png" alt="الباسم سات" class="w-11 h-11 sm:w-12 sm:h-12 rounded-xl shadow-lg border-2 border-emerald-500/50 object-cover hover:scale-105 transition transform">
+        </a>
         <div>
-          <div class="flex items-center gap-2">
-            <h1 class="font-bold text-base md:text-lg tracking-wide text-white flex items-center gap-1.5">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <h1 class="font-extrabold text-sm sm:text-base tracking-wide text-white flex items-center gap-1">
               <span>الباسم سات</span>
-              <span class="text-amber-400 text-sm">👑</span>
+              <span class="text-amber-400 text-xs sm:text-sm">👑</span>
             </h1>
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-sm">
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-sm">
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1 ml-0.5"></span> بث مباشر VIP
             </span>
           </div>
-          <div class="flex flex-col mt-0.5">
-            <p class="text-[11px] text-emerald-400/90 font-medium">أهلاً بكم في منصة المشاهدة الخاصة لزبائننا الكرام 🌟</p>
-            <p class="text-[10px] text-slate-400 flex items-center gap-1">
-              <i class="fa-solid fa-circle-check text-emerald-500 text-[9px]"></i>
-              <span>بإشراف وإدارة: <strong class="text-slate-200 font-bold">محمد زربا (أبو باسم)</strong></span>
-            </p>
+          
+          <div class="flex items-center gap-1.5 mt-0.5">
+            <span class="text-[11px] sm:text-xs text-slate-300 font-medium">بإشراف وإدارة:</span>
+            <span class="text-xs sm:text-sm font-black text-emerald-400 tracking-wide drop-shadow">محمد زربا</span>
+            <span class="text-[11px] sm:text-xs font-bold text-amber-400">(أبو باسم)</span>
           </div>
         </div>
       </div>
@@ -351,36 +352,41 @@ if ('caches' in window) {
     </div>
   </main>
 
-  <footer class="bg-[#0a0f1d] border-t border-slate-800/90 mt-12 py-8 px-4 text-slate-400 text-xs leading-relaxed">
-    <div class="max-w-5xl mx-auto space-y-4 text-center">
-      <div class="text-sm text-slate-300">
-        هذه المنصة ودليل القنوات المباشرة مقدم كخدمة رقمية مجانية لجمهور ومتابعي 
-        <a href="https://cutt.ly/abu-basem" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 font-bold text-emerald-400 hover:text-emerald-300 underline underline-offset-4 decoration-emerald-500/60 transition mx-1">
-          <span>الباسم سات لأنظمة الستلايت وكاميرات المراقبة</span>
-          <i class="fa-solid fa-arrow-up-right-from-square text-[11px]"></i>
-        </a>
+  <footer class="bg-[#080d1a] border-t border-slate-800/80 mt-6 py-4 px-3 sm:px-4 text-slate-400 text-xs">
+    <div class="max-w-4xl mx-auto flex flex-col items-center gap-3 text-center">
+      
+      <!-- كرت الباسم سات الرقمي التفاعلي -->
+      <div class="w-full bg-gradient-to-r from-slate-900/90 via-[#0e172a] to-slate-900/90 border border-emerald-500/30 rounded-2xl p-3.5 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div class="flex items-center gap-3 text-right">
+          <div class="w-10 h-10 rounded-xl bg-emerald-950/80 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-lg shadow-inner">
+            <i class="fa-solid fa-id-card"></i>
+          </div>
+          <div>
+            <h3 class="text-white font-bold text-xs sm:text-sm">الباسم سات لأنظمة الستلايت وكاميرات المراقبة</h3>
+            <p class="text-[11px] text-slate-400">الرام - كفر عقب - القدس وضواحيها • خدمة متميزة 24/7</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap justify-center">
+          <a href="https://cutt.ly/abu-basem" target="_blank" rel="noopener noreferrer" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg shadow-md flex items-center gap-1.5 transition active:scale-95">
+            <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> <span>الكرت الرقمي</span>
+          </a>
+          <a href="https://wa.me/972534829927" target="_blank" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition">
+            <i class="fa-brands fa-whatsapp text-xs"></i> <span>واتساب</span>
+          </a>
+          <a href="tel:0534829927" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition">
+            <i class="fa-solid fa-phone text-[10px]"></i> <span>0534829927</span>
+          </a>
+        </div>
       </div>
 
-      <div class="p-4 bg-slate-900/60 border border-slate-800/80 rounded-xl text-[11px] text-slate-400 text-justify md:text-center space-y-1.5">
-        <p class="font-bold text-slate-300 flex items-center justify-center gap-1.5">
-          <i class="fa-solid fa-shield-halved text-emerald-400"></i> إشعار إخلاء مسؤولية قانوني وتوضيح طبيعة الخدمة:
-        </p>
-        <p>
-          تُعد هذه المنصة دليلاً تقنياً ومجمّعاً مجانياً يقوم بإعادة تضمين وفهرسة روابط البث المباشر العامة والمفتوحة للعموم على شبكة الإنترنت في نافذة واحدة لتسهيل وصول المستخدمين إليها.
-          <strong>تؤكد مؤسسة الباسم سات أنها لا تمتلك، ولا تُنشئ، ولا تبث، ولا تستضيف أي محتوى مرئي أو مسموع عبر خوادمها، ولا تتدخل بأي شكل من الأشكال في تعديل أو تغيير أو اجتزاء محتوى البث أو إزالة العلامات التجارية والشعارات الأصلية للقنوات والجهات المصدرية.</strong>
-        </p>
-        <p class="text-slate-500 text-[10px]">
-          جميع حقوق النشر والبث والعلامات التجارية مملوكة حصرياً للجهات والقنوات الأصلية أصحاب البث. في حال رغبة أي جهة معتمدة بإزالة رابط تضمين قناتها من هذا الدليل المجاني، يرجى التواصل المباشر ليتم الحذف فوراً.
-        </p>
-      </div>
-
-      <div class="text-[11px] text-slate-500 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 pt-2">
-        <span>الرام - كفر عقب - القدس وضواحيها</span>
-        <span>•</span>
-        <span>هاتف: 0534829927</span>
-        <span>•</span>
+      <!-- سطر حقوق مصغر وأنيق -->
+      <div class="text-[10px] text-slate-500 flex items-center justify-center gap-2">
         <span>جميع الحقوق محفوظة © الباسم سات</span>
+        <span>•</span>
+        <span>منصة رقمية لخدمة زبائننا الكرام</span>
       </div>
+
     </div>
   </footer>
 
