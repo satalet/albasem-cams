@@ -489,7 +489,12 @@ function setupFilters() {
   const filterBox = document.getElementById('filter-buttons');
   if (!filterBox) return;
   
-  const rawAreas = [...new Set(streamsData.map(s => s.area))];
+  const rawAreas = [...new Set(streamsData.map(s => s.area))].filter(Boolean);
+  if (!currentFilter || currentFilter === 'all' || !rawAreas.includes(currentFilter)) {
+    // اختيار أول مجلد كاميرات فعلي بدلاً من عرض كل شيء
+    currentFilter = rawAreas.find(a => a !== 'IPTV') || rawAreas[0] || '';
+    sessionStorage.setItem('albasem_active_cat', currentFilter);
+  }
 
   rawAreas.sort((a, b) => {
     let indexA = customCategoryOrder.indexOf(a);
@@ -499,7 +504,7 @@ function setupFilters() {
     return indexA - indexB;
   });
 
-  const areas = ['all', ...rawAreas];
+  const areas = rawAreas;
   
   filterBox.innerHTML = '';
   areas.forEach(area => {
@@ -911,7 +916,7 @@ function renderCams() {
   grid.innerHTML = '';
 
   let filtered = currentFilter === 'all' 
-    ? streamsData 
+    ? streamsData.filter(s => s.area !== 'IPTV') 
     : streamsData.filter(s => s.area === currentFilter);
 
   if (currentFilter === 'IPTV' && currentSubFilter !== 'all') {
