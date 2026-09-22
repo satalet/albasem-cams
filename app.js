@@ -506,15 +506,48 @@ function setupFilters() {
     const btn = document.createElement('button');
     const isActive = area === currentFilter;
     btn.className = `filter-chip px-3 py-1 rounded-full border border-slate-800 text-slate-300 hover:bg-slate-800 font-medium whitespace-nowrap transition text-xs ${isActive ? 'active-btn' : 'bg-slate-900'}`;
-    btn.textContent = area === 'all' ? 'جميع الكاميرات' : area;
+    btn.textContent = area === 'all' ? 'جميع الكاميرات' : (area === 'IPTV' ? '📺 IPTV - قنوات فضائية' : area);
     btn.onclick = () => filterByArea(area);
     filterBox.appendChild(btn);
   });
+
+  // إضافة أو إخفاء شريط الفلترة الفرعية لـ IPTV
+  let subBox = document.getElementById('iptv-sub-filters');
+  if (!subBox) {
+    subBox = document.createElement('div');
+    subBox.id = 'iptv-sub-filters';
+    subBox.className = 'mt-2.5 flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar';
+    filterBox.parentElement.appendChild(subBox);
+  }
+
+  if (currentFilter === 'IPTV') {
+    subBox.classList.remove('hidden');
+    const iptvStreams = streamsData.filter(s => s.area === 'IPTV');
+    const rawSubCats = [...new Set(iptvStreams.map(s => s.category || s.subCategory || 'مشكّل ومنوعات'))];
+    const subCats = ['all', ...rawSubCats];
+
+    subBox.innerHTML = '';
+    subCats.forEach(sub => {
+      const sBtn = document.createElement('button');
+      const isSubActive = sub === currentSubFilter;
+      sBtn.className = `px-2.5 py-0.5 rounded-lg border text-[11px] font-semibold transition ${isSubActive ? 'bg-emerald-600 text-white border-emerald-500 shadow-md' : 'bg-slate-800/80 text-slate-400 border-slate-700/60 hover:bg-slate-700'}`;
+      sBtn.textContent = sub === 'all' ? 'الكل 🌐' : sub;
+      sBtn.onclick = () => {
+        currentSubFilter = sub;
+        setupFilters();
+        renderCams();
+      };
+      subBox.appendChild(sBtn);
+    });
+  } else {
+    subBox.classList.add('hidden');
+  }
 }
 
 // تثبيت مكان الزبون وتحديث رابط الصفحة لحفظ الفولدر
 function filterByArea(area) {
   currentFilter = area;
+  currentSubFilter = 'all';
   sessionStorage.setItem('albasem_active_cat', area);
   if (area === 'all') {
     history.replaceState(null, '', window.location.pathname);
@@ -832,9 +865,13 @@ function renderCams() {
   if (!grid) return;
   grid.innerHTML = '';
 
-  const filtered = currentFilter === 'all' 
+  let filtered = currentFilter === 'all' 
     ? streamsData 
     : streamsData.filter(s => s.area === currentFilter);
+
+  if (currentFilter === 'IPTV' && currentSubFilter !== 'all') {
+    filtered = filtered.filter(s => (s.category === currentSubFilter || s.subCategory === currentSubFilter));
+  }
 
   if (filtered.length === 0) {
     grid.innerHTML = `<div class="col-span-full py-16 text-center text-slate-500 text-xs">لا توجد قنوات معروضة حالياً في هذا القسم.</div>`;
@@ -902,7 +939,25 @@ function renderCams() {
         </div>
       `;
     } else if (stream.type === 'hls') {
-      launchHlsStream(feedContainer, stream.url, false);
+      if (stream.area === 'IPTV') {
+        const logoHtml = stream.logo ? `<img src="${stream.logo}" alt="${stream.title}" class="max-h-16 max-w-[70%] object-contain drop-shadow mb-2">` : `<i class="fa-solid fa-tv text-4xl text-slate-500 mb-2"></i>`;
+        feedContainer.innerHTML = `
+          <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900 to-slate-950 flex flex-col items-center justify-center p-3 text-center">
+            ${logoHtml}
+            <div class="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold px-3 py-1 rounded-full shadow-lg transition transform group-hover:scale-105">
+              <i class="fa-solid fa-play text-[9px]"></i> تشغيل البث
+            </div>
+            <span class="text-[10px] text-slate-400 mt-1.5">${stream.category || stream.subCategory || 'بث مباشر'}</span>
+          </div>
+        `;
+        feedContainer.onclick = (e) => {
+          e.stopPropagation();
+          feedContainer.innerHTML = '';
+          launchHlsStream(feedContainer, stream.url, false);
+        };
+      } else {
+        launchHlsStream(feedContainer, stream.url, false);
+      }
     } else if (stream.type === 'image') {
       const img = document.createElement('img');
       img.src = stream.url + '?t=' + Date.now();
