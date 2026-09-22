@@ -1074,3 +1074,44 @@ window.addEventListener('popstate', () => {
 });
 
 window.onload = initRealtimeSync;
+
+
+    // --- تفعيل الشريط الأفقي لأزرار الإدارة وإخفاء شريط الفرز ---
+    function applyAdminHorizontalRibbon() {
+        document.querySelectorAll('button').forEach(btn => {
+            const txt = btn.textContent || "";
+            if (txt.includes('إضافة بث') || txt.includes('خروج') || txt.includes('قسم جديد') || txt.includes('فرز وترحيل')) {
+                const parent = btn.parentElement;
+                if (parent && parent.tagName !== 'BODY') {
+                    parent.style.setProperty('display', 'flex', 'important');
+                    parent.style.setProperty('flex-direction', 'row', 'important');
+                    parent.style.setProperty('flex-wrap', 'nowrap', 'important');
+                    parent.style.setProperty('overflow-x', 'auto', 'important');
+                    parent.style.setProperty('overflow-y', 'hidden', 'important');
+                    parent.style.setProperty('gap', '8px', 'important');
+                    parent.style.setProperty('scrollbar-width', 'none', 'important');
+                    parent.style.setProperty('box-sizing', 'border-box', 'important');
+                    btn.style.setProperty('flex', '0 0 auto', 'important');
+                    btn.style.setProperty('white-space', 'nowrap', 'important');
+                }
+            }
+        });
+
+        // إخفاء شريط الفرز السفلي افتراضياً
+        document.querySelectorAll('div, footer, section').forEach(el => {
+            const t = el.textContent || "";
+            if (t.includes('تحديد الكل') && t.includes('ترحيل للقسم') && !el.hasAttribute('data-batch-managed')) {
+                el.style.setProperty('display', 'none', 'important');
+                el.setAttribute('data-batch-container', 'true');
+            }
+        });
+    }
+
+    // تشغيل الضبط فور تحميل الصفحة وبشكل متكرر لضمان الثبات
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applyAdminHorizontalRibbon);
+    } else {
+        applyAdminHorizontalRibbon();
+    }
+    setInterval(applyAdminHorizontalRibbon, 1000);
+    

@@ -107,6 +107,41 @@ if ('caches' in window) {
         display: none;
     }
 </style>
+<style id="albasem-scroll-bar">
+    /* --- شريط أزرار الإدارة الأفقي الانسيابي (الباسم سات) --- */
+    .admin-actions, .admin-controls, .admin-buttons, #adminBar, [id*="admin-controls"], [id*="adminBar"] {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        gap: 8px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        padding: 6px 10px !important;
+        scrollbar-width: none !important; /* إخفاء المسطرة في فايرفوكس */
+    }
+    .admin-actions::-webkit-scrollbar, 
+    .admin-controls::-webkit-scrollbar, 
+    #adminBar::-webkit-scrollbar,
+    [id*="admin-controls"]::-webkit-scrollbar {
+        display: none !important; /* إخفاء مسطرة التمرير في كروم والجوال */
+    }
+    .admin-actions button, .admin-controls button, #adminBar button {
+        flex: 0 0 auto !important; /* منع انكماش أو خروج الأزرار */
+        white-space: nowrap !important;
+        min-width: fit-content !important;
+        padding: 7px 14px !important;
+        font-size: 13px !important;
+    }
+
+    /* إخفاء شريط الفرز والترحيل السفلي نهائياً */
+    #batchActionsBar, #batchBar, #bulkBar, .batch-bar, .bulk-actions-bar, [data-batch-container="true"] {
+        display: none !important;
+    }
+</style>
 </head>
 <body class="bg-[#070a12] text-slate-100 min-h-screen flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
 <!-- شريط ترحيب المشترك وتسجيل الخروج -->
@@ -361,7 +396,7 @@ if ('caches' in window) {
     </div>
   </div>
 
-  <script src="app.js?v=26.0922.0135"></script>
+  <script src="app.js?v=1790094185"></script>
 
   <!-- نظام إدارة دخول المشتركين وفحص الجلسة -->
   <div id="sub-login-modal" style="display:none; position:fixed; inset:0; background:rgba(11,17,32,0.96); z-index:9999; justify-content:center; align-items:center; padding:15px;">
