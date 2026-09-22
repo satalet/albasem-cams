@@ -83,6 +83,30 @@ if ('caches' in window) {
 }
 </script>
 
+<style>
+    /* --- تصليح استجابة لوحة التحكم والشريط السفلي للجوال (الباسم سات) --- */
+    .admin-actions, .admin-controls, .admin-buttons, #adminBar, [id*="admin-controls"], [id*="adminBar"] {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        gap: 6px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+        box-sizing: border-box !important;
+    }
+    .admin-actions button, .admin-controls button, #adminBar button {
+        flex: 1 1 calc(33.333% - 8px) !important;
+        min-width: 95px !important;
+        margin: 2px 0 !important;
+        white-space: nowrap !important;
+        text-align: center !important;
+    }
+    /* إخفاء شريط الفرز والترحيل السفلي افتراضياً */
+    #batchActionsBar, #batchBar, #bulkBar, .batch-bar, .bulk-actions-bar, [id*="batch"], [id*="bulk"] {
+        display: none;
+    }
+</style>
 </head>
 <body class="bg-[#070a12] text-slate-100 min-h-screen flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
 <!-- شريط ترحيب المشترك وتسجيل الخروج -->
