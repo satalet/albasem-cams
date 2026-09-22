@@ -748,6 +748,8 @@ function launchHlsStream(container, url, isModal = false, isIptv = false) {
 
   let isPlaying = false;
   let hlsInstance = null;
+  let usedProxy = false;
+  const PROXY_BASE = "https://albasem-proxy.satalet.workers.dev/?url=";
 
   const showOfflineBox = () => {
     if (loadingIndicator) loadingIndicator.remove();
@@ -759,13 +761,22 @@ function launchHlsStream(container, url, isModal = false, isIptv = false) {
     try { video.load(); } catch(e){}
 
     container.innerHTML = `
-      <div class="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-4 text-center z-20" onclick="event.stopPropagation()">
-        <i class="fa-solid fa-circle-exclamation text-amber-400 text-2xl mb-1.5"></i>
-        <span class="text-slate-200 text-xs font-bold mb-1">البث متوقف حالياً</span>
-        <span class="text-slate-400 text-[10px] mb-3">سيرفر القناة لا يستجيب للمتصفح</span>
-        <button class="retry-single-btn bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-[11px] font-bold px-4 py-1.5 rounded-lg transition shadow-lg flex items-center gap-1.5">
-          <i class="fa-solid fa-rotate-right"></i> إعادة المحاولة
-        </button>
+      <div class="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-3 text-center z-20" onclick="event.stopPropagation()">
+        <i class="fa-solid fa-triangle-exclamation text-amber-400 text-xl mb-1"></i>
+        <span class="text-slate-200 text-xs font-bold mb-0.5">تعذر العرض المباشر</span>
+        <span class="text-slate-400 text-[10px] mb-2.5">سيرفر القناة يفرض قيود حماية أو تشفير خاص</span>
+        
+        <div class="flex items-center gap-1.5 flex-wrap justify-center">
+          <button class="retry-single-btn bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold px-2.5 py-1 rounded transition flex items-center gap-1">
+            <i class="fa-solid fa-rotate-right"></i> إعادة المحاولة
+          </button>
+          <button class="ext-play-btn bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold px-2.5 py-1 rounded transition flex items-center gap-1">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i> مشغل خارجي
+          </button>
+          <button class="copy-url-btn bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] px-2 py-1 rounded transition" title="نسخ رابط البث لبرنامج VLC">
+            <i class="fa-solid fa-copy"></i> VLC
+          </button>
+        </div>
       </div>
     `;
 
@@ -776,13 +787,35 @@ function launchHlsStream(container, url, isModal = false, isIptv = false) {
         launchHlsStream(container, url, isModal, isIptv);
       });
     }
+
+    const extBtn = container.querySelector('.ext-play-btn');
+    if (extBtn) {
+      extBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        window.open(`https://hlsplayer.net/embed?url=${encodeURIComponent(url)}`, '_blank', 'width=800,height=500');
+      });
+    }
+
+    const copyBtn = container.querySelector('.copy-url-btn');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(url);
+        copyBtn.innerHTML = '<i class="fa-solid fa-check text-emerald-400"></i> تم النسخ';
+        setTimeout(() => { copyBtn.innerHTML = '<i class="fa-solid fa-copy"></i> VLC'; }, 2000);
+      });
+    }
   };
 
-  const safetyTimer = setTimeout(() => {
+  let safetyTimer = setTimeout(() => {
     if (!isPlaying && (video.currentTime === 0 || video.paused || video.readyState < 2)) {
-      showOfflineBox();
+      if (!usedProxy && isIptv) {
+        tryFallbackProxy();
+      } else {
+        showOfflineBox();
+      }
     }
-  }, 12000);
+  }, 9000);
 
   const onStreamReady = () => {
     if (isPlaying) return;
@@ -799,66 +832,76 @@ function launchHlsStream(container, url, isModal = false, isIptv = false) {
 
   video.addEventListener('playing', () => {
     onStreamReady();
-    // إسكات وإيقاف أي فيديو آخر شغال بالصفحة فوراً لمنع تداخل الأصوات
     document.querySelectorAll('video').forEach(otherVid => {
       if (otherVid !== video && !otherVid.paused) {
-        try {
-          otherVid.pause();
-        } catch(e){}
+        try { otherVid.pause(); } catch(e){}
       }
     });
   });
+
   video.addEventListener('timeupdate', () => {
     if (video.currentTime > 0.2) onStreamReady();
   });
 
-  if (Hls.isSupported()) {
-    const hlsConfig = (isModal || isIptv) ? {
-      enableWorker: true,
-      lowLatencyMode: false,
-      manifestLoadingMaxRetry: 4,
-      levelLoadingMaxRetry: 4,
-      fragLoadingMaxRetry: 4
-    } : {
-      maxBufferLength: 1,
-      maxMaxBufferLength: 2,
-      enableWorker: true,
-      lowLatencyMode: true
-    };
-    
-    const hls = new Hls(hlsConfig);
-    hlsInstance = hls;
+  function startHlsEngine(streamUrl) {
+    if (hlsInstance) {
+      try { hlsInstance.destroy(); } catch(e){}
+    }
 
-    let retryCount = 0;
-    hls.loadSource(url);
-    hls.attachMedia(video);
-
-    hls.on(Hls.Events.MANIFEST_PARSED, () => {
-      video.play().catch(() => {
-        video.muted = true;
-        video.play().catch(()=>{});
+    if (Hls.isSupported()) {
+      const hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: false,
+        manifestLoadingMaxRetry: 2,
+        levelLoadingMaxRetry: 2
       });
-    });
+      hlsInstance = hls;
 
-    hls.on(Hls.Events.ERROR, (event, data) => {
-      if (data.fatal) {
-        retryCount++;
-        if (retryCount >= 2) {
-          clearTimeout(safetyTimer);
-          showOfflineBox();
-        } else {
-          hls.startLoad();
+      hls.loadSource(streamUrl);
+      hls.attachMedia(video);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        video.play().catch(() => {
+          video.muted = true;
+          video.play().catch(()=>{});
+        });
+      });
+
+      hls.on(Hls.Events.ERROR, (event, data) => {
+        if (data.fatal) {
+          if (!usedProxy && isIptv) {
+            tryFallbackProxy();
+          } else {
+            clearTimeout(safetyTimer);
+            showOfflineBox();
+          }
         }
-      }
-    });
-  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-    video.src = url;
-    video.addEventListener('loadedmetadata', () => {
-      video.play().catch(() => {
-        video.muted = true;
-        video.play().catch(()=>{});
       });
-    });
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = streamUrl;
+      video.addEventListener('loadedmetadata', () => {
+        video.play().catch(() => {
+          video.muted = true;
+          video.play().catch(()=>{});
+        });
+      });
+    }
+  }
+
+  function tryFallbackProxy() {
+    usedProxy = true;
+    console.log("⚡ جاري التحويل التلقائي للوسيط السحابي (Cloudflare Fallback):", url);
+    const proxyStreamUrl = PROXY_BASE + encodeURIComponent(url);
+    startHlsEngine(proxyStreamUrl);
+  }
+
+  // إذا كان الرابط http عادي، يمر عبر الوسيط لحل مشكلة المحتوى المختلط
+  if (url.startsWith('http://') && isIptv) {
+    usedProxy = true;
+    startHlsEngine(PROXY_BASE + encodeURIComponent(url));
+  } else {
+    // تشغيل مباشر لحفظ رصيد Cloudflare
+    startHlsEngine(url);
   }
 }
 
