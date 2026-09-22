@@ -153,37 +153,62 @@ if ('caches' in window) {
     }
 </style>
 
-<style id="albasem-mobile-fixed">
-    /* شبكة أزرار الإدارة الموحدة للجوال والكمبيوتر */
-    .admin-grid-box {
-        display: grid !important;
-        grid-template-columns: repeat(3, 1fr) !important;
-        gap: 6px !important;
+
+<style id="albasem-responsive-toolbar">
+    /* الحاوية الأساسية للأزرار */
+    #adminToolbar {
         width: 100% !important;
         max-width: 100% !important;
-        padding: 6px 4px !important;
         box-sizing: border-box !important;
+        padding: 6px 4px !important;
     }
-    .admin-grid-box button, .admin-grid-box a {
-        height: 42px !important;
-        min-height: 42px !important;
-        max-height: 42px !important;
-        font-size: 11px !important;
-        font-weight: bold !important;
-        line-height: 1.2 !important;
-        padding: 2px 4px !important;
-        margin: 0 !important;
+
+    #adminToolbar button, #adminToolbar a {
         border-radius: 8px !important;
+        font-weight: bold !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
         text-align: center !important;
         box-sizing: border-box !important;
-        white-space: normal !important;
+        margin: 0 !important;
     }
-    @media (max-width: 768px) {
-        #batchActionsBar, #batchBar, #bulkBar, .batch-bar, [id*="batch"], [id*="bulk"] {
-            display: none !important;
+
+    /* 1. الوضع العرضي والكمبيوتر (أكبر من 650px أو عند تدوير الجوال بالعرض): سطر واحد كامل */
+    @media (min-width: 651px), (orientation: landscape) {
+        #adminToolbar {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            justify-content: center !important;
+            gap: 6px !important;
+        }
+        #adminToolbar button, #adminToolbar a {
+            flex: 1 1 auto !important;
+            height: 38px !important;
+            min-height: 38px !important;
+            max-height: 38px !important;
+            font-size: 13px !important;
+            padding: 4px 10px !important;
+            white-space: nowrap !important;
+        }
+    }
+
+    /* 2. الوضع الطولي للجوال (أقل من 650px بالطول): شبكة سطرين (3 أزرار فوق و 3 تحت) */
+    @media (max-width: 650px) and (orientation: portrait) {
+        #adminToolbar {
+            display: grid !important;
+            grid-template-columns: repeat(3, 1fr) !important;
+            gap: 5px !important;
+        }
+        #adminToolbar button, #adminToolbar a {
+            height: 42px !important;
+            min-height: 42px !important;
+            max-height: 42px !important;
+            font-size: 11px !important;
+            line-height: 1.15 !important;
+            padding: 2px 4px !important;
+            white-space: normal !important;
         }
     }
 </style>
@@ -245,7 +270,7 @@ if ('caches' in window) {
       <span class="text-xs text-emerald-400 font-semibold flex items-center gap-1.5">
         <i class="fa-solid fa-circle-check"></i> وضع إدارة البثوث والأقسام مفعل
       </span>
-      <div class="flex items-center gap-2">
+      <div id="adminToolbar">
         <button onclick="openCategoryOrderModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded transition shadow flex items-center gap-1">
           <i class="fa-solid fa-arrow-down-up-across-line"></i> <span>ترتيب الأقسام</span>
 
