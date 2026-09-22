@@ -152,11 +152,10 @@ if ('caches' in window) {
         display: none !important;
     }
 </style>
+
 <style id="albasem-mobile-fixed">
-    /* توحيد شريط أزرار الإدارة للجوال والكمبيوتر */
-    .admin-controls, .admin-actions, #adminControls, #adminBar,
-    div:has(> button:contains("قسم جديد")),
-    div:has(> button:contains("فرز وترحيل")) {
+    /* شبكة أزرار الإدارة الموحدة للجوال والكمبيوتر */
+    .admin-grid-box {
         display: grid !important;
         grid-template-columns: repeat(3, 1fr) !important;
         gap: 6px !important;
@@ -165,11 +164,7 @@ if ('caches' in window) {
         padding: 6px 4px !important;
         box-sizing: border-box !important;
     }
-    
-    /* توحيد كل الأزرار بنفس الارتفاع والمقاس تماماً */
-    .admin-controls button, .admin-actions button, #adminControls button, #adminBar button,
-    button[onclick*="Category"], button[onclick*="Batch"], button[onclick*="Stream"], button[onclick*="logout"],
-    button[onclick*="Subscriber"], button[onclick*="sort"] {
+    .admin-grid-box button, .admin-grid-box a {
         height: 42px !important;
         min-height: 42px !important;
         max-height: 42px !important;
@@ -186,18 +181,16 @@ if ('caches' in window) {
         box-sizing: border-box !important;
         white-space: normal !important;
     }
-
     @media (max-width: 768px) {
-        /* إخفاء شريط الفرز السفلي على الجوال نهائياً إلا إذا تم تفعيله */
         #batchActionsBar, #batchBar, #bulkBar, .batch-bar, [id*="batch"], [id*="bulk"] {
-            display: none;
+            display: none !important;
         }
     }
 </style>
 </head>
 <body class="bg-[#070a12] text-slate-100 min-h-screen flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
 <!-- شريط ترحيب المشترك وتسجيل الخروج -->
-  <div id="sub-welcome-bar" style="display:none; background:#1e293b; border-bottom:2px solid #00e5ff; padding:8px 15px; font-size:0.85rem; color:#fff; display:none; justify-content:space-between; align-items:center;">
+  <div class="admin-grid-box" id="sub-welcome-bar" style="display:none; background:#1e293b; border-bottom:2px solid #00e5ff; padding:8px 15px; font-size:0.85rem; color:#fff; display:none; justify-content:space-between; align-items:center;">
     <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
       <span>👋 مرحباً: <strong id="sub-display-name" style="color:#00e5ff;"></strong></span>
       <span style="color:#94a3b8;">|</span>
