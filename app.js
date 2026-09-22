@@ -404,11 +404,11 @@ let streamsData = [];
 
 // استرجاع الفولدر المحفوظ تلقائياً من الرابط أو من ذاكرة الجلسة
 function getSavedCategory() {
-  if (window.location.hash) {
-    const fromHash = decodeURIComponent(window.location.hash.substring(1)).trim();
-    if (fromHash) return fromHash;
+  const hash = decodeURIComponent(window.location.hash.replace(/^#/, '')).trim();
+  if (hash) {
+    return hash.split('/')[0];
   }
-  return sessionStorage.getItem('albasem_active_cat') || 'all';
+  return localStorage.getItem('albasem_active_cat') || sessionStorage.getItem('albasem_active_cat') || 'IPTV';
 }
 
 let currentFilter = getSavedCategory();
@@ -499,9 +499,18 @@ function initRealtimeSync() {
       }));
 
     // التأكد إذا كان الفولدر المحفوظ موجود فعلياً
-    const availableAreas = ['all', ...new Set(streamsData.map(s => s.area))];
-    if (!availableAreas.includes(currentFilter)) {
-      currentFilter = 'all';
+    const availableAreas = [...new Set(streamsData.map(s => s.area))].filter(Boolean);
+    const savedArea = getSavedCategory();
+    if (savedArea && availableAreas.includes(savedArea)) {
+      currentFilter = savedArea;
+    } else if (!availableAreas.includes(currentFilter)) {
+      currentFilter = availableAreas.find(a => a !== 'IPTV') || availableAreas[0] || 'IPTV';
+    }
+    const hashParts = decodeURIComponent(window.location.hash.replace(/^#/, '')).split('/');
+    if (hashParts[1]) {
+      currentSubFilter = hashParts[1];
+    } else {
+      currentSubFilter = localStorage.getItem('albasem_active_sub') || 'all';
     }
 
     setupFilters();
