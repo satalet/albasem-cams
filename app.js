@@ -987,6 +987,12 @@ function renderCams() {
     return;
   }
 
+  filtered.sort((a, b) => {
+    const orderA = a.order !== undefined ? Number(a.order) : 9999;
+    const orderB = b.order !== undefined ? Number(b.order) : 9999;
+    return orderA - orderB;
+  });
+
   filtered.forEach(stream => {
     const card = document.createElement('div');
     card.className = 'bg-[#0f172a] border border-slate-800/90 rounded-xl overflow-hidden shadow-xl flex flex-col transition hover:border-slate-700';
@@ -1298,3 +1304,101 @@ window.addEventListener('popstate', (e) => {
     renderCams();
   }
 });
+
+
+// --- نظام ترتيب قنوات القسم الحالي ---
+let tempStreamOrderList = [];
+
+function openStreamOrderModal() {
+  const targetTitle = document.getElementById('stream-order-target-name');
+  if (targetTitle) {
+    targetTitle.textContent = currentFilter + (currentFilter === 'IPTV' && currentSubFilter !== 'all' ? ` (${currentSubFilter})` : '');
+  }
+
+  let list = streamsData.filter(s => s.area === currentFilter);
+  if (currentFilter === 'IPTV' && currentSubFilter !== 'all') {
+    list = list.filter(s => (s.category === currentSubFilter || s.subCategory === currentSubFilter));
+  }
+
+  tempStreamOrderList = [...list].sort((a, b) => {
+    const oA = a.order !== undefined ? Number(a.order) : 9999;
+    const oB = b.order !== undefined ? Number(b.order) : 9999;
+    return oA - oB;
+  });
+
+  renderStreamOrderList();
+  document.getElementById('stream-order-modal').classList.remove('hidden');
+}
+
+function closeStreamOrderModal() {
+  document.getElementById('stream-order-modal').classList.add('hidden');
+}
+
+function renderStreamOrderList() {
+  const container = document.getElementById('stream-order-list');
+  if (!container) return;
+  container.innerHTML = '';
+
+  if (tempStreamOrderList.length === 0) {
+    container.innerHTML = '<div class="text-center text-slate-500 py-6 text-xs">لا توجد قنوات في هذا القسم حالياً.</div>';
+    return;
+  }
+
+  tempStreamOrderList.forEach((stream, idx) => {
+    const item = document.createElement('div');
+    item.className = 'flex items-center justify-between bg-slate-950 border border-slate-800/80 px-2.5 py-1.5 rounded-lg text-xs gap-2';
+    item.innerHTML = `
+      <div class="flex items-center gap-2 overflow-hidden">
+        <span class="w-5 h-5 rounded-full bg-slate-800 text-amber-400 font-bold flex items-center justify-center text-[10px] shrink-0">${idx + 1}</span>
+        <span class="font-bold text-slate-200 truncate">${stream.name || 'بدون اسم'}</span>
+        ${stream.category ? `<span class="text-[9px] text-slate-400 bg-slate-900 border border-slate-800 px-1 rounded shrink-0">${stream.category}</span>` : ''}
+      </div>
+      <div class="flex items-center gap-1 shrink-0">
+        <button onclick="makeStreamFirst(${idx})" class="px-2 py-0.5 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded text-[10px] font-bold transition flex items-center gap-1" title="نقل إلى أول القائمة">
+          <i class="fa-solid fa-star text-[9px]"></i> <span>بالصدر</span>
+        </button>
+        <button onclick="moveStreamItem(${idx}, -1)" class="w-6 h-6 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded flex items-center justify-center transition" ${idx === 0 ? 'disabled style="opacity:0.3"' : ''} title="تقديم">
+          <i class="fa-solid fa-arrow-up text-[10px]"></i>
+        </button>
+        <button onclick="moveStreamItem(${idx}, 1)" class="w-6 h-6 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded flex items-center justify-center transition" ${idx === tempStreamOrderList.length - 1 ? 'disabled style="opacity:0.3"' : ''} title="تأخير">
+          <i class="fa-solid fa-arrow-down text-[10px]"></i>
+        </button>
+      </div>
+    `;
+    container.appendChild(item);
+  });
+}
+
+function moveStreamItem(index, direction) {
+  const targetIndex = index + direction;
+  if (targetIndex < 0 || targetIndex >= tempStreamOrderList.length) return;
+  const item = tempStreamOrderList.splice(index, 1)[0];
+  tempStreamOrderList.splice(targetIndex, 0, item);
+  renderStreamOrderList();
+}
+
+function makeStreamFirst(index) {
+  if (index === 0) return;
+  const item = tempStreamOrderList.splice(index, 1)[0];
+  tempStreamOrderList.unshift(item);
+  renderStreamOrderList();
+}
+
+async function saveStreamOrder() {
+  if (!tempStreamOrderList.length) return closeStreamOrderModal();
+
+  const updates = {};
+  tempStreamOrderList.forEach((stream, idx) => {
+    stream.order = idx + 1;
+    updates[`streams/${stream.id}/order`] = idx + 1;
+  });
+
+  try {
+    await db.ref().update(updates);
+    renderCams();
+    closeStreamOrderModal();
+    alert('✅ تم حفظ ترتيب القنوات بنجاح!');
+  } catch(e) {
+    alert('حدث خطأ أثناء الحفظ: ' + e.message);
+  }
+}

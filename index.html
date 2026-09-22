@@ -1,6 +1,19 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+  <!-- وسوم المعاينة الاحترافية للواتساب وميتا -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="الباسم سات">
+  <meta property="og:title" content="الباسم سات 👑 | بإشراف وإدارة محمد زربا (أبو باسم)">
+  <meta property="og:description" content="منصة وتجميع قنوات البث المباشر والستلايت وكاميرات المراقبة - خدمة زبائننا الكرام 24/7">
+  <meta property="og:image" content="https://satalet.github.io/albasem-cams/icons/icon-ios.png">
+  <meta property="og:image:secure_url" content="https://satalet.github.io/albasem-cams/icons/icon-ios.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
+  <meta property="og:url" content="https://satalet.github.io/albasem-cams/">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://satalet.github.io/albasem-cams/icons/icon-ios.png">
   <meta name="referrer" content="no-referrer">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
@@ -282,6 +295,9 @@ if ('caches' in window) {
         <i class="fa-solid fa-circle-check"></i> وضع إدارة البثوث والأقسام مفعل
       </span>
       <div id="adminToolbar">
+        <button onclick="openStreamOrderModal()" class="bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold px-2.5 py-1 rounded transition shadow flex items-center gap-1">
+          <i class="fa-solid fa-arrow-down-short-wide text-xs"></i> <span>ترتيب قنوات القسم</span>
+        </button>
         <button onclick="openCategoryOrderModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded transition shadow flex items-center gap-1">
           <i class="fa-solid fa-arrow-down-up-across-line"></i> <span>ترتيب الأقسام</span>
 
@@ -828,5 +844,36 @@ window.executeBulkDelete = async function() {
     }
 };
 </script>
+
+
+  <!-- مودال ترتيب قنوات القسم الحالي -->
+  <div id="stream-order-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-3">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+      <div class="p-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+        <div>
+          <h3 class="text-sm font-bold text-white flex items-center gap-1.5">
+            <i class="fa-solid fa-arrow-down-short-wide text-amber-400"></i>
+            <span>ترتيب قنوات قسم:</span>
+            <span id="stream-order-target-name" class="text-emerald-400"></span>
+          </h3>
+          <p class="text-[10px] text-slate-400">رتّب القنوات لتظهر أولاً بوجه الزوار عند فتح القسم</p>
+        </div>
+        <button onclick="closeStreamOrderModal()" class="text-slate-400 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-base"></i>
+        </button>
+      </div>
+
+      <div id="stream-order-list" class="p-3 overflow-y-auto space-y-1.5 flex-1 max-h-[55vh]">
+        <!-- القنوات تُرندر هنا -->
+      </div>
+
+      <div class="p-3 border-t border-slate-800 bg-slate-950/60 flex items-center justify-end gap-2">
+        <button onclick="closeStreamOrderModal()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700">إلغاء</button>
+        <button onclick="saveStreamOrder()" class="px-4 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow flex items-center gap-1.5">
+          <i class="fa-solid fa-floppy-disk"></i> حفظ الترتيب
+        </button>
+      </div>
+    </div>
+  </div>
 
 </body>
