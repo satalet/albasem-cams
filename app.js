@@ -536,7 +536,13 @@ function setupFilters() {
   });
 
   // إذا لم يكن هناك فلتر محدد، نقرأ المحفوظ أو نفتح أول مجلد
-  if (!currentFilter || !rawAreas.includes(currentFilter)) {
+  // إلزام المنصة بالفتح دائماً على أول قسم مرتب في الشريط العلوي عند الدخول
+  const hasSpecificHash = window.location.hash && window.location.hash.length > 1;
+  if (!hasSpecificHash) {
+    currentFilter = rawAreas[0] || '';
+    currentSubFilter = 'all';
+    updateNavigationHistory(currentFilter, currentSubFilter, false);
+  } else if (!currentFilter || !rawAreas.includes(currentFilter)) {
     const saved = getSavedNavigationState();
     if (saved.area && rawAreas.includes(saved.area)) {
       currentFilter = saved.area;
