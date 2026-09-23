@@ -21,7 +21,7 @@ CONFIG_FILE = "/home/kali/albasem-cams/config.json"
 KNOWN_FALLBACKS = {
     "إذاعة وتلفزيون القرآن الكريم (نابلس)": ("إذاعة وتلفزيون القرآن الكريم", "https://htvint.mada.ps/shababquran/index.m3u8"),
     "تلفزيون شباب FM (سيرفر 1 - رئيسي)": ("تلفزيون شباب FM", "https://streaming.zaytonatube.com:8081/ShababFM/shabab/index.m3u8"),
-    "جولة نابلسيه": ("جولة نابلسية", "https://streaming.zaytonatube.com:8081/nb/nb/tracks-v1a1/mono.m3u8"),
+    "جولة نابلسيه": ("جولة نابلسية", "https://cam.showtv.ps:443/live/C0698BA41EC6F31A49BD382BA68983A0/17.m3u8"),
     "جولة نابلسية 2": ("جولة نابلسية 2", "https://cam.showtv.ps:443/live/C0698BA41EC6F31A49BD382BA68983A0/17.m3u8")
 }
 
