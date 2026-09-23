@@ -1,4 +1,39 @@
 
+// --- نظام المفضلة المستقل لكل زبون ---
+window.getFavorites = function() {
+  try {
+    return JSON.parse(localStorage.getItem('albasem_user_favs') || '[]');
+  } catch(e) { return []; }
+};
+
+window.toggleFavorite = function(id, e) {
+  if (e) {
+    e.stopPropagation();
+    e.preventDefault();
+  }
+  let favs = window.getFavorites();
+  const strId = String(id);
+  const exists = favs.includes(strId);
+  if (exists) {
+    favs = favs.filter(x => x !== strId);
+  } else {
+    favs.push(strId);
+  }
+  localStorage.setItem('albasem_user_favs', JSON.stringify(favs));
+
+  if (currentFilter === 'FAVORITES') {
+    renderCams();
+  } else {
+    document.querySelectorAll(`.fav-btn-${strId}`).forEach(btn => {
+      const isNowFav = !exists;
+      btn.className = `fav-btn fav-btn-${strId} w-6 h-6 rounded flex items-center justify-center text-xs transition ${isNowFav ? 'text-amber-400 bg-amber-400/10' : 'text-slate-400 hover:text-amber-400 bg-slate-800/60'}`;
+      btn.innerHTML = `<i class="${isNowFav ? 'fa-solid' : 'fa-regular'} fa-star"></i>`;
+      btn.title = isNowFav ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة';
+    });
+  }
+};
+
+
 // --- إدارة المفضلة وتثبيت الرفرش محلياً ---
 function getFavorites() {
   try {
@@ -568,16 +603,26 @@ function setupFilters() {
     return indexA - indexB;
   });
 
-  // قفل الرفرش الصارم: استعادة آخر قسم تم فتحه دائماً
+  // قفل الرفرش الصارم: استعادة آخر قسم تم فتحه
   const savedCat = localStorage.getItem('albasem_active_cat');
+  const savedSub = localStorage.getItem('albasem_active_sub') || 'all';
+
   if (!currentFilter) {
-    if (savedCat && (rawAreas.includes(savedCat) || savedCat === 'FAVORITES')) {
+    if (savedCat === 'FAVORITES') {
+      currentFilter = 'FAVORITES';
+      currentSubFilter = 'all';
+    } else if (savedCat && rawAreas.includes(savedCat)) {
       currentFilter = savedCat;
+      currentSubFilter = savedSub;
     } else {
       currentFilter = rawAreas[0] || '';
-      localStorage.setItem('albasem_active_cat', currentFilter);
+      currentSubFilter = 'all';
     }
   }
+
+  // حفظ القسم الحالي دائماً في الذاكرة لمنع الهروب عند الرفرش
+  localStorage.setItem('albasem_active_cat', currentFilter);
+  localStorage.setItem('albasem_active_sub', currentSubFilter);
 
     const sv = localStorage.getItem('albasem_cat');
   if (!currentFilter) currentFilter = (sv === 'FAVORITES' || (sv && rawAreas.includes(sv))) ? sv : (rawAreas[0] || '');
@@ -589,7 +634,7 @@ function setupFilters() {
   fb.onclick = () => { currentFilter = 'FAVORITES'; currentSubFilter = 'all'; localStorage.setItem('albasem_cat', 'FAVORITES'); setupFilters(); renderCams(); };
   filterBox.appendChild(fb);
 
-  // 1. زر المفضلة الذهبي الدائم في أول الشريط
+  // 1. زر المفضلة الدائم أول الشريط
   const favBtn = document.createElement('button');
   const isFavActive = currentFilter === 'FAVORITES';
   favBtn.className = `filter-chip flex-shrink-0 px-3.5 py-1.5 rounded-full border text-xs font-bold whitespace-nowrap transition shadow-sm flex items-center gap-1.5 ${isFavActive ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-amber-500/30' : 'bg-slate-900/90 text-amber-400 border-amber-500/30 hover:bg-slate-800'}`;
@@ -598,10 +643,13 @@ function setupFilters() {
     currentFilter = 'FAVORITES';
     currentSubFilter = 'all';
     localStorage.setItem('albasem_active_cat', 'FAVORITES');
+    localStorage.setItem('albasem_active_sub', 'all');
     setupFilters();
     renderCams();
   };
   filterBox.appendChild(favBtn);
+
+  // 2. أزرار الأقسام
   rawAreas.forEach(area => {
     const btn = document.createElement('button');
     const isActive = area === currentFilter;
@@ -609,9 +657,10 @@ function setupFilters() {
     btn.textContent = area === 'IPTV' ? '📺 IPTV - قنوات فضائية' : area;
     btn.onclick = () => {
       if (currentFilter !== area) {
-        currentFilter = area; localStorage.setItem('albasem_cat', area); localStorage.setItem('albasem_active_cat', area);
+        currentFilter = area; localStorage.setItem('albasem_cat', area);
         currentSubFilter = 'all';
-        updateNavigationHistory(area, 'all', true);
+        localStorage.setItem('albasem_active_cat', area);
+        localStorage.setItem('albasem_active_sub', 'all');
         setupFilters();
         renderCams();
       }
@@ -619,7 +668,7 @@ function setupFilters() {
     filterBox.appendChild(btn);
   });
 
-  // شريط التصنيفات الفرعية لـ IPTV (سحب أفقي ناعم بسطر واحد)
+  // شريط الأقسام الفرعية لـ IPTV
   let subBox = document.getElementById('iptv-sub-filters');
   if (!subBox) {
     subBox = document.createElement('div');
@@ -643,7 +692,7 @@ function setupFilters() {
       sBtn.onclick = () => {
         if (currentSubFilter !== sub) {
           currentSubFilter = sub;
-          updateNavigationHistory(currentFilter, sub, true);
+          localStorage.setItem('albasem_active_sub', sub);
           setupFilters();
           renderCams();
         }
@@ -655,383 +704,6 @@ function setupFilters() {
   }
 }
 
-// تثبيت مكان الزبون وتحديث رابط الصفحة لحفظ الفولدر
-function filterByArea(area) {
-  currentFilter = area; localStorage.setItem('albasem_cat', area); localStorage.setItem('albasem_active_cat', area);
-  currentSubFilter = 'all';
-  sessionStorage.setItem('albasem_active_cat', area);
-  if (area === 'all') {
-    history.replaceState(null, '', window.location.pathname);
-  } else {
-    history.replaceState(null, '', '#' + encodeURIComponent(area));
-  }
-  setupFilters();
-  renderCams();
-}
-
-window.addEventListener('hashchange', () => {
-  const fromHash = getSavedCategory();
-  if (fromHash !== currentFilter) {
-    currentFilter = fromHash;
-    setupFilters();
-    renderCams();
-  }
-});
-
-let tempCategoryOrder = [];
-
-function openCategoryOrderModal() {
-  const allAreas = [...new Set(streamsData.map(s => s.area))];
-  tempCategoryOrder = customCategoryOrder.filter(a => allAreas.includes(a));
-  allAreas.forEach(a => {
-    if (!tempCategoryOrder.includes(a)) tempCategoryOrder.push(a);
-  });
-
-  renderCategoryOrderList();
-  document.getElementById('category-order-modal').classList.remove('hidden');
-}
-
-function closeCategoryOrderModal() {
-  document.getElementById('category-order-modal').classList.add('hidden');
-}
-
-function renderCategoryOrderList() {
-  const listEl = document.getElementById('category-order-list');
-  listEl.innerHTML = '';
-
-  tempCategoryOrder.forEach((cat, idx) => {
-    const streamCount = streamsData.filter(s => s.area === cat).length;
-    const item = document.createElement('div');
-    item.className = 'flex items-center justify-between bg-slate-900 border border-slate-800 px-3 py-2 rounded-lg text-xs gap-2';
-    item.innerHTML = `
-      <div class="flex items-center gap-2 overflow-hidden">
-        <span class="w-5 h-5 rounded-full bg-slate-800 text-emerald-400 flex items-center justify-center text-[10px] shrink-0">${idx + 1}</span>
-        <span class="font-bold text-slate-200 truncate">${cat}</span>
-        <span class="text-[10px] text-slate-500 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 shrink-0">(${streamCount})</span>
-      </div>
-      <div class="flex items-center gap-1 shrink-0">
-        <button onclick="renameCategory('${cat.replace(/'/g, "\'")}')" class="w-7 h-7 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded flex items-center justify-center transition" title="إعادة تسمية القسم">
-          <i class="fa-solid fa-pen text-[10px]"></i>
-        </button>
-        <button onclick="deleteCategory('${cat.replace(/'/g, "\'")}')" class="w-7 h-7 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded flex items-center justify-center transition" title="حذف القسم بالكامل">
-          <i class="fa-solid fa-trash text-[10px]"></i>
-        </button>
-        <button onclick="moveCategory(${idx}, -1)" class="w-7 h-7 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded flex items-center justify-center transition" ${idx === 0 ? 'disabled style="opacity:0.3"' : ''} title="تقديم">
-          <i class="fa-solid fa-arrow-up text-[10px]"></i>
-        </button>
-        <button onclick="moveCategory(${idx}, 1)" class="w-7 h-7 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded flex items-center justify-center transition" ${idx === tempCategoryOrder.length - 1 ? 'disabled style="opacity:0.3"' : ''} title="تأخير">
-          <i class="fa-solid fa-arrow-down text-[10px]"></i>
-        </button>
-      </div>
-    `;
-    listEl.appendChild(item);
-  });
-}
-
-async function renameCategory(oldName) {
-  if (!currentUser) {
-    alert("يرجى تسجيل الدخول كمسؤول أولاً!");
-    return;
-  }
-  const newName = prompt(`أدخل الاسم الجديد لقسم "${oldName}":`, oldName);
-  if (!newName || !newName.trim() || newName.trim() === oldName) return;
-
-  const cleanNewName = newName.trim();
-  if (tempCategoryOrder.includes(cleanNewName)) {
-    alert(`القسم "${cleanNewName}" موجود بالفعل!`);
-    return;
-  }
-
-  const targets = streamsData.filter(s => s.area === oldName);
-  if (!confirm(`هل أنت متأكد من تغيير اسم قسم "${oldName}" إلى "${cleanNewName}"؟
-سيتم تحديث (${targets.length}) قناة تابعة له.`)) return;
-
-  try {
-    const rootRef = orderRef.root;
-    const updatePromises = targets.map(s => rootRef.child(`streams/${s.id}/area`).set(cleanNewName));
-    await Promise.all(updatePromises);
-
-    targets.forEach(s => s.area = cleanNewName);
-    tempCategoryOrder = tempCategoryOrder.map(c => c === oldName ? cleanNewName : c);
-    customCategoryOrder = customCategoryOrder.map(c => c === oldName ? cleanNewName : c);
-    await orderRef.set(tempCategoryOrder);
-
-    renderCategoryOrderList();
-    setupFilters();
-    renderCams();
-    alert(`✓ تم تغيير اسم القسم إلى "${cleanNewName}" وتحديث قنواته بنجاح!`);
-  } catch (e) {
-    alert("خطأ أثناء إعادة تسمية القسم: " + e.message);
-  }
-}
-
-async function deleteCategory(catName) {
-  if (!currentUser) {
-    alert("يرجى تسجيل الدخول كمسؤول أولاً!");
-    return;
-  }
-
-  const targets = streamsData.filter(s => s.area === catName);
-  const confirmMsg = targets.length > 0
-    ? `⚠️ تحذير أمان: هل أنت متأكد تماماً من حذف قسم "${catName}"؟
-
-سيتم حذف جميع القنوات والبثوث التابعة له وعددهم (${targets.length} قناة) نهائياً من المنصة!`
-    : `هل تريد إزالة قسم "${catName}" الفارغ من القائمة؟`;
-
-  if (!confirm(confirmMsg)) return;
-
-  try {
-    const rootRef = orderRef.root;
-    const deletePromises = targets.map(s => rootRef.child(`streams/${s.id}`).remove());
-    await Promise.all(deletePromises);
-
-    tempCategoryOrder = tempCategoryOrder.filter(c => c !== catName);
-    customCategoryOrder = customCategoryOrder.filter(c => c !== catName);
-    await orderRef.set(tempCategoryOrder);
-
-    renderCategoryOrderList();
-    setupFilters();
-    renderCams();
-    alert(`✓ تم حذف قسم "${catName}" وجميع قنواته بنجاح!`);
-  } catch (e) {
-    alert("خطأ أثناء حذف القسم: " + e.message);
-  }
-}
-
-function moveCategory(index, direction) {
-  const newIndex = index + direction;
-  if (newIndex < 0 || newIndex >= tempCategoryOrder.length) return;
-  const temp = tempCategoryOrder[index];
-  tempCategoryOrder[index] = tempCategoryOrder[newIndex];
-  tempCategoryOrder[newIndex] = temp;
-  renderCategoryOrderList();
-}
-
-async function saveCategoryOrder() {
-  if (!currentUser) {
-    alert("يرجى تسجيل الدخول كمسؤول أولاً!");
-    return;
-  }
-  try {
-    await orderRef.set(tempCategoryOrder);
-    customCategoryOrder = [...tempCategoryOrder];
-    setupFilters();
-    closeCategoryOrderModal();
-    alert("✓ تم حفظ ترتيب الأقسام الجديد وتطبيقه للجميع بنجاح!");
-  } catch (e) {
-    alert("خطأ أثناء حفظ الترتيب: " + e.message);
-  }
-}
-
-function launchHlsStream(container, url, isModal = false, isIptv = false) {
-  // فحص مباشر: إذا كان الرابط ملف فيديو عادي mp4
-  const isDirectMp4 = url.toLowerCase().includes('.mp4') || (!url.toLowerCase().includes('.m3u8') && !url.includes('manifest'));
-  if (isDirectMp4 && !url.includes('youtube') && !url.includes('youtu.be')) {
-    container.innerHTML = '';
-    const video = document.createElement('video');
-    video.className = (isModal || isIptv) ? 'w-full h-full object-contain' : 'absolute inset-0 w-full h-full object-cover';
-    video.src = url;
-    video.controls = (isModal || isIptv);
-    video.autoplay = true;
-    video.playsInline = true;
-    video.loop = true;
-    video.volume = 1.0;
-    container.appendChild(video);
-    video.play().catch(() => { video.muted = true; video.play().catch(()=>{}); });
-    return;
-  }
-  if (!isModal && !isIptv) {
-    container.querySelectorAll('video, audio').forEach(el => {
-      try { el.muted = true; el.pause(); } catch(e){}
-    });
-  }
-  container.innerHTML = '';
-  
-  const loadingIndicator = document.createElement('div');
-  loadingIndicator.className = 'absolute inset-0 bg-slate-950/80 flex items-center justify-center pointer-events-none z-10 transition-opacity duration-300';
-  loadingIndicator.innerHTML = `
-    <div class="flex flex-col items-center gap-2">
-      <span class="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></span>
-      <span class="text-[10px] text-slate-400 font-medium">${(isModal || isIptv) ? 'جاري فتح البث الحي المباشر...' : 'جاري التقاط المشهد الحي...'}</span>
-    </div>
-  `;
-  container.appendChild(loadingIndicator);
-
-  const video = document.createElement('video');
-  video.className = (isModal || isIptv) ? 'w-full h-full object-contain' : 'absolute inset-0 w-full h-full object-cover';
-  video.autoplay = true;
-  video.controls = (isModal || isIptv);
-  video.playsInline = true;
-  video.muted = isModal ? false : (isIptv ? false : true);
-  if (isModal || isIptv) video.volume = 1.0;
-  
-  if (!isModal && !isIptv) {
-    video.preload = "metadata";
-    container.addEventListener('mouseenter', () => { video.play().catch(()=>{}); });
-    container.addEventListener('mouseleave', () => { video.pause(); });
-  }
-
-  container.appendChild(video);
-
-  let isPlaying = false;
-  let hlsInstance = null;
-  let usedProxy = false;
-  const PROXY_BASE = "https://albasem-proxy.satalet.workers.dev/?url=";
-
-  const showOfflineBox = () => {
-    if (loadingIndicator) loadingIndicator.remove();
-    if (hlsInstance) {
-      try { hlsInstance.destroy(); } catch(e){}
-    }
-    video.pause();
-    video.removeAttribute('src');
-    try { video.load(); } catch(e){}
-
-    container.innerHTML = `
-      <div class="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-3 text-center z-20" onclick="event.stopPropagation()">
-        <i class="fa-solid fa-triangle-exclamation text-amber-400 text-xl mb-1"></i>
-        <span class="text-slate-200 text-xs font-bold mb-0.5">تعذر العرض المباشر</span>
-        <span class="text-slate-400 text-[10px] mb-2.5">سيرفر القناة يفرض قيود حماية أو تشفير خاص</span>
-        
-        <div class="flex items-center gap-1.5 flex-wrap justify-center">
-          <button class="retry-single-btn bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold px-2.5 py-1 rounded transition flex items-center gap-1">
-            <i class="fa-solid fa-rotate-right"></i> إعادة المحاولة
-          </button>
-          <button class="ext-play-btn bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold px-2.5 py-1 rounded transition flex items-center gap-1">
-            <i class="fa-solid fa-arrow-up-right-from-square"></i> مشغل خارجي
-          </button>
-          <button class="copy-url-btn bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] px-2 py-1 rounded transition" title="نسخ رابط البث لبرنامج VLC">
-            <i class="fa-solid fa-copy"></i> VLC
-          </button>
-        </div>
-      </div>
-    `;
-
-    const retryBtn = container.querySelector('.retry-single-btn');
-    if (retryBtn) {
-      retryBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        launchHlsStream(container, url, isModal, isIptv);
-      });
-    }
-
-    const extBtn = container.querySelector('.ext-play-btn');
-    if (extBtn) {
-      extBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        window.open(`https://hlsplayer.net/embed?url=${encodeURIComponent(url)}`, '_blank', 'width=800,height=500');
-      });
-    }
-
-    const copyBtn = container.querySelector('.copy-url-btn');
-    if (copyBtn) {
-      copyBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        navigator.clipboard.writeText(url);
-        copyBtn.innerHTML = '<i class="fa-solid fa-check text-emerald-400"></i> تم النسخ';
-        setTimeout(() => { copyBtn.innerHTML = '<i class="fa-solid fa-copy"></i> VLC'; }, 2000);
-      });
-    }
-  };
-
-  let safetyTimer = setTimeout(() => {
-    if (!isPlaying && (video.currentTime === 0 || video.paused || video.readyState < 2)) {
-      if (!usedProxy && isIptv) {
-        tryFallbackProxy();
-      } else {
-        showOfflineBox();
-      }
-    }
-  }, 9000);
-
-  const onStreamReady = () => {
-    if (isPlaying) return;
-    isPlaying = true;
-    clearTimeout(safetyTimer);
-    if (loadingIndicator) loadingIndicator.remove();
-
-    if (!isModal && !isIptv) {
-      setTimeout(() => {
-        if (!video.paused) video.pause();
-      }, 800);
-    }
-  };
-
-  video.addEventListener('playing', () => {
-    onStreamReady();
-    document.querySelectorAll('video').forEach(otherVid => {
-      if (otherVid !== video && !otherVid.paused) {
-        try { otherVid.pause(); } catch(e){}
-      }
-    });
-  });
-
-  video.addEventListener('timeupdate', () => {
-    if (video.currentTime > 0.2) onStreamReady();
-  });
-
-  function startHlsEngine(streamUrl) {
-    if (hlsInstance) {
-      try { hlsInstance.destroy(); } catch(e){}
-    }
-
-    if (Hls.isSupported()) {
-      const hls = new Hls({
-        enableWorker: true,
-        lowLatencyMode: false,
-        manifestLoadingMaxRetry: 2,
-        levelLoadingMaxRetry: 2
-      });
-      hlsInstance = hls;
-
-      hls.loadSource(streamUrl);
-      hls.attachMedia(video);
-
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        video.play().catch(() => {
-          video.muted = true;
-          video.play().catch(()=>{});
-        });
-      });
-
-      hls.on(Hls.Events.ERROR, (event, data) => {
-        if (data.fatal) {
-          if (!usedProxy && isIptv) {
-            tryFallbackProxy();
-          } else {
-            clearTimeout(safetyTimer);
-            showOfflineBox();
-          }
-        }
-      });
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = streamUrl;
-      video.addEventListener('loadedmetadata', () => {
-        video.play().catch(() => {
-          video.muted = true;
-          video.play().catch(()=>{});
-        });
-      });
-    }
-  }
-
-  function tryFallbackProxy() {
-    usedProxy = true;
-    console.log("⚡ جاري التحويل التلقائي للوسيط السحابي (Cloudflare Fallback):", url);
-    const proxyStreamUrl = PROXY_BASE + encodeURIComponent(url);
-    startHlsEngine(proxyStreamUrl);
-  }
-
-  // إذا كان الرابط http عادي، يمر عبر الوسيط لحل مشكلة المحتوى المختلط
-  if (url.startsWith('http://') && isIptv) {
-    usedProxy = true;
-    startHlsEngine(PROXY_BASE + encodeURIComponent(url));
-  } else {
-    // تشغيل مباشر لحفظ رصيد Cloudflare
-    startHlsEngine(url);
-  }
-}
-
 function renderCams() {
   const grid = document.getElementById('cams-grid');
   if (!grid) return;
@@ -1039,10 +711,24 @@ function renderCams() {
 
   let filtered = [];
   if (currentFilter === 'FAVORITES') {
-    const f = window.getFavorites(); filtered = streamsData.filter(x => f.includes(String(x.id)));
-    if (!filtered.length) { grid.innerHTML = '<div class="col-span-full py-16 text-center text-slate-400 text-xs">قائمة المفضلة فارغة حالياً ⭐ اضغط على أيقونة النجمة بأي قناة لحفظها هنا.</div>'; return; }
-  } else if (currentFilter === 'all') { filtered = streamsData.filter(x => x.area !== 'IPTV'); }
-  else { filtered = streamsData.filter(x => x.area === currentFilter); }
+    const favs = window.getFavorites();
+    filtered = streamsData.filter(s => favs.includes(String(s.id)));
+    if (filtered.length === 0) {
+      grid.innerHTML = `
+        <div class="col-span-full py-16 text-center text-slate-400 text-xs flex flex-col items-center justify-center gap-2">
+          <div class="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-xl mb-1 shadow-inner">
+            <i class="fa-regular fa-star"></i>
+          </div>
+          <span class="font-bold text-slate-200 text-sm">قائمة المفضلة فارغة حالياً</span>
+          <span class="text-slate-500 text-[11px] max-w-xs leading-relaxed">اضغط على أيقونة النجمة (⭐) الموجودة على أي قناة أو كاميرا لحفظها هنا والرجوع إليها بسرعة.</span>
+        </div>`;
+      return;
+    }
+  } else if (currentFilter === 'all') {
+    filtered = streamsData.filter(s => s.area !== 'IPTV');
+  } else {
+    filtered = streamsData.filter(s => s.area === currentFilter);
+  }
 
   if (currentFilter === 'IPTV' && currentSubFilter !== 'all') {
     filtered = filtered.filter(s => (s.category === currentSubFilter || s.subCategory === currentSubFilter));
@@ -1078,6 +764,8 @@ function renderCams() {
       </div>
     ` : '';
 
+    const isFav = window.getFavorites().includes(String(stream.id));
+
     const header = `
       <div onclick="openModal('${stream.id}')" class="px-3 py-2 bg-[#121c33] border-b border-slate-800/80 flex justify-between items-center text-xs cursor-pointer hover:bg-slate-800/60 transition select-none">
         <div class="flex items-center gap-2 truncate">
@@ -1086,6 +774,9 @@ function renderCams() {
         </div>
         <div class="flex items-center gap-1.5 flex-shrink-0">
           ${adminActions}
+          <button onclick="toggleFavorite('${stream.id}', event)" class="fav-btn fav-btn-${stream.id} w-6 h-6 rounded flex items-center justify-center text-xs transition ${isFav ? 'text-amber-400 bg-amber-400/10' : 'text-slate-400 hover:text-amber-400 bg-slate-800/60'}" title="${isFav ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة'}">
+            <i class="${isFav ? 'fa-solid' : 'fa-regular'} fa-star"></i>
+          </button>
           <span class="bg-slate-800/80 text-slate-400 px-2 py-0.5 rounded text-[10px] border border-slate-700/50">${stream.area}</span>
           <button onclick="event.stopPropagation(); openModal('${stream.id}')" class="text-slate-400 hover:text-emerald-400 p-1 transition" title="تكبير وتشغيل البث">
             <i class="fa-solid fa-play text-[10px] ml-1"></i> <i class="fa-solid fa-expand"></i>
@@ -1109,32 +800,47 @@ function renderCams() {
         : './icons/icon-ios.png';
 
       feedContainer.innerHTML = `
-        <img src="${thumbUrl}" alt="${stream.title}" class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition duration-500">
-        <div class="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition flex items-center justify-center">
+        <img src="${thumbUrl}" alt="${stream.title}" class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition duration-500 pointer-events-none">
+        <div class="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition flex items-center justify-center pointer-events-none">
           <div class="w-12 h-12 rounded-full bg-emerald-600/90 text-white flex items-center justify-center shadow-2xl group-hover:scale-110 transition">
             <i class="fa-solid fa-play text-lg ml-0.5"></i>
           </div>
         </div>
-        <div class="absolute bottom-2 right-2 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow flex items-center gap-1">
+        <div class="absolute bottom-2 right-2 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow flex items-center gap-1 pointer-events-none">
           <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span> يوتيوب مباشر
         </div>
       `;
     } else if (stream.type === 'hls') {
       if (stream.area === 'IPTV') {
-        const logoHtml = stream.logo ? `<img src="${stream.logo}" alt="${stream.title}" class="max-h-16 max-w-[70%] object-contain drop-shadow mb-2">` : `<i class="fa-solid fa-tv text-4xl text-slate-500 mb-2"></i>`;
+        const logoHtml = stream.logo ? `<img src="${stream.logo}" alt="${stream.title}" class="max-h-16 max-w-[70%] object-contain drop-shadow mb-2 pointer-events-none">` : `<i class="fa-solid fa-tv text-4xl text-slate-500 mb-2 pointer-events-none"></i>`;
         feedContainer.innerHTML = `
-          <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900 to-slate-950 flex flex-col items-center justify-center p-3 text-center">
+          <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900 to-slate-950 flex flex-col items-center justify-center p-3 text-center select-none">
             ${logoHtml}
-            <div class="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold px-3 py-1 rounded-full shadow-lg transition transform group-hover:scale-105">
-              <i class="fa-solid fa-play text-[9px]"></i> تشغيل البث
+            <div class="btn-play-trigger inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold px-3.5 py-1.5 rounded-full shadow-lg transition transform active:scale-95 group-hover:scale-105 cursor-pointer z-10">
+              <i class="fa-solid fa-play text-[9px]"></i> <span>تشغيل البث</span>
             </div>
-            <span class="text-[10px] text-slate-400 mt-1.5">${stream.category || stream.subCategory || 'بث مباشر'}</span>
+            <span class="text-[10px] text-slate-400 mt-1.5 pointer-events-none">${stream.category || stream.subCategory || 'بث مباشر'}</span>
           </div>
         `;
+
+        let isInlinePlaying = false;
+        const playBtn = feedContainer.querySelector('.btn-play-trigger');
+        if (playBtn) {
+          playBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (!isInlinePlaying) {
+              isInlinePlaying = true;
+              feedContainer.innerHTML = '';
+              launchHlsStream(feedContainer, stream.url, false, true);
+            } else {
+              openModal(stream.id);
+            }
+          };
+        }
+
         feedContainer.onclick = (e) => {
-          e.stopPropagation();
-          feedContainer.innerHTML = '';
-          launchHlsStream(feedContainer, stream.url, false, true);
+          if (e.target.closest('.btn-play-trigger')) return;
+          openModal(stream.id);
         };
       } else {
         launchHlsStream(feedContainer, stream.url, false, true);
@@ -1142,7 +848,7 @@ function renderCams() {
     } else if (stream.type === 'image') {
       const img = document.createElement('img');
       img.src = stream.url + '?t=' + Date.now();
-      img.className = 'absolute inset-0 w-full h-full object-cover';
+      img.className = 'absolute inset-0 w-full h-full object-cover pointer-events-none';
       feedContainer.appendChild(img);
     }
 
@@ -1152,92 +858,6 @@ function renderCams() {
   });
 }
 
-function openAddModal() {
-  document.getElementById('edit-stream-id').value = '';
-  document.getElementById('edit-form').reset();
-  document.getElementById('edit-modal-title').textContent = "➕ إضافة بث جديد";
-  document.getElementById('edit-save-btn').textContent = "حفظ ونشر فوراً";
-  document.getElementById('edit-modal').classList.remove('hidden');
-}
-
-function openEditModal(id) {
-  const stream = streamsData.find(s => s.id === id);
-  if (!stream) return;
-
-  document.getElementById('edit-stream-id').value = stream.id;
-  document.getElementById('edit-title').value = stream.title;
-  document.getElementById('edit-area').value = stream.area;
-  document.getElementById('edit-type').value = stream.type;
-  document.getElementById('edit-url').value = stream.url;
-
-  document.getElementById('edit-modal-title').textContent = "✏️ تعديل بيانات القناة";
-  document.getElementById('edit-save-btn').textContent = "حفظ التعديلات";
-  document.getElementById('edit-modal').classList.remove('hidden');
-}
-
-function closeEditModal() {
-  document.getElementById('edit-modal').classList.add('hidden');
-}
-
-async function handleSaveStream(e) {
-  e.preventDefault();
-  if (!currentUser) return;
-
-  const streamId = document.getElementById('edit-stream-id').value;
-  const payload = {
-    title: document.getElementById('edit-title').value.trim(),
-    area: document.getElementById('edit-area').value.trim(),
-    type: document.getElementById('edit-type').value,
-    url: document.getElementById('edit-url').value.trim(),
-    category: 'سير',
-    status: 'active'
-  };
-
-  try {
-    if (streamId) {
-      await db.ref('streams/' + streamId).set(payload);
-      alert("✓ تم حفظ التعديل بنجاح!");
-    } else {
-      await streamsRef.push(payload);
-      alert("✓ تم إضافة البث ونشره فوراً!");
-    }
-    closeEditModal();
-  } catch (err) {
-    alert("خطأ أثناء الحفظ: " + err.message);
-  }
-}
-
-async function deleteStream(id, title) {
-  if (!confirm(`هل أنت متأكد من حذف بث "${title}" نهائياً من الموقع؟`)) return;
-  if (!currentUser) {
-    alert("⚠️ يجب تسجيل الدخول كمسؤول أولاً!");
-    return;
-  }
-
-  try {
-    await db.ref('streams/' + id).remove();
-    alert("✓ تم حذف البث من السيرفر بنجاح!");
-  } catch (err) {
-    alert("خطأ أثناء الحذف: " + err.message);
-  }
-}
-
-function changeLayout(cols) {
-  currentCols = cols;
-  const grid = document.getElementById('cams-grid');
-  if (!grid) return;
-  ['btn-grid-1', 'btn-grid-2', 'btn-grid-3'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.classList.remove('active-btn');
-  });
-  const activeBtn = document.getElementById(`btn-grid-${cols}`);
-  if (activeBtn) activeBtn.classList.add('active-btn');
-
-  grid.className = 'grid gap-4';
-  if (cols === 1) grid.classList.add('grid-cols-1');
-  if (cols === 2) grid.classList.add('grid-cols-1', 'md:grid-cols-2');
-  if (cols === 3) grid.classList.add('grid-cols-1', 'md:grid-cols-2', 'lg:grid-cols-3');
-}
 
 function openModal(streamId) {
   const stream = typeof streamId === 'object' ? streamId : streamsData.find(s => s.id === streamId);
