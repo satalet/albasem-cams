@@ -1,3 +1,5 @@
+window.toggleFavorite = toggleFavorite;
+window.getFavorites = getFavorites;
 
 // --- إدارة المفضلة وتثبيت الرفرش محلياً ---
 function getFavorites() {
@@ -579,16 +581,7 @@ function setupFilters() {
     }
   }
 
-    const saved = localStorage.getItem('albasem_cat');
-  if (!currentFilter) currentFilter = (saved === 'FAVORITES' || (saved && rawAreas.includes(saved))) ? saved : (rawAreas[0] || '');
-  localStorage.setItem('albasem_cat', currentFilter);
   filterBox.innerHTML = '';
-  const fb = document.createElement('button');
-  const isFav = currentFilter === 'FAVORITES';
-  fb.className = 'filter-chip flex-shrink-0 px-3.5 py-1.5 rounded-full border text-xs font-bold whitespace-nowrap ' + (isFav ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-slate-900 text-amber-400 border-amber-500/30');
-  fb.innerHTML = '<i class="fa-solid fa-star"></i> المفضلة';
-  fb.onclick = () => { currentFilter = 'FAVORITES'; currentSubFilter = 'all'; localStorage.setItem('albasem_cat', 'FAVORITES'); setupFilters(); renderCams(); };
-  filterBox.appendChild(fb);
 
   // 1. زر المفضلة الذهبي الدائم في أول الشريط
   const favBtn = document.createElement('button');
@@ -610,7 +603,7 @@ function setupFilters() {
     btn.textContent = area === 'IPTV' ? '📺 IPTV - قنوات فضائية' : area;
     btn.onclick = () => {
       if (currentFilter !== area) {
-        currentFilter = area; localStorage.setItem('albasem_cat', area); localStorage.setItem('albasem_active_cat', area);
+        currentFilter = area; localStorage.setItem('albasem_active_cat', area);
         currentSubFilter = 'all';
         updateNavigationHistory(area, 'all', true);
         setupFilters();
@@ -658,7 +651,7 @@ function setupFilters() {
 
 // تثبيت مكان الزبون وتحديث رابط الصفحة لحفظ الفولدر
 function filterByArea(area) {
-  currentFilter = area; localStorage.setItem('albasem_cat', area); localStorage.setItem('albasem_active_cat', area);
+  currentFilter = area; localStorage.setItem('albasem_active_cat', area);
   currentSubFilter = 'all';
   sessionStorage.setItem('albasem_active_cat', area);
   if (area === 'all') {
@@ -825,16 +818,6 @@ async function saveCategoryOrder() {
 }
 
 function launchHlsStream(container, url, isModal = false, isIptv = false) {
-  const isMp4 = url && (url.toLowerCase().includes('.mp4') || (!url.toLowerCase().includes('.m3u8') && !url.includes('manifest') && !url.includes('youtu')));
-  if (isMp4) {
-    container.innerHTML = '';
-    const v = document.createElement('video');
-    v.className = isModal ? 'w-full h-full object-contain' : 'absolute inset-0 w-full h-full object-cover';
-    v.src = url; v.controls = isModal; v.autoplay = true; v.loop = true; v.playsInline = true;
-    container.appendChild(v);
-    v.play().catch(()=>{ v.muted = true; v.play().catch(()=>{}); });
-    return v;
-  }
   // فحص مباشر: إذا كان الرابط ملف فيديو عادي mp4
   const isDirectMp4 = url.toLowerCase().includes('.mp4') || (!url.toLowerCase().includes('.m3u8') && !url.includes('manifest'));
   if (isDirectMp4 && !url.includes('youtube') && !url.includes('youtu.be')) {
@@ -1048,15 +1031,7 @@ function renderCams() {
   if (!grid) return;
   grid.innerHTML = '';
 
-  let filtered = [];
-  if (currentFilter === 'FAVORITES') {
-    const f = window.getFavorites();
-    filtered = streamsData.filter(s => f.includes(String(s.id)));
-    if (!filtered.length) {
-      grid.innerHTML = '<div class="col-span-full py-16 text-center text-slate-400 text-xs flex flex-col items-center justify-center gap-2"><div class="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-xl mb-1 shadow-inner"><i class="fa-regular fa-star"></i></div><span class="font-bold text-slate-200 text-sm">قائمة المفضلة فارغة حالياً</span><span class="text-slate-500 text-[11px]">اضغط على أيقونة النجمة (⭐) الموجودة على أي قناة لحفظها هنا</span></div>';
-      return;
-    }
-  } else if (currentFilter === 'all') 
+  let filtered = currentFilter === 'all' 
     ? streamsData.filter(s => s.area !== 'IPTV') 
     : streamsData.filter(s => s.area === currentFilter);
 
