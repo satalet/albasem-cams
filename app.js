@@ -1004,6 +1004,8 @@ function launchHlsStream(container, url, isModal = false, isIptv = false) {
         levelLoadingMaxRetry: 2
       });
       hlsInstance = hls;
+      video._hls = hls;
+      if (isModal) window.activeModalHlsInstance = hls;
 
       hls.loadSource(streamUrl);
       hls.attachMedia(video);
@@ -1177,8 +1179,7 @@ function renderCams() {
         `;
         feedContainer.onclick = (e) => {
           e.stopPropagation();
-          feedContainer.innerHTML = '';
-          launchHlsStream(feedContainer, stream.url, false, true);
+          openModal(stream.id);
         };
       } else {
         launchHlsStream(feedContainer, stream.url, false, false);
@@ -1284,6 +1285,32 @@ function changeLayout(cols) {
 }
 
 function openModal(streamId) {
+  // إعدام فوري لأي صوت أو مشغل سابق بالكامل
+  if (window.activeModalHlsInstance) {
+    try {
+      window.activeModalHlsInstance.stopLoad();
+      window.activeModalHlsInstance.detachMedia();
+      window.activeModalHlsInstance.destroy();
+    } catch(e){}
+    window.activeModalHlsInstance = null;
+  }
+  const prevModalBox = document.getElementById('modal-content');
+  if (prevModalBox) {
+    prevModalBox.querySelectorAll('video, audio').forEach(v => {
+      try {
+        if (v._hls) { v._hls.stopLoad(); v._hls.destroy(); }
+        v.pause();
+        v.muted = true;
+        v.src = '';
+        v.removeAttribute('src');
+        v.load();
+      } catch(e){}
+    });
+    prevModalBox.querySelectorAll('iframe').forEach(ifr => {
+      try { ifr.src = 'about:blank'; } catch(e){}
+    });
+    prevModalBox.innerHTML = '';
+  }
   if (typeof muteAllGridVideos === 'function') muteAllGridVideos();
   const stream = streamsData.find(s => s.id === streamId);
   if (!stream) return;
@@ -1526,3 +1553,16 @@ async function saveStreamOrder() {
     alert('حدث خطأ أثناء الحفظ: ' + e.message);
   }
 }
+
+
+// إغلاق المودال وكتم الصوت عند لمس الخلفية المعتمة خارج الإطار
+document.addEventListener('DOMContentLoaded', () => {
+  const modalContainer = document.getElementById('cam-modal');
+  if (modalContainer) {
+    modalContainer.addEventListener('click', (e) => {
+      if (e.target === modalContainer) {
+        closeModal();
+      }
+    });
+  }
+});
