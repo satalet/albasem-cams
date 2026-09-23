@@ -1,9 +1,13 @@
-name: Albasem Sat Auto-Heal Engine
+name: Albasem Sat Auto-Heal & Radar
 
 on:
   schedule:
+    # يعمل تلقائياً كل 6 ساعات (الساعة 12 والساعة 6 ليلاً ونهاراً)
     - cron: '0 */6 * * *'
-  workflow_dispatch:
+  workflow_dispatch: # يتيح لك تشغيل الفحص يدوياً متى ما أردت من لوحة GitHub Actions
+
+permissions:
+  contents: write
 
 jobs:
   health-check-and-heal:
@@ -17,14 +21,12 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: تثبيت مكتبات القنص ومتصفح Chromium بالسحابة
-        run: |
-          pip install playwright
-          playwright install --with-deps chromium
-
       - name: تشغيل محرك الفحص والإنعاش التلقائي
-        env:
-          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
-          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+        run: python auto_heal.py
+
+      - name: حفظ وتطبيق التعديلات السحابية تلقائياً
         run: |
-          python auto_heal.py
+          git config --global user.name "Albasem Auto-Bot"
+          git config --global user.email "bot@albasem-sat.com"
+          git add -A
+          git diff --staged --quiet || (git commit -m "chore(auto-heal): auto-update dead streams and live links [skip ci]" && git push origin main)
