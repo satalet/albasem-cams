@@ -1,4 +1,38 @@
 
+// --- إدارة المفضلة وتثبيت الرفرش محلياً ---
+function getFavorites() {
+  try {
+    return JSON.parse(localStorage.getItem('albasem_user_favs') || '[]');
+  } catch(e) { return []; }
+}
+
+function toggleFavorite(id, e) {
+  if (e) {
+    e.stopPropagation();
+    e.preventDefault();
+  }
+  let favs = getFavorites();
+  const strId = String(id);
+  const exists = favs.includes(strId);
+  if (exists) {
+    favs = favs.filter(x => x !== strId);
+  } else {
+    favs.push(strId);
+  }
+  localStorage.setItem('albasem_user_favs', JSON.stringify(favs));
+
+  if (currentFilter === 'FAVORITES') {
+    renderCams();
+  } else {
+    document.querySelectorAll(`.fav-btn-${strId}`).forEach(btn => {
+      const isNowFav = !exists;
+      btn.innerHTML = `<i class="${isNowFav ? 'fa-solid text-amber-400' : 'fa-regular text-slate-400'} fa-star"></i>`;
+      btn.title = isNowFav ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة';
+    });
+  }
+}
+
+
 // قراءة وتثبيت الحالة عند فتح أو رفرش الصفحة
 function getSavedNavigationState() {
   const hash = decodeURIComponent(window.location.hash.replace(/^#/, ''));
@@ -523,7 +557,6 @@ function setupFilters() {
   const filterBox = document.getElementById('filter-buttons');
   if (!filterBox) return;
 
-  // شريط أفقي ناعم يمنع النزول لسطر جديد ويدعم السحب السلس
   filterBox.className = "flex items-center gap-2 overflow-x-auto no-scrollbar py-1 flex-nowrap w-full";
 
   const rawAreas = [...new Set(streamsData.map(s => s.area))].filter(Boolean);
@@ -535,26 +568,32 @@ function setupFilters() {
     return indexA - indexB;
   });
 
-  // إذا لم يكن هناك فلتر محدد، نقرأ المحفوظ أو نفتح أول مجلد
-  // إلزام المنصة بالفتح دائماً على أول قسم مرتب في الشريط العلوي عند الدخول
-  const hasSpecificHash = window.location.hash && window.location.hash.length > 1;
-  if (!hasSpecificHash) {
-    currentFilter = rawAreas[0] || '';
-    currentSubFilter = 'all';
-    updateNavigationHistory(currentFilter, currentSubFilter, false);
-  } else if (!currentFilter || !rawAreas.includes(currentFilter)) {
-    const saved = getSavedNavigationState();
-    if (saved.area && rawAreas.includes(saved.area)) {
-      currentFilter = saved.area;
-      currentSubFilter = saved.sub || 'all';
+  // قفل الرفرش الصارم: استعادة آخر قسم تم فتحه دائماً
+  const savedCat = localStorage.getItem('albasem_active_cat');
+  if (!currentFilter) {
+    if (savedCat && (rawAreas.includes(savedCat) || savedCat === 'FAVORITES')) {
+      currentFilter = savedCat;
     } else {
-      currentFilter = rawAreas.find(a => a !== 'IPTV') || rawAreas[0] || '';
-      currentSubFilter = 'all';
+      currentFilter = rawAreas[0] || '';
+      localStorage.setItem('albasem_active_cat', currentFilter);
     }
-    updateNavigationHistory(currentFilter, currentSubFilter, false);
   }
 
   filterBox.innerHTML = '';
+
+  // 1. زر المفضلة الذهبي الدائم في أول الشريط
+  const favBtn = document.createElement('button');
+  const isFavActive = currentFilter === 'FAVORITES';
+  favBtn.className = `filter-chip flex-shrink-0 px-3.5 py-1.5 rounded-full border text-xs font-bold whitespace-nowrap transition shadow-sm flex items-center gap-1.5 ${isFavActive ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-amber-500/30' : 'bg-slate-900/90 text-amber-400 border-amber-500/30 hover:bg-slate-800'}`;
+  favBtn.innerHTML = `<i class="fa-solid fa-star"></i> <span>المفضلة</span>`;
+  favBtn.onclick = () => {
+    currentFilter = 'FAVORITES';
+    currentSubFilter = 'all';
+    localStorage.setItem('albasem_active_cat', 'FAVORITES');
+    setupFilters();
+    renderCams();
+  };
+  filterBox.appendChild(favBtn);
   rawAreas.forEach(area => {
     const btn = document.createElement('button');
     const isActive = area === currentFilter;
@@ -562,7 +601,7 @@ function setupFilters() {
     btn.textContent = area === 'IPTV' ? '📺 IPTV - قنوات فضائية' : area;
     btn.onclick = () => {
       if (currentFilter !== area) {
-        currentFilter = area;
+        currentFilter = area; localStorage.setItem('albasem_active_cat', area);
         currentSubFilter = 'all';
         updateNavigationHistory(area, 'all', true);
         setupFilters();
@@ -610,7 +649,7 @@ function setupFilters() {
 
 // تثبيت مكان الزبون وتحديث رابط الصفحة لحفظ الفولدر
 function filterByArea(area) {
-  currentFilter = area;
+  currentFilter = area; localStorage.setItem('albasem_active_cat', area);
   currentSubFilter = 'all';
   sessionStorage.setItem('albasem_active_cat', area);
   if (area === 'all') {
@@ -777,6 +816,22 @@ async function saveCategoryOrder() {
 }
 
 function launchHlsStream(container, url, isModal = false, isIptv = false) {
+  // فحص مباشر: إذا كان الرابط ملف فيديو عادي mp4
+  const isDirectMp4 = url.toLowerCase().includes('.mp4') || (!url.toLowerCase().includes('.m3u8') && !url.includes('manifest'));
+  if (isDirectMp4 && !url.includes('youtube') && !url.includes('youtu.be')) {
+    container.innerHTML = '';
+    const video = document.createElement('video');
+    video.className = (isModal || isIptv) ? 'w-full h-full object-contain' : 'absolute inset-0 w-full h-full object-cover';
+    video.src = url;
+    video.controls = (isModal || isIptv);
+    video.autoplay = true;
+    video.playsInline = true;
+    video.loop = true;
+    video.volume = 1.0;
+    container.appendChild(video);
+    video.play().catch(() => { video.muted = true; video.play().catch(()=>{}); });
+    return;
+  }
   if (!isModal && !isIptv) {
     container.querySelectorAll('video, audio').forEach(el => {
       try { el.muted = true; el.pause(); } catch(e){}
