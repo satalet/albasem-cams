@@ -1,4 +1,36 @@
 
+// --- محرك الفرز الذكي التلقائي لقنوات IPTV الباسم سات ---
+const IPTV_AUTO_RULES = [
+  { cat: 'أفلام ومسلسلات', patterns: [/movie/i, /cinema/i, /action/i, /drama/i, /series/i, /film/i, /aflam/i, /box\s*office/i, /osn/i, /netflix/i, /hbo/i, /fox/i, /سينما/i, /افلام/i, /أفلام/i, /مسلسل/i, /دراما/i, /اكشن/i, /حكايات/i, /سهرة/i] },
+  { cat: 'إخبارية', patterns: [/news/i, /hadath/i, /al\s*jazeera/i, /al\s*arabiya/i, /bbc/i, /cnn/i, /sky/i, /euronews/i, /اخبار/i, /أخبار/i, /حدث/i, /الحدث/i, /الجزيرة/i, /العربية/i, /عاجل/i, /نيوز/i] },
+  { cat: 'رياضة', patterns: [/sport/i, /bein/i, /kass/i, /ssc/i, /koora/i, /match/i, /liga/i, /wwe/i, /riyadi/i, /eurosport/i, /arena/i, /ontime/i, /سبورت/i, /رياض/i, /كورة/i, /كأس/i, /دوري/i, /مصارع/i] },
+  { cat: 'إسلاميات', patterns: [/quran/i, /islam/i, /sunnah/i, /makkah/i, /madina/i, /huda/i, /iqraa/i, /قران/i, /قرآن/i, /اسلام/i, /إسلام/i, /سنة/i, /مكة/i, /مدين/i, /اقرا/i, /اقرأ/i, /الرسالة/i] },
+  { cat: 'أطفال', patterns: [/kids/i, /cartoon/i, /disney/i, /spacetoon/i, /nickelodeon/i, /toons/i, /baby/i, /اطفال/i, /أطفال/i, /كرتون/i, /سبيستون/i, /طيور الجنة/i, /كراميش/i, /ماجد/i, /براعم/i] },
+  { cat: 'وثائقي', patterns: [/doc/i, /documentary/i, /nat\s*geo/i, /geographic/i, /discovery/i, /history/i, /wild/i, /وثائق/i, /ناشونال/i, /جيوغرافيك/i, /ديسكفري/i, /استكشاف/i] },
+  { cat: 'موسيقى', patterns: [/music/i, /song/i, /clip/i, /aghani/i, /tarab/i, /melody/i, /mtv/i, /موسيقى/i, /اغاني/i, /أغاني/i, /طرب/i, /كليب/i, /مزيكا/i, /روتانا/i] }
+];
+
+window.iptvDisplayLimit = 40;
+
+function autoCategorizeStreams() {
+  if (!Array.isArray(streamsData)) return;
+  streamsData.forEach(s => {
+    if (!s || s.area !== 'IPTV') return;
+    const cur = s.category || s.subCategory;
+    if (!cur || cur === 'مشكّل ومنوعات' || cur === 'غير مصنف') {
+      const title = s.title || '';
+      for (const rule of IPTV_AUTO_RULES) {
+        if (rule.patterns.some(p => p.test(title))) {
+          s.category = rule.cat;
+          s.subCategory = rule.cat;
+          break;
+        }
+      }
+    }
+  });
+}
+
+
 // --- محرك البحث الذكي والمرن للباسم سات ---
 window.searchQuery = '';
 
@@ -643,6 +675,7 @@ function setupFilters() {
   if (!filterBox) return;
 
   setupSearchBar();
+  autoCategorizeStreams();
 
   filterBox.className = "flex items-center gap-2 overflow-x-auto no-scrollbar py-1 flex-nowrap w-full";
 
@@ -655,7 +688,6 @@ function setupFilters() {
     return indexA - indexB;
   });
 
-  // البداية دائماً على نابلس لتسريع تحميل المنصة ومنع ضغط IPTV
   const savedCat = localStorage.getItem('albasem_active_cat');
   if (!currentFilter) {
     if (savedCat && (savedCat === 'FAVORITES' || rawAreas.includes(savedCat))) {
@@ -676,6 +708,7 @@ function setupFilters() {
   favBtn.onclick = () => {
     currentFilter = 'FAVORITES';
     currentSubFilter = '';
+    window.iptvDisplayLimit = 40;
     localStorage.setItem('albasem_active_cat', 'FAVORITES');
     setupFilters();
     renderCams();
@@ -692,6 +725,7 @@ function setupFilters() {
       if (currentFilter !== area) {
         currentFilter = area;
         currentSubFilter = '';
+        window.iptvDisplayLimit = 40;
         localStorage.setItem('albasem_active_cat', area);
         setupFilters();
         renderCams();
@@ -700,7 +734,7 @@ function setupFilters() {
     filterBox.appendChild(btn);
   });
 
-  // شريط تفريعات IPTV بدون زر "الكل" المسبب لثقل الجهاز
+  // شريط تفريعات IPTV المنظم
   let subBox = document.getElementById('iptv-sub-filters');
   if (!subBox) {
     subBox = document.createElement('div');
@@ -714,9 +748,18 @@ function setupFilters() {
     const iptvStreams = streamsData.filter(s => s.area === 'IPTV');
     const rawSubCats = [...new Set(iptvStreams.map(s => s.category || s.subCategory || 'مشكّل ومنوعات'))].filter(Boolean);
     
-    // ضبط التفريع الافتراضي
+    // الترتيب الأنيق للتفريعات
+    const SUB_ORDER = ['أفلام ومسلسلات', 'إخبارية', 'رياضة', 'إسلاميات', 'أطفال', 'وثائقي', 'موسيقى', 'مشكّل ومنوعات'];
+    rawSubCats.sort((a, b) => {
+      let ia = SUB_ORDER.indexOf(a);
+      let ib = SUB_ORDER.indexOf(b);
+      if (ia === -1) ia = 999;
+      if (ib === -1) ib = 999;
+      return ia - ib;
+    });
+
     if (!currentSubFilter || currentSubFilter === 'all' || !rawSubCats.includes(currentSubFilter)) {
-      currentSubFilter = rawSubCats.includes('أفلام ومسلسلات') ? 'أفلام ومسلسلات' : (rawSubCats[0] || 'مشكّل ومنوعات');
+      currentSubFilter = rawSubCats[0] || 'مشكّل ومنوعات';
     }
 
     subBox.innerHTML = '';
@@ -728,6 +771,7 @@ function setupFilters() {
       sBtn.onclick = () => {
         if (currentSubFilter !== sub) {
           currentSubFilter = sub;
+          window.iptvDisplayLimit = 40;
           setupFilters();
           renderCams();
         }
@@ -1190,7 +1234,12 @@ function renderCams() {
     return orderA - orderB;
   });
 
-  filtered.forEach(stream => {
+    // حماية معالج ورام الجوال عبر العرض السلس
+  const totalMatches = filtered.length;
+  const isLimited = totalMatches > window.iptvDisplayLimit;
+  const displayList = isLimited ? filtered.slice(0, window.iptvDisplayLimit) : filtered;
+
+  displayList.forEach(stream => {
     const card = document.createElement('div');
     card.className = 'bg-[#0f172a] border border-slate-800/90 rounded-xl overflow-hidden shadow-xl flex flex-col transition hover:border-slate-700 cursor-pointer active:border-slate-600';
     card.onclick = (e) => {
@@ -1288,7 +1337,24 @@ function renderCams() {
     card.appendChild(feedContainer);
     grid.appendChild(card);
   });
+
+  if (isLimited) {
+    const moreDiv = document.createElement('div');
+    moreDiv.className = 'col-span-full py-4 text-center';
+    moreDiv.innerHTML = `
+      <button id="load-more-cams-btn" class="px-5 py-2.5 bg-slate-800 hover:bg-emerald-600 text-slate-200 hover:text-white rounded-xl text-xs font-bold border border-slate-700 transition shadow-lg flex items-center justify-center gap-2 mx-auto">
+        <i class="fa-solid fa-angles-down"></i>
+        <span>عرض المزيد من القنوات (عرض ${displayList.length} من أصل ${totalMatches})</span>
+      </button>
+    `;
+    grid.appendChild(moreDiv);
+    document.getElementById('load-more-cams-btn').onclick = () => {
+      window.iptvDisplayLimit += 40;
+      renderCams();
+    };
+  }
 }
+
 
 function openAddModal() {
   document.getElementById('edit-stream-id').value = '';
