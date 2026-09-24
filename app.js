@@ -386,15 +386,35 @@ window.toggleBulkSortMode = function() {
 };
 
 
-// ==================== تعبئة خيارات الترحيل والفرز ====================
+// ==================== وظائف التحديد والترحيل الجماعي والفردي ====================
+window.selectAllBulk = function(select) {
+    const checkboxes = document.querySelectorAll('.bulk-stream-chk');
+    checkboxes.forEach(cb => {
+        cb.checked = !!select;
+    });
+    window.updateBulkSelectedCount();
+};
+
+window.updateBulkSelectedCount = function() {
+    const checked = document.querySelectorAll('.bulk-stream-chk:checked');
+    const countLbl = document.getElementById('bulkSelectedCount');
+    if (countLbl) {
+        countLbl.innerText = checked.length;
+    }
+};
+
+function getActiveSelectedIds() {
+    const checkboxes = document.querySelectorAll('.bulk-stream-chk:checked');
+    return Array.from(checkboxes).map(cb => cb.value).filter(Boolean);
+}
+
 function populateTargetAreas() {
     const sel = document.getElementById('bulkTargetArea');
     if (!sel) return;
 
-    const isIptv = (typeof currentFilter !== 'undefined' && currentFilter === 'IPTV');
-    let opts = '<option value="">-- اختر وجهة الترحيل --</option>';
+    let opts = '<option value="">-- 📍 اختر وجهة الترحيل من هنا --</option>';
 
-    // 1. تفريعات IPTV الفرعية
+    // 1. تفريعات IPTV
     opts += '<optgroup label="📺 تفريعات IPTV الفرعية">';
     const defaultSubs = ['أفلام ومسلسلات', 'إخبارية', 'رياضة', 'إسلاميات', 'أطفال', 'وثائقي', 'موسيقى', 'مشكّل ومنوعات'];
     const customSubs = (window.iptvCustomSubs && Array.isArray(window.iptvCustomSubs)) ? window.iptvCustomSubs : [];
@@ -403,28 +423,27 @@ function populateTargetAreas() {
         : [];
     const allSubs = [...new Set([...defaultSubs, ...customSubs, ...streamSubs])];
     allSubs.forEach(sub => {
-        opts += `<option value="SUB:${sub}">📺 تفريع [${sub}]</option>`;
+        opts += `<option value="SUB:${sub}">📺 تفريع: ${sub}</option>`;
     });
     opts += '</optgroup>';
 
-    // 2. الأقسام الرئيسية العامة
-    opts += '<optgroup label="📁 الأقسام الرئيسية العامة">';
+    // 2. الأقسام الرئيسية
+    opts += '<optgroup label="📁 الأقسام العامة">';
     const catsOrder = (typeof customCategoryOrder !== 'undefined' && Array.isArray(customCategoryOrder)) ? customCategoryOrder : [];
     const streamsAreas = (typeof streamsData !== 'undefined' && Array.isArray(streamsData)) ? streamsData.map(s => s && s.area).filter(Boolean) : [];
     const allMain = [...new Set([...catsOrder, ...streamsAreas])].filter(a => a && a !== 'all');
     allMain.forEach(area => {
-        opts += `<option value="AREA:${area}">📁 قسم [${area}]</option>`;
+        opts += `<option value="AREA:${area}">📁 قسم: ${area}</option>`;
     });
     opts += '</optgroup>';
 
-    // 3. خيار الكتابة اليدوية
+    // 3. كتابة يدوية
     opts += '<optgroup label="✏️ خيارات إضافية">';
     opts += '<option value="__NEW_CUSTOM__">➕ كتابة وجهة جديدة باليد...</option>';
     opts += '</optgroup>';
 
     sel.innerHTML = opts;
 
-    // حدث فوري عند اختيار كتابة وجهة باليد
     sel.onchange = function() {
         if (this.value === '__NEW_CUSTOM__') {
             const isNowIptv = (typeof currentFilter !== 'undefined' && currentFilter === 'IPTV');
@@ -448,40 +467,37 @@ function populateTargetAreas() {
     };
 }
 
-// تنفيذ الترحيل الفردي والجماعي
 window.executeBulkMove = async function() {
-    let selectedIds = [];
-    if (typeof getActiveSelectedIds === 'function') {
-        try { selectedIds = getActiveSelectedIds(); } catch(e){}
-    }
+    if (!currentUser) return alert("يرجى تسجيل الدخول كمسؤول أولاً!");
+
+    const selectedIds = getActiveSelectedIds();
     if (!selectedIds || selectedIds.length === 0) {
-        selectedIds = Array.from(document.querySelectorAll('.bulk-stream-chk:checked')).map(cb => cb.value).filter(Boolean);
-    }
-    if (!selectedIds || selectedIds.length === 0) {
-        if (typeof selectedCamKeys !== 'undefined' && selectedCamKeys.size > 0) {
-            selectedIds = Array.from(selectedCamKeys);
-        }
-    }
-    if (!selectedIds || selectedIds.length === 0) {
-        return alert('⚠️ يرجى تحديد قناة واحدة على الأقل بالضغط على المربع الأخضر!');
+        return alert('⚠️ يرجى تحديد قناة واحدة على الأقل بالضغط على مربع [تحديد] الأخضر!');
     }
 
-    let target = document.getElementById('bulkTargetArea').value;
-    if (!target) return alert('⚠️ يرجى اختيار وجهة الترحيل أولاً من القائمة!');
+    const sel = document.getElementById('bulkTargetArea');
+    let target = sel ? sel.value : '';
 
-    if (target === '__NEW_CUSTOM__') {
+    // إذا لم يختر وجهة من القائمة، نفتح له نافذة إدخال فورية بدلاً من التعليق
+    if (!target) {
         const isIptv = (typeof currentFilter !== 'undefined' && currentFilter === 'IPTV');
-        const promptMsg = isIptv
-            ? 'اكتب اسم تصنيف IPTV الجديد لنقل القنوات إليه:'
-            : 'اكتب اسم القسم العام الجديد لنقل القنوات إليه:';
-        const userEntered = prompt(promptMsg);
+        const askMsg = isIptv
+            ? `لم تختر وجهة من القائمة!\nأدخل اسم تفريع IPTV لترحيل (${selectedIds.length}) قناة إليه (مثال: أفلام ومسلسلات، رياضة...):`
+            : `لم تختر وجهة من القائمة!\nأدخل اسم القسم العام لترحيل (${selectedIds.length}) قناة إليه:`;
+        const typed = prompt(askMsg);
+        if (!typed || !typed.trim()) return;
+        const cleanTyped = typed.trim();
+        target = isIptv ? ('SUB:' + cleanTyped) : ('AREA:' + cleanTyped);
+    } else if (target === '__NEW_CUSTOM__') {
+        const isIptv = (typeof currentFilter !== 'undefined' && currentFilter === 'IPTV');
+        const userEntered = prompt(isIptv ? 'اكتب اسم تفريع IPTV الجديد:' : 'اكتب اسم القسم الجديد:');
         if (!userEntered || !userEntered.trim()) return;
-        const clean = userEntered.trim();
-        target = isIptv ? ('SUB:' + clean) : ('AREA:' + clean);
+        target = isIptv ? ('SUB:' + userEntered.trim()) : ('AREA:' + userEntered.trim());
     }
 
     let destTitle = target;
     const updates = {};
+
     if (target.startsWith('SUB:')) {
         const subName = target.replace('SUB:', '');
         destTitle = 'تفريع IPTV: [' + subName + ']';
@@ -501,6 +517,12 @@ window.executeBulkMove = async function() {
             updates[`streams/${id}/area`] = 'IPTV';
             updates[`streams/${id}/subCategory`] = subName;
             updates[`streams/${id}/category`] = subName;
+            const item = streamsData.find(s => s && s.id === id);
+            if (item) {
+                item.area = 'IPTV';
+                item.subCategory = subName;
+                item.category = subName;
+            }
         });
     } else {
         const areaName = target.replace('AREA:', '');
@@ -519,20 +541,23 @@ window.executeBulkMove = async function() {
 
         selectedIds.forEach(id => {
             updates[`streams/${id}/area`] = areaName;
+            const item = streamsData.find(s => s && s.id === id);
+            if (item) item.area = areaName;
         });
     }
 
     try {
         await db.ref().update(updates);
         alert(`✅ تم بنجاح ترحيل ${selectedIds.length} قناة إلى ${destTitle}!`);
-        location.reload();
+        if (typeof selectAllBulk === 'function') selectAllBulk(false);
+        if (typeof setupFilters === 'function') setupFilters();
+        if (typeof setupIptvSubTabs === 'function') setupIptvSubTabs();
+        if (typeof renderCams === 'function') renderCams();
     } catch(err) {
         alert('خطأ أثناء الترحيل: ' + err.message);
     }
 };
 
-
-// تنفيذ الحذف الجماعي بقراءة الـ DOM المباشرة
 window.executeBulkDelete = async function() {
     const selectedIds = getActiveSelectedIds();
     if (selectedIds.length === 0) return alert('⚠️ يرجى تحديد القنوات المراد حذفها أولاً!');
