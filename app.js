@@ -1,4 +1,34 @@
 
+// تبديل حالة قفل القناة الفوري (الرقابة الأبوية 1415)
+async function toggleStreamLock(streamId, e) {
+  if (e) {
+    e.stopPropagation();
+    e.preventDefault();
+  }
+  if (!currentUser) {
+    alert("⚠️ يجب تسجيل الدخول كمسؤول أولاً!");
+    return;
+  }
+  const stream = streamsData.find(s => s.id === streamId);
+  if (!stream) return;
+
+  const newStatus = !stream.isLocked;
+  try {
+    await db.ref('streams/' + streamId + '/isLocked').set(newStatus);
+    stream.isLocked = newStatus;
+    if (typeof renderStreams === 'function') {
+      renderStreams();
+    } else if (typeof applyFilters === 'function') {
+      applyFilters();
+    } else {
+      location.reload();
+    }
+  } catch(err) {
+    alert("خطأ أثناء تحديث حالة القفل: " + err.message);
+  }
+}
+
+
 // --- محرك الرقابة الأبوية الذكي Al-Basem Parental Engine ---
 function checkParentalAccess(streamId, onAllowed) {
   const stream = streamsData.find(s => s.id === streamId);
@@ -1452,12 +1482,16 @@ function renderCams() {
           <input type="checkbox" class="bulk-stream-chk accent-emerald-500 cursor-pointer w-3.5 h-3.5" value="${stream.id}" onchange="updateBulkSelectedCount()" ${(window.selectedBulkStreams && window.selectedBulkStreams.has(stream.id)) ? 'checked' : ''}>
           <span>تحديد</span>
         </label>
-        <button onclick="openEditModal('${stream.id}')" class="bg-blue-600/30 hover:bg-blue-600 text-blue-300 hover:text-white px-2 py-0.5 rounded text-[11px] transition" title="تعديل">
-          <i class="fa-solid fa-pen-to-square"></i> تعديل
-        </button>
-        <button onclick="deleteStream('${stream.id}', '${stream.title}')" class="bg-red-600/30 hover:bg-red-600 text-red-300 hover:text-white px-2 py-0.5 rounded text-[11px] transition" title="حذف">
-          <i class="fa-solid fa-trash"></i>
-        </button>
+                  <button onclick="openEditModal('${stream.id}')" class="bg-blue-600/30 hover:bg-blue-600 text-blue-300 hover:text-white px-2 py-0.5 rounded text-[11px] transition" title="تعديل">
+            <i class="fa-solid fa-pen-to-square"></i> تعديل
+          </button>
+          <button onclick="toggleStreamLock('${stream.id}', event)" class="${stream.isLocked ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/20' : 'bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950'} px-2 py-0.5 rounded text-[11px] transition flex items-center gap-1" title="${stream.isLocked ? 'فك قفل الرقابة الأبوية' : 'قفل فوري برمز 1415'}">
+            <i class="fa-solid ${stream.isLocked ? 'fa-lock' : 'fa-lock-open'}"></i>
+            <span>${stream.isLocked ? 'مقفلة' : 'قفل'}</span>
+          </button>
+          <button onclick="deleteStream('${stream.id}', '${stream.title}')" class="bg-red-600/30 hover:bg-red-600 text-red-300 hover:text-white px-2 py-0.5 rounded text-[11px] transition" title="حذف">
+            <i class="fa-solid fa-trash"></i>
+          </button>
       </div>
     ` : '';
 
