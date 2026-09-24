@@ -1036,17 +1036,11 @@ function launchHlsStream(container, url, isModal = false, isIptv = false) {
         <span class="text-slate-200 text-xs font-bold mb-0.5">تعذر العرض المباشر</span>
         <span class="text-slate-400 text-[10px] mb-2.5">سيرفر القناة يفرض قيود حماية أو تشفير خاص</span>
         
-        <div class="flex items-center gap-1.5 flex-wrap justify-center">
-          <button class="retry-single-btn bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold px-2.5 py-1 rounded transition flex items-center gap-1">
-            <i class="fa-solid fa-rotate-right"></i> إعادة المحاولة
-          </button>
-          <button class="ext-play-btn bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold px-2.5 py-1 rounded transition flex items-center gap-1">
-            <i class="fa-solid fa-arrow-up-right-from-square"></i> مشغل خارجي
-          </button>
-          <button class="copy-url-btn bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] px-2 py-1 rounded transition" title="نسخ رابط البث لبرنامج VLC">
-            <i class="fa-solid fa-copy"></i> VLC
-          </button>
-        </div>
+        <div class="flex items-center justify-center">
+            <button class="retry-single-btn bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-lg flex items-center gap-1.5 active:scale-95">
+              <i class="fa-solid fa-rotate-right"></i> إعادة المحاولة
+            </button>
+          </div>
       </div>
     `;
 
@@ -1122,35 +1116,65 @@ function launchHlsStream(container, url, isModal = false, isIptv = false) {
 
     if (Hls.isSupported()) {
       const hls = new Hls({
-        enableWorker: true,
-        lowLatencyMode: false,
-        manifestLoadingMaxRetry: 2,
-        levelLoadingMaxRetry: 2
-      });
-      hlsInstance = hls;
-      video._hls = hls;
-      if (isModal) window.activeModalHlsInstance = hls;
-
-      hls.loadSource(streamUrl);
-      hls.attachMedia(video);
-
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        video.play().catch(() => {
-          video.muted = true;
-          video.play().catch(()=>{});
+          enableWorker: true,
+          lowLatencyMode: false,
+          manifestLoadingMaxRetry: 5,
+          levelLoadingMaxRetry: 5,
+          fragLoadingMaxRetry: 6,
+          maxBufferLength: 30,
+          maxMaxBufferLength: 60
         });
-      });
+        hlsInstance = hls;
+        video._hls = hls;
+        if (isModal) window.activeModalHlsInstance = hls;
 
-      hls.on(Hls.Events.ERROR, (event, data) => {
-        if (data.fatal) {
-          if (!usedProxy && isIptv) {
-            tryFallbackProxy();
-          } else {
-            clearTimeout(safetyTimer);
-            showOfflineBox();
+        let networkRecoveryAttempts = 0;
+        let mediaRecoveryAttempts = 0;
+
+        hls.loadSource(streamUrl);
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          video.play().catch(() => {
+            video.muted = true;
+            video.play().catch(()=>{});
+          });
+        });
+
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                if (networkRecoveryAttempts < 3) {
+                  networkRecoveryAttempts++;
+                  hls.startLoad();
+                  return;
+                }
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                if (mediaRecoveryAttempts < 2) {
+                  mediaRecoveryAttempts++;
+                  hls.recoverMediaError();
+                  return;
+                } else if (mediaRecoveryAttempts === 2) {
+                  mediaRecoveryAttempts++;
+                  hls.swapAudioCodec();
+                  hls.recoverMediaError();
+                  return;
+                }
+                break;
+              default:
+                break;
+            }
+
+            if (!usedProxy && isIptv) {
+              tryFallbackProxy();
+            } else {
+              clearTimeout(safetyTimer);
+              showOfflineBox();
+            }
           }
-        }
-      });
+        });
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = streamUrl;
       video.addEventListener('loadedmetadata', () => {
