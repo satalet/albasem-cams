@@ -404,13 +404,7 @@ function populateTargetAreas() {
     }
 
     opts += '<optgroup label="📁 الأقسام الرئيسية العامة">';
-    let allMain = [];
-    if (typeof streamsData !== 'undefined' && Array.isArray(streamsData)) {
-        streamsData.forEach(s => { if (s.area && !allMain.includes(s.area)) allMain.push(s.area); });
-    }
-    if (window.categoriesList && Array.isArray(window.categoriesList)) {
-        window.categoriesList.forEach(c => { if (c && !allMain.includes(c)) allMain.push(c); });
-    }
+    const allMain = [...new Set([...(customCategoryOrder || []), ...((typeof streamsData !== 'undefined' && Array.isArray(streamsData)) ? streamsData.map(s => s.area) : [])])].filter(Boolean);
     allMain.forEach(area => {
         if (typeof currentFilter === 'undefined' || area !== currentFilter) {
             opts += `<option value="AREA:${area}">${area}</option>`;
@@ -476,18 +470,18 @@ window.executeBulkMove = async function() {
         if (isIptv) {
             target = 'SUB:' + clean;
             try {
-                const snap = await db.ref('iptv_custom_subcategories').once('value');
+                const snap = await db.ref('streams/_config_iptv_subs').once('value');
                 let subs = snap.val() || [];
                 if (!Array.isArray(subs)) subs = Object.values(subs);
-                if (!subs.includes(clean)) { subs.push(clean); await db.ref('iptv_custom_subcategories').set(subs); }
+                if (!subs.includes(clean)) { subs.push(clean); await db.ref('streams/_config_iptv_subs').set(subs); }
             } catch(e){}
         } else {
             target = 'AREA:' + clean;
             try {
-                const snap = await db.ref('categories').once('value');
+                const snap = await orderRef.once('value');
                 let cats = snap.val() || [];
                 if (!Array.isArray(cats)) cats = Object.values(cats);
-                if (!cats.includes(clean)) { cats.push(clean); await db.ref('categories').set(cats); }
+                if (!cats.includes(clean)) { cats.push(clean); await orderRef.set(cats); customCategoryOrder = cats; }
             } catch(e){}
         }
     }
@@ -553,24 +547,28 @@ window.addNewCategoryDirect = async function() {
 
     try {
         if (isIptv) {
-            const snap = await db.ref('iptv_custom_subcategories').once('value');
+            const snap = await db.ref('streams/_config_iptv_subs').once('value');
             let subs = snap.val() || [];
             if (!Array.isArray(subs)) subs = Object.values(subs);
             if (subs.includes(cleanName)) return alert('⚠️ هذا التصنيف موجود بالفعل داخل IPTV!');
             subs.push(cleanName);
-            await db.ref('iptv_custom_subcategories').set(subs);
+            await db.ref('streams/_config_iptv_subs').set(subs);
             alert(`✅ تم إنشاء تصنيف IPTV الجديد [${cleanName}] بنجاح وهو متاح الآن بالشريط والفرز!`);
         } else {
-            const snap = await db.ref('categories').once('value');
+            // حفظ مباشر بالفايربيس الأصلي streams/_config_categories
+            const snap = await orderRef.once('value');
             let cats = snap.val() || [];
             if (!Array.isArray(cats)) cats = Object.values(cats);
+            const streamAreas = (typeof streamsData !== 'undefined' && Array.isArray(streamsData)) ? streamsData.map(s => s.area).filter(Boolean) : [];
+            cats = [...new Set([...cats, ...streamAreas])];
             if (cats.includes(cleanName)) return alert('⚠️ هذا القسم موجود بالفعل!');
             cats.push(cleanName);
-            await db.ref('categories').set(cats);
-            alert(`✅ تم إنشاء قسم [${cleanName}] بنجاح وهو متاح الآن بالشريط وفي قائمة الترحيل!`);
+            await orderRef.set(cats);
+            customCategoryOrder = cats;
+            alert(`✅ تم إنشاء قسم [${cleanName}] وحفظه في الفايربيس بنجاح!`);
         }
-        if (typeof setupFilters === 'function') setupFilters();
-        if (typeof populateTargetAreas === 'function') populateTargetAreas();
+        setupFilters();
+        populateTargetAreas();
     } catch(e) {
         alert('حدث خطأ: ' + e.message);
     }
@@ -833,6 +831,15 @@ const db = firebase.database();
 const auth = firebase.auth();
 const streamsRef = db.ref('streams');
 const orderRef = db.ref('streams/_config_categories');
+// مزامنة تفريعات IPTV المخصصة مع الفايربيس
+window.iptvCustomSubs = [];
+db.ref('streams/_config_iptv_subs').on('value', snap => {
+    const val = snap.val();
+    window.iptvCustomSubs = val ? (Array.isArray(val) ? val : Object.values(val)) : [];
+    if (typeof setupFilters === 'function') setupFilters();
+    if (typeof populateTargetAreas === 'function') populateTargetAreas();
+});
+
 
 let currentUser = null;
 let streamsData = [];
@@ -963,11 +970,7 @@ function setupFilters() {
 
   filterBox.className = "flex items-center gap-2 overflow-x-auto no-scrollbar py-1 flex-nowrap w-full";
 
-  let storedCats = [];
-  try {
-    if (window.categoriesList && Array.isArray(window.categoriesList)) storedCats = window.categoriesList;
-  } catch(e) {}
-  const rawAreas = [...new Set([...streamsData.map(s => s.area), ...storedCats])].filter(Boolean);
+  const rawAreas = [...new Set([...(customCategoryOrder || []), ...streamsData.map(s => s.area)])].filter(Boolean);
   rawAreas.sort((a, b) => {
     let indexA = customCategoryOrder.indexOf(a);
     let indexB = customCategoryOrder.indexOf(b);
@@ -1034,7 +1037,9 @@ function setupFilters() {
   if (currentFilter === 'IPTV') {
     subBox.classList.remove('hidden');
     const iptvStreams = streamsData.filter(s => s.area === 'IPTV');
-    const rawSubCats = [...new Set(iptvStreams.map(s => s.category || s.subCategory || 'مشكّل ومنوعات'))].filter(Boolean);
+    const defaultSubs = ['أفلام ومسلسلات', 'إخبارية', 'رياضة', 'إسلاميات', 'أطفال', 'وثائقي', 'موسيقى', 'مشكّل ومنوعات'];
+    const customSubs = (window.iptvCustomSubs && Array.isArray(window.iptvCustomSubs)) ? window.iptvCustomSubs : [];
+    const rawSubCats = [...new Set([...defaultSubs, ...customSubs, ...iptvStreams.map(s => s.category || s.subCategory)])].filter(Boolean);
     
     // الترتيب الأنيق للتفريعات
     const SUB_ORDER = ['أفلام ومسلسلات', 'إخبارية', 'رياضة', 'إسلاميات', 'أطفال', 'وثائقي', 'موسيقى', 'مشكّل ومنوعات'];
