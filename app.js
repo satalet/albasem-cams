@@ -1118,8 +1118,9 @@ function launchHlsStream(container, url, isModal = false, isIptv = false) {
       const hls = new Hls({
           enableWorker: true,
           lowLatencyMode: false,
-          liveSyncDurationCount: 5,        // هامش أمان 20-30 ثانية لضمان استقرار البث
-          liveMaxLatencyDurationCount: 10,
+          liveSyncDuration: 30,            // وسادة أمان صريحة 30 ثانية خلف البث الحي لمنع السقوط
+          liveMaxLatencyDuration: 60,      // أقصى حد للتأخير المسموح
+          liveDurationInfinity: true,      // بث حي لا نهائي ومنع جدار الـ 44 ثانية
           maxBufferLength: 60,
           maxMaxBufferLength: 120,
           backBufferLength: 30,
