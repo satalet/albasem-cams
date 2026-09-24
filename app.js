@@ -285,6 +285,7 @@ function setupSearchBar() {
       cBtn.classList.add('hidden');
     }
     renderCams();
+      if (typeof populateTargetAreas === 'function') populateTargetAreas();
   });
 
   cBtn.addEventListener('click', () => {
@@ -292,6 +293,7 @@ function setupSearchBar() {
     window.searchQuery = '';
     cBtn.classList.add('hidden');
     renderCams();
+      if (typeof populateTargetAreas === 'function') populateTargetAreas();
   });
 }
 
@@ -412,34 +414,49 @@ function populateTargetAreas() {
     const sel = document.getElementById('bulkTargetArea');
     if (!sel) return;
 
-    let opts = '<option value="">-- 📍 اختر وجهة الترحيل من هنا --</option>';
+    const currentVal = sel.value;
+    let opts = '<option value="" style="background-color:#0f172a; color:#94a3b8;">-- 📍 اختر وجهة الترحيل من هنا --</option>';
 
-    // 1. تفريعات IPTV
-    opts += '<optgroup label="📺 تفريعات IPTV الفرعية">';
+    // 1. سحب تفريعات IPTV (من الفايربيس + الكروت + الأزرار)
     const defaultSubs = ['أفلام ومسلسلات', 'إخبارية', 'رياضة', 'إسلاميات', 'أطفال', 'وثائقي', 'موسيقى', 'مشكّل ومنوعات'];
     const customSubs = (window.iptvCustomSubs && Array.isArray(window.iptvCustomSubs)) ? window.iptvCustomSubs : [];
     const streamSubs = (typeof streamsData !== 'undefined' && Array.isArray(streamsData))
         ? streamsData.filter(s => s && s.area === 'IPTV').map(s => s.subCategory || s.category).filter(Boolean)
         : [];
-    const allSubs = [...new Set([...defaultSubs, ...customSubs, ...streamSubs])];
-    allSubs.forEach(sub => {
-        opts += `<option value="SUB:${sub}">📺 تفريع: ${sub}</option>`;
-    });
-    opts += '</optgroup>';
+    const domSubs = Array.from(document.querySelectorAll('#iptv-sub-tabs button, .sub-filter-btn'))
+        .map(b => b.textContent.trim().replace(/^[📺📁\s]+/, ''))
+        .filter(t => t && t !== 'الكل' && !t.includes('إدارة'));
 
-    // 2. الأقسام الرئيسية
-    opts += '<optgroup label="📁 الأقسام العامة">';
+    const allSubs = [...new Set([...defaultSubs, ...customSubs, ...streamSubs, ...domSubs])].filter(Boolean);
+    if (allSubs.length > 0) {
+        opts += '<optgroup label="📺 تفريعات IPTV الفرعية" style="background-color:#0b1329; color:#34d399; font-weight:bold;">';
+        allSubs.forEach(sub => {
+            const isSel = (currentVal === `SUB:${sub}`) ? 'selected' : '';
+            opts += `<option value="SUB:${sub}" ${isSel} style="background-color:#1e293b; color:#ffffff; font-weight:bold; padding:4px;">📺 تفريع: ${sub}</option>`;
+        });
+        opts += '</optgroup>';
+    }
+
+    // 2. سحب الأقسام العامة (من الفايربيس + الكروت + أزرار التبويبات)
     const catsOrder = (typeof customCategoryOrder !== 'undefined' && Array.isArray(customCategoryOrder)) ? customCategoryOrder : [];
     const streamsAreas = (typeof streamsData !== 'undefined' && Array.isArray(streamsData)) ? streamsData.map(s => s && s.area).filter(Boolean) : [];
-    const allMain = [...new Set([...catsOrder, ...streamsAreas])].filter(a => a && a !== 'all');
-    allMain.forEach(area => {
-        opts += `<option value="AREA:${area}">📁 قسم: ${area}</option>`;
-    });
-    opts += '</optgroup>';
+    const domAreas = Array.from(document.querySelectorAll('#filter-buttons button, .filter-btn'))
+        .map(b => b.textContent.trim().replace(/^[📺📁\s]+/, ''))
+        .filter(t => t && t !== 'الكل' && t !== 'المفضلة' && !t.includes('ترتيب'));
 
-    // 3. كتابة يدوية
-    opts += '<optgroup label="✏️ خيارات إضافية">';
-    opts += '<option value="__NEW_CUSTOM__">➕ كتابة وجهة جديدة باليد...</option>';
+    const allMain = [...new Set([...catsOrder, ...streamsAreas, ...domAreas])].filter(a => a && a !== 'all' && a !== 'FAVORITES');
+    if (allMain.length > 0) {
+        opts += '<optgroup label="📁 الأقسام العامة" style="background-color:#0b1329; color:#60a5fa; font-weight:bold;">';
+        allMain.forEach(area => {
+            const isSel = (currentVal === `AREA:${area}`) ? 'selected' : '';
+            opts += `<option value="AREA:${area}" ${isSel} style="background-color:#1e293b; color:#ffffff; font-weight:bold; padding:4px;">📁 قسم: ${area}</option>`;
+        });
+        opts += '</optgroup>';
+    }
+
+    // 3. خيار الكتابة باليد
+    opts += '<optgroup label="✏️ خيارات إضافية" style="background-color:#0b1329; color:#fbbf24; font-weight:bold;">';
+    opts += '<option value="__NEW_CUSTOM__" style="background-color:#1e293b; color:#38bdf8; font-weight:bold; padding:4px;">➕ كتابة وجهة جديدة باليد...</option>';
     opts += '</optgroup>';
 
     sel.innerHTML = opts;
@@ -458,6 +475,8 @@ function populateTargetAreas() {
                 opt.value = newOptVal;
                 opt.textContent = (isNowIptv ? '📺 تفريع جديد: ' : '📁 قسم جديد: ') + clean;
                 opt.selected = true;
+                opt.style.backgroundColor = '#1e293b';
+                opt.style.color = '#ffffff';
                 sel.appendChild(opt);
                 sel.value = newOptVal;
             } else {
@@ -828,6 +847,7 @@ function initRealtimeSync() {
 
     setupFilters();
     renderCams();
+      if (typeof populateTargetAreas === 'function') populateTargetAreas();
   });
 }
 
