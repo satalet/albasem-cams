@@ -1118,11 +1118,17 @@ function launchHlsStream(container, url, isModal = false, isIptv = false) {
       const hls = new Hls({
           enableWorker: true,
           lowLatencyMode: false,
-          manifestLoadingMaxRetry: 5,
-          levelLoadingMaxRetry: 5,
-          fragLoadingMaxRetry: 6,
-          maxBufferLength: 30,
-          maxMaxBufferLength: 60
+          liveSyncDurationCount: 5,        // هامش أمان 20-30 ثانية لضمان استقرار البث
+          liveMaxLatencyDurationCount: 10,
+          maxBufferLength: 60,
+          maxMaxBufferLength: 120,
+          backBufferLength: 30,
+          manifestLoadingMaxRetry: 8,
+          levelLoadingMaxRetry: 8,
+          fragLoadingMaxRetry: 12,
+          fragLoadingRetryDelay: 1000,
+          nudgeMaxRetry: 10,              // دفش البث تلقائياً لو علق فريم بدون توقف
+          nudgeOffset: 0.2
         });
         hlsInstance = hls;
         video._hls = hls;
@@ -1142,24 +1148,28 @@ function launchHlsStream(container, url, isModal = false, isIptv = false) {
         });
 
         hls.on(Hls.Events.ERROR, (event, data) => {
+          // التعامل الذكي مع تعليق الكاش المؤقت بدون استسلام
+          if (data.details === Hls.ErrorDetails.BUFFER_STALLED_ERROR) {
+            hls.startLoad();
+            return;
+          }
+
           if (data.fatal) {
             switch (data.type) {
               case Hls.ErrorTypes.NETWORK_ERROR:
-                if (networkRecoveryAttempts < 3) {
+                if (networkRecoveryAttempts < 10) {
                   networkRecoveryAttempts++;
-                  hls.startLoad();
+                  setTimeout(() => { try { hls.startLoad(); } catch(e){} }, 800);
                   return;
                 }
                 break;
               case Hls.ErrorTypes.MEDIA_ERROR:
-                if (mediaRecoveryAttempts < 2) {
+                if (mediaRecoveryAttempts < 6) {
                   mediaRecoveryAttempts++;
-                  hls.recoverMediaError();
-                  return;
-                } else if (mediaRecoveryAttempts === 2) {
-                  mediaRecoveryAttempts++;
-                  hls.swapAudioCodec();
-                  hls.recoverMediaError();
+                  try {
+                    if (mediaRecoveryAttempts % 2 === 0) hls.swapAudioCodec();
+                    hls.recoverMediaError();
+                  } catch(e){}
                   return;
                 }
                 break;
@@ -1170,8 +1180,11 @@ function launchHlsStream(container, url, isModal = false, isIptv = false) {
             if (!usedProxy && isIptv) {
               tryFallbackProxy();
             } else {
+              // مهلة أمان إضافية قبل إعلان تعذر العرض
               clearTimeout(safetyTimer);
-              showOfflineBox();
+              safetyTimer = setTimeout(() => {
+                showOfflineBox();
+              }, 4000);
             }
           }
         });
