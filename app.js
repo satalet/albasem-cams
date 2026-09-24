@@ -8,8 +8,8 @@ function normalizeArabic(text) {
     .replace(/[أإآ]/g, 'ا')
     .replace(/ة/g, 'ه')
     .replace(/[ىي]/g, 'ي')
-    .replace(/[ً-ٟ]/g, '') // حذف التشكيل
-    .replace(/[^a-z0-9؀-ۿ]/g, '') // إبقاء الحروف والأرقام فقط
+    .replace(/[ً-ٟ]/g, '')
+    .replace(/[^a-z0-9؀-ۿ]/g, '')
     .trim();
 }
 
@@ -19,7 +19,6 @@ function matchesSmartSearch(title, query) {
   if (!cleanQuery) return true;
   if (cleanTitle.includes(cleanQuery)) return true;
 
-  // فحص المقاطع المرنة من 3 أحرف فأكثر
   if (cleanQuery.length >= 3) {
     for (let i = 0; i <= cleanQuery.length - 3; i++) {
       const sub = cleanQuery.substr(i, 3);
@@ -656,7 +655,7 @@ function setupFilters() {
     return indexA - indexB;
   });
 
-  // البداية دائماً على نابلس أو الأقسام الخفيفة لتجنب تهنيج الجوال
+  // البداية دائماً على نابلس لتسريع تحميل المنصة ومنع ضغط IPTV
   const savedCat = localStorage.getItem('albasem_active_cat');
   if (!currentFilter) {
     if (savedCat && (savedCat === 'FAVORITES' || rawAreas.includes(savedCat))) {
@@ -701,7 +700,7 @@ function setupFilters() {
     filterBox.appendChild(btn);
   });
 
-  // شريط تفريعات IPTV بدون زر "الكل" لتخفيف الحمل
+  // شريط تفريعات IPTV بدون زر "الكل" المسبب لثقل الجهاز
   let subBox = document.getElementById('iptv-sub-filters');
   if (!subBox) {
     subBox = document.createElement('div');
@@ -715,7 +714,7 @@ function setupFilters() {
     const iptvStreams = streamsData.filter(s => s.area === 'IPTV');
     const rawSubCats = [...new Set(iptvStreams.map(s => s.category || s.subCategory || 'مشكّل ومنوعات'))].filter(Boolean);
     
-    // ضبط أول تفريع افتراضي
+    // ضبط التفريع الافتراضي
     if (!currentSubFilter || currentSubFilter === 'all' || !rawSubCats.includes(currentSubFilter)) {
       currentSubFilter = rawSubCats.includes('أفلام ومسلسلات') ? 'أفلام ومسلسلات' : (rawSubCats[0] || 'مشكّل ومنوعات');
     }
@@ -740,6 +739,403 @@ function setupFilters() {
   }
 }
 
+// تثبيت مكان الزبون وتحديث رابط الصفحة لحفظ الفولدر
+function filterByArea(area) {
+  currentFilter = area; localStorage.setItem('albasem_active_cat', area);
+  currentSubFilter = 'all';
+  sessionStorage.setItem('albasem_active_cat', area);
+  if (area === 'all') {
+    history.replaceState(null, '', window.location.pathname);
+  } else {
+    history.replaceState(null, '', '#' + encodeURIComponent(area));
+  }
+  setupFilters();
+  renderCams();
+}
+
+window.addEventListener('hashchange', () => {
+  const fromHash = getSavedCategory();
+  if (fromHash !== currentFilter) {
+    currentFilter = fromHash;
+    setupFilters();
+    renderCams();
+  }
+});
+
+let tempCategoryOrder = [];
+
+function openCategoryOrderModal() {
+  const allAreas = [...new Set(streamsData.map(s => s.area))];
+  tempCategoryOrder = customCategoryOrder.filter(a => allAreas.includes(a));
+  allAreas.forEach(a => {
+    if (!tempCategoryOrder.includes(a)) tempCategoryOrder.push(a);
+  });
+
+  renderCategoryOrderList();
+  document.getElementById('category-order-modal').classList.remove('hidden');
+}
+
+function closeCategoryOrderModal() {
+  document.getElementById('category-order-modal').classList.add('hidden');
+}
+
+function renderCategoryOrderList() {
+  const listEl = document.getElementById('category-order-list');
+  listEl.innerHTML = '';
+
+  tempCategoryOrder.forEach((cat, idx) => {
+    const streamCount = streamsData.filter(s => s.area === cat).length;
+    const item = document.createElement('div');
+    item.className = 'flex items-center justify-between bg-slate-900 border border-slate-800 px-3 py-2 rounded-lg text-xs gap-2';
+    item.innerHTML = `
+      <div class="flex items-center gap-2 overflow-hidden">
+        <span class="w-5 h-5 rounded-full bg-slate-800 text-emerald-400 flex items-center justify-center text-[10px] shrink-0">${idx + 1}</span>
+        <span class="font-bold text-slate-200 truncate">${cat}</span>
+        <span class="text-[10px] text-slate-500 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 shrink-0">(${streamCount})</span>
+      </div>
+      <div class="flex items-center gap-1 shrink-0">
+        <button onclick="renameCategory('${cat.replace(/'/g, "\'")}')" class="w-7 h-7 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded flex items-center justify-center transition" title="إعادة تسمية القسم">
+          <i class="fa-solid fa-pen text-[10px]"></i>
+        </button>
+        <button onclick="deleteCategory('${cat.replace(/'/g, "\'")}')" class="w-7 h-7 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded flex items-center justify-center transition" title="حذف القسم بالكامل">
+          <i class="fa-solid fa-trash text-[10px]"></i>
+        </button>
+        <button onclick="moveCategory(${idx}, -1)" class="w-7 h-7 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded flex items-center justify-center transition" ${idx === 0 ? 'disabled style="opacity:0.3"' : ''} title="تقديم">
+          <i class="fa-solid fa-arrow-up text-[10px]"></i>
+        </button>
+        <button onclick="moveCategory(${idx}, 1)" class="w-7 h-7 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded flex items-center justify-center transition" ${idx === tempCategoryOrder.length - 1 ? 'disabled style="opacity:0.3"' : ''} title="تأخير">
+          <i class="fa-solid fa-arrow-down text-[10px]"></i>
+        </button>
+      </div>
+    `;
+    listEl.appendChild(item);
+  });
+}
+
+async function renameCategory(oldName) {
+  if (!currentUser) {
+    alert("يرجى تسجيل الدخول كمسؤول أولاً!");
+    return;
+  }
+  const newName = prompt(`أدخل الاسم الجديد لقسم "${oldName}":`, oldName);
+  if (!newName || !newName.trim() || newName.trim() === oldName) return;
+
+  const cleanNewName = newName.trim();
+  if (tempCategoryOrder.includes(cleanNewName)) {
+    alert(`القسم "${cleanNewName}" موجود بالفعل!`);
+    return;
+  }
+
+  const targets = streamsData.filter(s => s.area === oldName);
+  if (!confirm(`هل أنت متأكد من تغيير اسم قسم "${oldName}" إلى "${cleanNewName}"؟
+سيتم تحديث (${targets.length}) قناة تابعة له.`)) return;
+
+  try {
+    const rootRef = orderRef.root;
+    const updatePromises = targets.map(s => rootRef.child(`streams/${s.id}/area`).set(cleanNewName));
+    await Promise.all(updatePromises);
+
+    targets.forEach(s => s.area = cleanNewName);
+    tempCategoryOrder = tempCategoryOrder.map(c => c === oldName ? cleanNewName : c);
+    customCategoryOrder = customCategoryOrder.map(c => c === oldName ? cleanNewName : c);
+    await orderRef.set(tempCategoryOrder);
+
+    renderCategoryOrderList();
+    setupFilters();
+    renderCams();
+    alert(`✓ تم تغيير اسم القسم إلى "${cleanNewName}" وتحديث قنواته بنجاح!`);
+  } catch (e) {
+    alert("خطأ أثناء إعادة تسمية القسم: " + e.message);
+  }
+}
+
+async function deleteCategory(catName) {
+  if (!currentUser) {
+    alert("يرجى تسجيل الدخول كمسؤول أولاً!");
+    return;
+  }
+
+  const targets = streamsData.filter(s => s.area === catName);
+  const confirmMsg = targets.length > 0
+    ? `⚠️ تحذير أمان: هل أنت متأكد تماماً من حذف قسم "${catName}"؟
+
+سيتم حذف جميع القنوات والبثوث التابعة له وعددهم (${targets.length} قناة) نهائياً من المنصة!`
+    : `هل تريد إزالة قسم "${catName}" الفارغ من القائمة؟`;
+
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    const rootRef = orderRef.root;
+    const deletePromises = targets.map(s => rootRef.child(`streams/${s.id}`).remove());
+    await Promise.all(deletePromises);
+
+    tempCategoryOrder = tempCategoryOrder.filter(c => c !== catName);
+    customCategoryOrder = customCategoryOrder.filter(c => c !== catName);
+    await orderRef.set(tempCategoryOrder);
+
+    renderCategoryOrderList();
+    setupFilters();
+    renderCams();
+    alert(`✓ تم حذف قسم "${catName}" وجميع قنواته بنجاح!`);
+  } catch (e) {
+    alert("خطأ أثناء حذف القسم: " + e.message);
+  }
+}
+
+function moveCategory(index, direction) {
+  const newIndex = index + direction;
+  if (newIndex < 0 || newIndex >= tempCategoryOrder.length) return;
+  const temp = tempCategoryOrder[index];
+  tempCategoryOrder[index] = tempCategoryOrder[newIndex];
+  tempCategoryOrder[newIndex] = temp;
+  renderCategoryOrderList();
+}
+
+async function saveCategoryOrder() {
+  if (!currentUser) {
+    alert("يرجى تسجيل الدخول كمسؤول أولاً!");
+    return;
+  }
+  try {
+    await orderRef.set(tempCategoryOrder);
+    customCategoryOrder = [...tempCategoryOrder];
+    setupFilters();
+    closeCategoryOrderModal();
+    alert("✓ تم حفظ ترتيب الأقسام الجديد وتطبيقه للجميع بنجاح!");
+  } catch (e) {
+    alert("خطأ أثناء حفظ الترتيب: " + e.message);
+  }
+}
+
+function launchHlsStream(container, url, isModal = false, isIptv = false) {
+  // فحص مباشر: إذا كان الرابط ملف فيديو عادي mp4
+  const isDirectMp4 = url.toLowerCase().includes('.mp4') || (!url.toLowerCase().includes('.m3u8') && !url.includes('manifest'));
+  if (isDirectMp4 && !url.includes('youtube') && !url.includes('youtu.be')) {
+    container.innerHTML = '';
+    const video = document.createElement('video');
+    video.className = (isModal || isIptv) ? 'w-full h-full object-contain' : 'absolute inset-0 w-full h-full object-cover';
+    video.src = url;
+    video.controls = isModal;
+    video.autoplay = true;
+    video.playsInline = true;
+    video.loop = true;
+    if (isModal) {
+      video.muted = false;
+      video.volume = 1.0;
+    } else {
+      video.muted = true;
+      video.volume = 0;
+      video.setAttribute('muted', '');
+      video.style.pointerEvents = 'none';
+    }
+    container.appendChild(video);
+    video.play().catch(() => { video.muted = true; video.play().catch(()=>{}); });
+    return video;
+  }
+  if (!isModal && !isIptv) {
+    container.querySelectorAll('video, audio').forEach(el => {
+      try { el.muted = true; el.pause(); } catch(e){}
+    });
+  }
+  container.innerHTML = '';
+  
+  const loadingIndicator = document.createElement('div');
+  loadingIndicator.className = 'absolute inset-0 bg-slate-950/80 flex items-center justify-center pointer-events-none z-10 transition-opacity duration-300';
+  loadingIndicator.innerHTML = `
+    <div class="flex flex-col items-center gap-2">
+      <span class="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></span>
+      <span class="text-[10px] text-slate-400 font-medium">${(isModal || isIptv) ? 'جاري فتح البث الحي المباشر...' : 'جاري التقاط المشهد الحي...'}</span>
+    </div>
+  `;
+  container.appendChild(loadingIndicator);
+
+  const video = document.createElement('video');
+  video.className = (isModal || isIptv) ? 'w-full h-full object-contain' : 'absolute inset-0 w-full h-full object-cover';
+  video.autoplay = true;
+  video.controls = isModal;
+  video.playsInline = true;
+  if (isModal) {
+    video.muted = false;
+    video.volume = 1.0;
+  } else {
+    video.muted = true;
+    video.volume = 0;
+    video.setAttribute('muted', '');
+    video.style.pointerEvents = 'none';
+  }
+  
+  if (!isModal && !isIptv) {
+    video.preload = "metadata";
+    container.addEventListener('mouseenter', () => { video.play().catch(()=>{}); });
+    container.addEventListener('mouseleave', () => { video.pause(); });
+  }
+
+  container.appendChild(video);
+
+  let isPlaying = false;
+  let hlsInstance = null;
+  let usedProxy = false;
+  const PROXY_BASE = "https://albasem-proxy.satalet.workers.dev/?url=";
+
+  const showOfflineBox = () => {
+    if (loadingIndicator) loadingIndicator.remove();
+    if (hlsInstance) {
+      try { hlsInstance.destroy(); } catch(e){}
+    }
+    video.pause();
+    video.removeAttribute('src');
+    try { video.load(); } catch(e){}
+
+    container.innerHTML = `
+      <div class="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-3 text-center z-20" onclick="event.stopPropagation()">
+        <i class="fa-solid fa-triangle-exclamation text-amber-400 text-xl mb-1"></i>
+        <span class="text-slate-200 text-xs font-bold mb-0.5">تعذر العرض المباشر</span>
+        <span class="text-slate-400 text-[10px] mb-2.5">سيرفر القناة يفرض قيود حماية أو تشفير خاص</span>
+        
+        <div class="flex items-center gap-1.5 flex-wrap justify-center">
+          <button class="retry-single-btn bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold px-2.5 py-1 rounded transition flex items-center gap-1">
+            <i class="fa-solid fa-rotate-right"></i> إعادة المحاولة
+          </button>
+          <button class="ext-play-btn bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold px-2.5 py-1 rounded transition flex items-center gap-1">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i> مشغل خارجي
+          </button>
+          <button class="copy-url-btn bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] px-2 py-1 rounded transition" title="نسخ رابط البث لبرنامج VLC">
+            <i class="fa-solid fa-copy"></i> VLC
+          </button>
+        </div>
+      </div>
+    `;
+
+    const retryBtn = container.querySelector('.retry-single-btn');
+    if (retryBtn) {
+      retryBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        launchHlsStream(container, url, isModal, isIptv);
+      });
+    }
+
+    const extBtn = container.querySelector('.ext-play-btn');
+    if (extBtn) {
+      extBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        window.open(`https://hlsplayer.net/embed?url=${encodeURIComponent(url)}`, '_blank', 'width=800,height=500');
+      });
+    }
+
+    const copyBtn = container.querySelector('.copy-url-btn');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(url);
+        copyBtn.innerHTML = '<i class="fa-solid fa-check text-emerald-400"></i> تم النسخ';
+        setTimeout(() => { copyBtn.innerHTML = '<i class="fa-solid fa-copy"></i> VLC'; }, 2000);
+      });
+    }
+  };
+
+  let safetyTimer = setTimeout(() => {
+    if (!isPlaying && (video.currentTime === 0 || video.paused || video.readyState < 2)) {
+      if (!usedProxy && isIptv) {
+        tryFallbackProxy();
+      } else {
+        showOfflineBox();
+      }
+    }
+  }, 9000);
+
+  const onStreamReady = () => {
+    if (isPlaying) return;
+    isPlaying = true;
+    clearTimeout(safetyTimer);
+    if (loadingIndicator) loadingIndicator.remove();
+
+    if (!isModal && !isIptv) {
+      setTimeout(() => {
+        if (!video.paused) video.pause();
+      }, 800);
+    }
+  };
+
+  video.addEventListener('loadeddata', onStreamReady);
+  video.addEventListener('canplay', onStreamReady);
+  video.addEventListener('playing', () => {
+    onStreamReady();
+    document.querySelectorAll('video').forEach(otherVid => {
+      if (otherVid !== video && !otherVid.paused) {
+        try { otherVid.pause(); } catch(e){}
+      }
+    });
+  });
+
+  video.addEventListener('timeupdate', () => {
+    if (video.currentTime > 0.2) onStreamReady();
+  });
+
+  function startHlsEngine(streamUrl) {
+    if (hlsInstance) {
+      try { hlsInstance.destroy(); } catch(e){}
+    }
+
+    if (Hls.isSupported()) {
+      const hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: false,
+        manifestLoadingMaxRetry: 2,
+        levelLoadingMaxRetry: 2
+      });
+      hlsInstance = hls;
+      video._hls = hls;
+      if (isModal) window.activeModalHlsInstance = hls;
+
+      hls.loadSource(streamUrl);
+      hls.attachMedia(video);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        video.play().catch(() => {
+          video.muted = true;
+          video.play().catch(()=>{});
+        });
+      });
+
+      hls.on(Hls.Events.ERROR, (event, data) => {
+        if (data.fatal) {
+          if (!usedProxy && isIptv) {
+            tryFallbackProxy();
+          } else {
+            clearTimeout(safetyTimer);
+            showOfflineBox();
+          }
+        }
+      });
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = streamUrl;
+      video.addEventListener('loadedmetadata', () => {
+        video.play().catch(() => {
+          video.muted = true;
+          video.play().catch(()=>{});
+        });
+      });
+    }
+  }
+
+  function tryFallbackProxy() {
+    usedProxy = true;
+    console.log("⚡ جاري التحويل التلقائي للوسيط السحابي (Cloudflare Fallback):", url);
+    const proxyStreamUrl = PROXY_BASE + encodeURIComponent(url);
+    startHlsEngine(proxyStreamUrl);
+  }
+
+  // إذا كان الرابط http عادي، يمر عبر الوسيط لحل مشكلة المحتوى المختلط
+  if (url.startsWith('http://') && isIptv) {
+    usedProxy = true;
+    startHlsEngine(PROXY_BASE + encodeURIComponent(url));
+  } else {
+    // تشغيل مباشر لحفظ رصيد Cloudflare
+    startHlsEngine(url);
+  }
+  return video;
+}
+
 function renderCams() {
   const grid = document.getElementById('cams-grid');
   if (!grid) return;
@@ -747,7 +1143,6 @@ function renderCams() {
 
   let filtered = [];
   if (window.searchQuery && window.searchQuery.length > 0) {
-    // بحث شامل في كل الـ 260 قناة
     filtered = streamsData.filter(s => matchesSmartSearch(s.title || '', window.searchQuery));
     if (filtered.length === 0) {
       grid.innerHTML = `
