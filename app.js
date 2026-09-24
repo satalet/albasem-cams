@@ -1,3 +1,5 @@
+var customCategoryOrder = [];
+isOrderingIptvMode = false;
 
 // تبديل حالة قفل القناة الفوري (الرقابة الأبوية 1415)
 async function toggleStreamLock(streamId, e) {
@@ -383,6 +385,8 @@ window.toggleBulkSortMode = function() {
     window.updateBulkSelectedCount();
 };
 
+
+// ==================== تعبئة خيارات الترحيل والفرز ====================
 function populateTargetAreas() {
     const sel = document.getElementById('bulkTargetArea');
     if (!sel) return;
@@ -390,55 +394,61 @@ function populateTargetAreas() {
     const isIptv = (typeof currentFilter !== 'undefined' && currentFilter === 'IPTV');
     let opts = '<option value="">-- اختر وجهة الترحيل --</option>';
 
-    if (isIptv) {
-        opts += '<optgroup label="📺 تفريعات IPTV الفرعية">';
-        const defaultSubs = ['أفلام ومسلسلات', 'إخبارية', 'رياضة', 'إسلاميات', 'أطفال', 'وثائقي', 'موسيقى', 'مشكّل ومنوعات'];
-        const customSubs = (window.iptvCustomSubs && Array.isArray(window.iptvCustomSubs)) ? window.iptvCustomSubs : [];
-        const allSubs = [...new Set([...defaultSubs, ...customSubs])];
-        allSubs.forEach(sub => {
-            if (typeof currentSubFilter === 'undefined' || currentSubFilter !== sub) {
-                opts += `<option value="SUB:${sub}">نقل إلى [IPTV: ${sub}]</option>`;
-            }
-        });
-        opts += '</optgroup>';
-    }
-
-    opts += '<optgroup label="📁 الأقسام الرئيسية العامة">';
-    const allMain = [...new Set([...(customCategoryOrder || []), ...((typeof streamsData !== 'undefined' && Array.isArray(streamsData)) ? streamsData.map(s => s.area) : [])])].filter(Boolean);
-    allMain.forEach(area => {
-        if (typeof currentFilter === 'undefined' || area !== currentFilter) {
-            opts += `<option value="AREA:${area}">${area}</option>`;
-        }
+    // 1. تفريعات IPTV الفرعية
+    opts += '<optgroup label="📺 تفريعات IPTV الفرعية">';
+    const defaultSubs = ['أفلام ومسلسلات', 'إخبارية', 'رياضة', 'إسلاميات', 'أطفال', 'وثائقي', 'موسيقى', 'مشكّل ومنوعات'];
+    const customSubs = (window.iptvCustomSubs && Array.isArray(window.iptvCustomSubs)) ? window.iptvCustomSubs : [];
+    const streamSubs = (typeof streamsData !== 'undefined' && Array.isArray(streamsData))
+        ? streamsData.filter(s => s && s.area === 'IPTV').map(s => s.subCategory || s.category).filter(Boolean)
+        : [];
+    const allSubs = [...new Set([...defaultSubs, ...customSubs, ...streamSubs])];
+    allSubs.forEach(sub => {
+        opts += `<option value="SUB:${sub}">📺 تفريع [${sub}]</option>`;
     });
     opts += '</optgroup>';
 
+    // 2. الأقسام الرئيسية العامة
+    opts += '<optgroup label="📁 الأقسام الرئيسية العامة">';
+    const catsOrder = (typeof customCategoryOrder !== 'undefined' && Array.isArray(customCategoryOrder)) ? customCategoryOrder : [];
+    const streamsAreas = (typeof streamsData !== 'undefined' && Array.isArray(streamsData)) ? streamsData.map(s => s && s.area).filter(Boolean) : [];
+    const allMain = [...new Set([...catsOrder, ...streamsAreas])].filter(a => a && a !== 'all');
+    allMain.forEach(area => {
+        opts += `<option value="AREA:${area}">📁 قسم [${area}]</option>`;
+    });
+    opts += '</optgroup>';
+
+    // 3. خيار الكتابة اليدوية
     opts += '<optgroup label="✏️ خيارات إضافية">';
     opts += '<option value="__NEW_CUSTOM__">➕ كتابة وجهة جديدة باليد...</option>';
     opts += '</optgroup>';
 
     sel.innerHTML = opts;
+
+    // حدث فوري عند اختيار كتابة وجهة باليد
+    sel.onchange = function() {
+        if (this.value === '__NEW_CUSTOM__') {
+            const isNowIptv = (typeof currentFilter !== 'undefined' && currentFilter === 'IPTV');
+            const promptMsg = isNowIptv
+                ? 'أدخل اسم تصنيف IPTV الجديد لنقل القنوات المحددة إليه:'
+                : 'أدخل اسم القسم العام الجديد لنقل القنوات المحددة إليه:';
+            const userEntered = prompt(promptMsg);
+            if (userEntered && userEntered.trim()) {
+                const clean = userEntered.trim();
+                const newOptVal = isNowIptv ? ('SUB:' + clean) : ('AREA:' + clean);
+                const opt = document.createElement('option');
+                opt.value = newOptVal;
+                opt.textContent = (isNowIptv ? '📺 تفريع جديد: ' : '📁 قسم جديد: ') + clean;
+                opt.selected = true;
+                sel.appendChild(opt);
+                sel.value = newOptVal;
+            } else {
+                sel.value = '';
+            }
+        }
+    };
 }
 
-// دالة جلب المعرّفات المحددة فعلياً من الشاشة بدون تخزين وسيط
-function getActiveSelectedIds() {
-    const checkboxes = document.querySelectorAll('.bulk-stream-chk:checked');
-    return Array.from(checkboxes).map(cb => cb.value);
-}
-
-window.updateBulkSelectedCount = function() {
-    const ids = getActiveSelectedIds();
-    const countLbl = document.getElementById('bulkSelectedCount');
-    if (countLbl) countLbl.innerText = ids.length;
-};
-
-window.selectAllBulk = function(select) {
-    document.querySelectorAll('.bulk-stream-chk').forEach(cb => {
-        cb.checked = select;
-    });
-    window.updateBulkSelectedCount();
-};
-
-// تنفيذ الترحيل الجماعي بقراءة الـ DOM المباشرة
+// تنفيذ الترحيل الفردي والجماعي
 window.executeBulkMove = async function() {
     let selectedIds = [];
     if (typeof getActiveSelectedIds === 'function') {
@@ -457,33 +467,17 @@ window.executeBulkMove = async function() {
     }
 
     let target = document.getElementById('bulkTargetArea').value;
-    if (!target) return alert('⚠️ يرجى اختيار وجهة الترحيل أولاً!');
+    if (!target) return alert('⚠️ يرجى اختيار وجهة الترحيل أولاً من القائمة!');
 
     if (target === '__NEW_CUSTOM__') {
         const isIptv = (typeof currentFilter !== 'undefined' && currentFilter === 'IPTV');
-        const promptMsg = isIptv 
-            ? 'اكتب اسم تصنيف IPTV الجديد لنقل القنوات إليه:' 
+        const promptMsg = isIptv
+            ? 'اكتب اسم تصنيف IPTV الجديد لنقل القنوات إليه:'
             : 'اكتب اسم القسم العام الجديد لنقل القنوات إليه:';
         const userEntered = prompt(promptMsg);
         if (!userEntered || !userEntered.trim()) return;
         const clean = userEntered.trim();
-        if (isIptv) {
-            target = 'SUB:' + clean;
-            try {
-                const snap = await db.ref('streams/_config_iptv_subs').once('value');
-                let subs = snap.val() || [];
-                if (!Array.isArray(subs)) subs = Object.values(subs);
-                if (!subs.includes(clean)) { subs.push(clean); await db.ref('streams/_config_iptv_subs').set(subs); }
-            } catch(e){}
-        } else {
-            target = 'AREA:' + clean;
-            try {
-                const snap = await orderRef.once('value');
-                let cats = snap.val() || [];
-                if (!Array.isArray(cats)) cats = Object.values(cats);
-                if (!cats.includes(clean)) { cats.push(clean); await orderRef.set(cats); customCategoryOrder = cats; }
-            } catch(e){}
-        }
+        target = isIptv ? ('SUB:' + clean) : ('AREA:' + clean);
     }
 
     let destTitle = target;
@@ -492,6 +486,17 @@ window.executeBulkMove = async function() {
         const subName = target.replace('SUB:', '');
         destTitle = 'تفريع IPTV: [' + subName + ']';
         if (!confirm(`هل أنت متأكد من ترحيل (${selectedIds.length}) قنوات إلى ${destTitle}؟`)) return;
+
+        try {
+            const snap = await db.ref('streams/_config_iptv_subs').once('value');
+            let subs = snap.val() || [];
+            if (!Array.isArray(subs)) subs = Object.values(subs);
+            if (!subs.includes(subName)) {
+                subs.push(subName);
+                updates['streams/_config_iptv_subs'] = subs;
+            }
+        } catch(e){}
+
         selectedIds.forEach(id => {
             updates[`streams/${id}/area`] = 'IPTV';
             updates[`streams/${id}/subCategory`] = subName;
@@ -501,6 +506,17 @@ window.executeBulkMove = async function() {
         const areaName = target.replace('AREA:', '');
         destTitle = 'قسم [' + areaName + ']';
         if (!confirm(`هل أنت متأكد من ترحيل (${selectedIds.length}) قنوات إلى ${destTitle}؟`)) return;
+
+        try {
+            const snap = await db.ref('streams/_config_categories').once('value');
+            let cats = snap.val() || [];
+            if (!Array.isArray(cats)) cats = Object.values(cats);
+            if (!cats.includes(areaName)) {
+                cats.push(areaName);
+                updates['streams/_config_categories'] = cats;
+            }
+        } catch(e){}
+
         selectedIds.forEach(id => {
             updates[`streams/${id}/area`] = areaName;
         });
@@ -509,12 +525,12 @@ window.executeBulkMove = async function() {
     try {
         await db.ref().update(updates);
         alert(`✅ تم بنجاح ترحيل ${selectedIds.length} قناة إلى ${destTitle}!`);
-        if (typeof selectAllBulk === 'function') selectAllBulk(false);
         location.reload();
     } catch(err) {
         alert('خطأ أثناء الترحيل: ' + err.message);
     }
 };
+
 
 // تنفيذ الحذف الجماعي بقراءة الـ DOM المباشرة
 window.executeBulkDelete = async function() {
@@ -685,7 +701,7 @@ function getSavedCategory() {
 
 let currentFilter = getSavedCategory();
 let currentCols = 2;
-let customCategoryOrder = [];
+customCategoryOrder = [];
 
 auth.onAuthStateChanged((user) => {
   currentUser = user;
@@ -931,46 +947,81 @@ window.addEventListener('hashchange', () => {
 
 let tempCategoryOrder = [];
 
+
+// ==================== إدارة وتعديل الأقسام وتفريعات IPTV ====================
 function openCategoryOrderModal() {
-  const allAreas = [...new Set(streamsData.map(s => s.area))];
-  tempCategoryOrder = customCategoryOrder.filter(a => allAreas.includes(a));
-  allAreas.forEach(a => {
-    if (!tempCategoryOrder.includes(a)) tempCategoryOrder.push(a);
-  });
+  isOrderingIptvMode = (typeof currentFilter !== 'undefined' && currentFilter === 'IPTV');
+  const modalEl = document.getElementById('category-order-modal');
+  if (!modalEl) return;
+
+  const titleEl = modalEl.querySelector('h3');
+  const descEl = modalEl.querySelector('p');
+
+  if (isOrderingIptvMode) {
+    if (titleEl) titleEl.innerHTML = '<i class="fa-solid fa-tv text-emerald-400"></i> إدارة وتعديل تفريعات IPTV';
+    if (descEl) descEl.textContent = 'يمكنك إعادة تسمية أي تفريع، حذفه، أو إعادة ترتيب تفريعات IPTV';
+
+    const defaultSubs = ['أفلام ومسلسلات', 'إخبارية', 'رياضة', 'إسلاميات', 'أطفال', 'وثائقي', 'موسيقى', 'مشكّل ومنوعات'];
+    const customSubs = (window.iptvCustomSubs && Array.isArray(window.iptvCustomSubs)) ? window.iptvCustomSubs : [];
+    const streamSubs = (typeof streamsData !== 'undefined' && Array.isArray(streamsData))
+      ? streamsData.filter(s => s && s.area === 'IPTV').map(s => s.subCategory || s.category).filter(Boolean)
+      : [];
+    tempCategoryOrder = [...new Set([...defaultSubs, ...customSubs, ...streamSubs])];
+  } else {
+    if (titleEl) titleEl.innerHTML = '<i class="fa-solid fa-arrow-down-up-across-line text-emerald-400"></i> ترتيب أولويات الأقسام';
+    if (descEl) descEl.textContent = 'اسحب أو رتّب الأقسام لتظهر أولاً بوجه الزوار عند فتح المنصة';
+
+    const allAreas = [...new Set(((typeof streamsData !== 'undefined' && Array.isArray(streamsData)) ? streamsData : []).map(s => s.area))].filter(Boolean);
+    const savedOrder = (typeof customCategoryOrder !== 'undefined' && Array.isArray(customCategoryOrder)) ? customCategoryOrder : [];
+    tempCategoryOrder = savedOrder.filter(a => allAreas.includes(a));
+    allAreas.forEach(a => {
+      if (!tempCategoryOrder.includes(a)) tempCategoryOrder.push(a);
+    });
+  }
 
   renderCategoryOrderList();
-  document.getElementById('category-order-modal').classList.remove('hidden');
+  modalEl.classList.remove('hidden');
 }
 
 function closeCategoryOrderModal() {
-  document.getElementById('category-order-modal').classList.add('hidden');
+  const modalEl = document.getElementById('category-order-modal');
+  if (modalEl) modalEl.classList.add('hidden');
 }
 
 function renderCategoryOrderList() {
   const listEl = document.getElementById('category-order-list');
+  if (!listEl) return;
   listEl.innerHTML = '';
 
   tempCategoryOrder.forEach((cat, idx) => {
-    const streamCount = streamsData.filter(s => s.area === cat).length;
+    let streamCount = 0;
+    if (typeof streamsData !== 'undefined' && Array.isArray(streamsData)) {
+      if (isOrderingIptvMode) {
+        streamCount = streamsData.filter(s => s && s.area === 'IPTV' && (s.subCategory === cat || s.category === cat)).length;
+      } else {
+        streamCount = streamsData.filter(s => s && s.area === cat).length;
+      }
+    }
+
     const item = document.createElement('div');
     item.className = 'flex items-center justify-between bg-slate-900 border border-slate-800 px-3 py-2 rounded-lg text-xs gap-2';
     item.innerHTML = `
       <div class="flex items-center gap-2 overflow-hidden">
-        <span class="w-5 h-5 rounded-full bg-slate-800 text-emerald-400 flex items-center justify-center text-[10px] shrink-0">${idx + 1}</span>
+        <span class="w-5 h-5 rounded-full bg-slate-800 text-emerald-400 flex items-center justify-center text-[10px] shrink-0 font-bold">${idx + 1}</span>
         <span class="font-bold text-slate-200 truncate">${cat}</span>
-        <span class="text-[10px] text-slate-500 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 shrink-0">(${streamCount})</span>
+        <span class="text-[10px] text-slate-500 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 shrink-0">(${streamCount} قناة)</span>
       </div>
       <div class="flex items-center gap-1 shrink-0">
-        <button onclick="renameCategory('${cat.replace(/'/g, "\'")}')" class="w-7 h-7 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded flex items-center justify-center transition" title="إعادة تسمية القسم">
+        <button type="button" onclick="renameCategory('${cat.replace(/'/g, "\\'")}')" class="w-7 h-7 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded flex items-center justify-center transition" title="إعادة تسمية">
           <i class="fa-solid fa-pen text-[10px]"></i>
         </button>
-        <button onclick="deleteCategory('${cat.replace(/'/g, "\'")}')" class="w-7 h-7 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded flex items-center justify-center transition" title="حذف القسم بالكامل">
+        <button type="button" onclick="deleteCategory('${cat.replace(/'/g, "\\'")}')" class="w-7 h-7 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded flex items-center justify-center transition" title="حذف">
           <i class="fa-solid fa-trash text-[10px]"></i>
         </button>
-        <button onclick="moveCategory(${idx}, -1)" class="w-7 h-7 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded flex items-center justify-center transition" ${idx === 0 ? 'disabled style="opacity:0.3"' : ''} title="تقديم">
+        <button type="button" onclick="moveCategory(${idx}, -1)" class="w-7 h-7 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded flex items-center justify-center transition" ${idx === 0 ? 'disabled style="opacity:0.3"' : ''} title="تقديم">
           <i class="fa-solid fa-arrow-up text-[10px]"></i>
         </button>
-        <button onclick="moveCategory(${idx}, 1)" class="w-7 h-7 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded flex items-center justify-center transition" ${idx === tempCategoryOrder.length - 1 ? 'disabled style="opacity:0.3"' : ''} title="تأخير">
+        <button type="button" onclick="moveCategory(${idx}, 1)" class="w-7 h-7 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded flex items-center justify-center transition" ${idx === tempCategoryOrder.length - 1 ? 'disabled style="opacity:0.3"' : ''} title="تأخير">
           <i class="fa-solid fa-arrow-down text-[10px]"></i>
         </button>
       </div>
@@ -980,71 +1031,120 @@ function renderCategoryOrderList() {
 }
 
 async function renameCategory(oldName) {
-  if (!currentUser) {
-    alert("يرجى تسجيل الدخول كمسؤول أولاً!");
-    return;
-  }
-  const newName = prompt(`أدخل الاسم الجديد لقسم "${oldName}":`, oldName);
+  if (!currentUser) return alert("يرجى تسجيل الدخول كمسؤول أولاً!");
+  const typeTitle = isOrderingIptvMode ? `تفريع IPTV "${oldName}"` : `قسم "${oldName}"`;
+  const newName = prompt(`أدخل الاسم الجديد لـ ${typeTitle}:`, oldName);
   if (!newName || !newName.trim() || newName.trim() === oldName) return;
 
   const cleanNewName = newName.trim();
-  if (tempCategoryOrder.includes(cleanNewName)) {
-    alert(`القسم "${cleanNewName}" موجود بالفعل!`);
-    return;
-  }
-
-  const targets = streamsData.filter(s => s.area === oldName);
-  if (!confirm(`هل أنت متأكد من تغيير اسم قسم "${oldName}" إلى "${cleanNewName}"؟
-سيتم تحديث (${targets.length}) قناة تابعة له.`)) return;
+  if (tempCategoryOrder.includes(cleanNewName)) return alert(`⚠️ الاسم "${cleanNewName}" موجود بالفعل!`);
 
   try {
-    const rootRef = orderRef.root;
-    const updatePromises = targets.map(s => rootRef.child(`streams/${s.id}/area`).set(cleanNewName));
-    await Promise.all(updatePromises);
+    if (isOrderingIptvMode) {
+      const targets = streamsData.filter(s => s && s.area === 'IPTV' && (s.subCategory === oldName || s.category === oldName));
+      if (!confirm(`هل أنت متأكد من تغيير اسم تفريع [${oldName}] إلى [${cleanNewName}]؟\nسيتم تحديث (${targets.length}) قناة تابعة له.`)) return;
 
-    targets.forEach(s => s.area = cleanNewName);
-    tempCategoryOrder = tempCategoryOrder.map(c => c === oldName ? cleanNewName : c);
-    customCategoryOrder = customCategoryOrder.map(c => c === oldName ? cleanNewName : c);
-    await orderRef.set(tempCategoryOrder);
+      const updates = {};
+      targets.forEach(s => {
+        updates[`streams/${s.id}/subCategory`] = cleanNewName;
+        updates[`streams/${s.id}/category`] = cleanNewName;
+        s.subCategory = cleanNewName;
+        s.category = cleanNewName;
+      });
 
-    renderCategoryOrderList();
-    setupFilters();
-    renderCams();
-    alert(`✓ تم تغيير اسم القسم إلى "${cleanNewName}" وتحديث قنواته بنجاح!`);
-  } catch (e) {
-    alert("خطأ أثناء إعادة تسمية القسم: " + e.message);
+      const snap = await db.ref('streams/_config_iptv_subs').once('value');
+      let subs = snap.val() || [];
+      if (!Array.isArray(subs)) subs = Object.values(subs);
+      subs = subs.map(s => s === oldName ? cleanNewName : s);
+      if (!subs.includes(cleanNewName)) subs.push(cleanNewName);
+      updates['streams/_config_iptv_subs'] = subs;
+
+      await db.ref().update(updates);
+      window.iptvCustomSubs = subs;
+      tempCategoryOrder = tempCategoryOrder.map(c => c === oldName ? cleanNewName : c);
+      renderCategoryOrderList();
+      if (typeof setupIptvSubTabs === 'function') setupIptvSubTabs();
+      if (typeof renderCams === 'function') renderCams();
+      alert(`✅ تم تغيير اسم تفريع IPTV إلى [${cleanNewName}] وتحديث قنواته بنجاح!`);
+    } else {
+      const targets = streamsData.filter(s => s && s.area === oldName);
+      if (!confirm(`هل أنت متأكد من تغيير اسم قسم "${oldName}" إلى "${cleanNewName}"؟\nسيتم تحديث (${targets.length}) قناة تابعة له.`)) return;
+
+      const updates = {};
+      targets.forEach(s => {
+        updates[`streams/${s.id}/area`] = cleanNewName;
+        s.area = cleanNewName;
+      });
+
+      tempCategoryOrder = tempCategoryOrder.map(c => c === oldName ? cleanNewName : c);
+      customCategoryOrder = customCategoryOrder.map(c => c === oldName ? cleanNewName : c);
+      updates['streams/_config_categories'] = tempCategoryOrder;
+
+      await db.ref().update(updates);
+      renderCategoryOrderList();
+      if (typeof setupFilters === 'function') setupFilters();
+      if (typeof renderCams === 'function') renderCams();
+      alert(`✅ تم تغيير اسم القسم إلى [${cleanNewName}] وتحديث قنواته بنجاح!`);
+    }
+  } catch(e) {
+    alert("خطأ أثناء إعادة التسمية: " + e.message);
   }
 }
 
 async function deleteCategory(catName) {
-  if (!currentUser) {
-    alert("يرجى تسجيل الدخول كمسؤول أولاً!");
-    return;
-  }
-
-  const targets = streamsData.filter(s => s.area === catName);
-  const confirmMsg = targets.length > 0
-    ? `⚠️ تحذير أمان: هل أنت متأكد تماماً من حذف قسم "${catName}"؟
-
-سيتم حذف جميع القنوات والبثوث التابعة له وعددهم (${targets.length} قناة) نهائياً من المنصة!`
-    : `هل تريد إزالة قسم "${catName}" الفارغ من القائمة؟`;
-
-  if (!confirm(confirmMsg)) return;
+  if (!currentUser) return alert("يرجى تسجيل الدخول كمسؤول أولاً!");
 
   try {
-    const rootRef = orderRef.root;
-    const deletePromises = targets.map(s => rootRef.child(`streams/${s.id}`).remove());
-    await Promise.all(deletePromises);
+    if (isOrderingIptvMode) {
+      const targets = streamsData.filter(s => s && s.area === 'IPTV' && (s.subCategory === catName || s.category === catName));
+      const confirmMsg = targets.length > 0
+        ? `⚠️ تحذير: هل أنت متأكد من حذف تفريع IPTV [${catName}] نهائياً؟\nسيتم حذف (${targets.length}) قناة تابعة له من المنصة!`
+        : `هل أنت متأكد من إزالة تفريع IPTV [${catName}] الفارغ نهائياً؟`;
 
-    tempCategoryOrder = tempCategoryOrder.filter(c => c !== catName);
-    customCategoryOrder = customCategoryOrder.filter(c => c !== catName);
-    await orderRef.set(tempCategoryOrder);
+      if (!confirm(confirmMsg)) return;
 
-    renderCategoryOrderList();
-    setupFilters();
-    renderCams();
-    alert(`✓ تم حذف قسم "${catName}" وجميع قنواته بنجاح!`);
-  } catch (e) {
+      const updates = {};
+      targets.forEach(s => {
+        updates[`streams/${s.id}`] = null;
+      });
+
+      const snap = await db.ref('streams/_config_iptv_subs').once('value');
+      let subs = snap.val() || [];
+      if (!Array.isArray(subs)) subs = Object.values(subs);
+      subs = subs.filter(s => s !== catName);
+      updates['streams/_config_iptv_subs'] = subs;
+
+      await db.ref().update(updates);
+      window.iptvCustomSubs = subs;
+      tempCategoryOrder = tempCategoryOrder.filter(c => c !== catName);
+      renderCategoryOrderList();
+      if (typeof setupIptvSubTabs === 'function') setupIptvSubTabs();
+      if (typeof renderCams === 'function') renderCams();
+      alert(`✅ تم حذف تفريع IPTV [${catName}] بنجاح!`);
+    } else {
+      const targets = streamsData.filter(s => s && s.area === catName);
+      const confirmMsg = targets.length > 0
+        ? `⚠️ تحذير: هل أنت متأكد من حذف قسم "${catName}"؟\nسيتم حذف (${targets.length}) قناة تابعة له نهائياً!`
+        : `هل تريد إزالة قسم "${catName}" الفارغ من القائمة؟`;
+
+      if (!confirm(confirmMsg)) return;
+
+      const updates = {};
+      targets.forEach(s => {
+        updates[`streams/${s.id}`] = null;
+      });
+
+      tempCategoryOrder = tempCategoryOrder.filter(c => c !== catName);
+      customCategoryOrder = customCategoryOrder.filter(c => c !== catName);
+      updates['streams/_config_categories'] = tempCategoryOrder;
+
+      await db.ref().update(updates);
+      renderCategoryOrderList();
+      if (typeof setupFilters === 'function') setupFilters();
+      if (typeof renderCams === 'function') renderCams();
+      alert(`✅ تم حذف قسم "${catName}" بنجاح!`);
+    }
+  } catch(e) {
     alert("خطأ أثناء حذف القسم: " + e.message);
   }
 }
@@ -1059,20 +1159,26 @@ function moveCategory(index, direction) {
 }
 
 async function saveCategoryOrder() {
-  if (!currentUser) {
-    alert("يرجى تسجيل الدخول كمسؤول أولاً!");
-    return;
-  }
+  if (!currentUser) return alert("يرجى تسجيل الدخول كمسؤول أولاً!");
   try {
-    await orderRef.set(tempCategoryOrder);
-    customCategoryOrder = [...tempCategoryOrder];
-    setupFilters();
+    if (isOrderingIptvMode) {
+      await db.ref('streams/_config_iptv_subs').set(tempCategoryOrder);
+      window.iptvCustomSubs = [...tempCategoryOrder];
+      if (typeof setupIptvSubTabs === 'function') setupIptvSubTabs();
+      alert("✅ تم حفظ ترتيب تفريعات IPTV بنجاح!");
+    } else {
+      await db.ref('streams/_config_categories').set(tempCategoryOrder);
+      customCategoryOrder = [...tempCategoryOrder];
+      if (typeof setupFilters === 'function') setupFilters();
+      alert("✅ تم حفظ ترتيب الأقسام بنجاح!");
+    }
     closeCategoryOrderModal();
-    alert("✓ تم حفظ ترتيب الأقسام الجديد وتطبيقه للجميع بنجاح!");
-  } catch (e) {
+  } catch(e) {
     alert("خطأ أثناء حفظ الترتيب: " + e.message);
   }
 }
+
+
 
 function launchHlsStream(container, url, isModal = false, isIptv = false) {
   // فحص مباشر: إذا كان الرابط ملف فيديو عادي mp4
