@@ -484,10 +484,14 @@ if ('caches' in window) {
           <input type="text" id="edit-title" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white" required>
         </div>
         <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-slate-400 mb-1">المنطقة / التبويب</label>
-            <input type="text" id="edit-area" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white" required>
-          </div>
+                      <div>
+              <label class="block text-slate-400 mb-1">المنطقة / التبويب</label>
+              <input type="text" id="edit-area" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white" required>
+            </div>
+            <div id="edit-subcat-wrapper">
+              <label class="block text-slate-400 mb-1 text-emerald-400 font-bold">تفريع IPTV الفرعي</label>
+              <select id="edit-subcategory" class="w-full bg-slate-900 border border-emerald-500/50 rounded-lg px-3 py-2 text-white font-semibold text-xs"></select>
+            </div>
           <div>
             <label class="block text-slate-400 mb-1">نوع البث</label>
             <select id="edit-type" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white">
@@ -509,7 +513,7 @@ if ('caches' in window) {
     </div>
   </div>
 
-  <script src="app.js?v=1790289427"></script>
+  <script src="app.js?v=1790290535"></script>
 
   <!-- نظام إدارة دخول المشتركين وفحص الجلسة -->
   <div id="sub-login-modal" style="display:none; position:fixed; inset:0; background:rgba(11,17,32,0.96); z-index:9999; justify-content:center; align-items:center; padding:15px;">

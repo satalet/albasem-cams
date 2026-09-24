@@ -1640,15 +1640,40 @@ function openEditModal(id) {
   if (!stream) return;
 
   document.getElementById('edit-stream-id').value = stream.id;
-  document.getElementById('edit-title').value = stream.title;
-  document.getElementById('edit-area').value = stream.area;
-  document.getElementById('edit-type').value = stream.type;
-  document.getElementById('edit-url').value = stream.url;
+  document.getElementById('edit-title').value = stream.title || '';
+  document.getElementById('edit-area').value = stream.area || '';
+  document.getElementById('edit-type').value = stream.type || 'hls';
+  document.getElementById('edit-url').value = stream.url || '';
   const lockEl = document.getElementById('edit-is-locked');
   if (lockEl) lockEl.checked = !!stream.isLocked;
 
-  document.getElementById('edit-modal-title').textContent = "✏️ تعديل بيانات القناة";
-  document.getElementById('edit-save-btn').textContent = "حفظ التعديلات";
+  // تعبئة قائمة تفريعات IPTV
+  const subSelect = document.getElementById('edit-subcategory');
+  if (subSelect) {
+    const defaultSubs = ['أفلام ومسلسلات', 'إخبارية', 'رياضة', 'إسلاميات', 'أطفال', 'وثائقي', 'موسيقى', 'مشكّل ومنوعات'];
+    const customSubs = (window.iptvCustomSubs && Array.isArray(window.iptvCustomSubs)) ? window.iptvCustomSubs : [];
+    const allSubs = [...new Set([...defaultSubs, ...customSubs])];
+    
+    let currentSub = stream.subCategory || stream.category || 'مشكّل ومنوعات';
+    if (!allSubs.includes(currentSub)) allSubs.push(currentSub);
+
+    subSelect.innerHTML = allSubs.map(s => `<option value="${s}" ${s === currentSub ? 'selected' : ''}>${s}</option>`).join('');
+  }
+
+  const subWrapper = document.getElementById('edit-subcat-wrapper');
+  if (subWrapper) {
+    subWrapper.style.display = (stream.area === 'IPTV') ? 'block' : 'none';
+  }
+
+  const areaInput = document.getElementById('edit-area');
+  if (areaInput) {
+    areaInput.oninput = function() {
+      if (subWrapper) subWrapper.style.display = (this.value.trim() === 'IPTV') ? 'block' : 'none';
+    };
+  }
+
+  document.getElementById('edit-modal-title').textContent = "✏️ تعديل بيانات القناة ونقلها";
+  document.getElementById('edit-save-btn').textContent = "حفظ التعديلات ونقل القناة";
   document.getElementById('edit-modal').classList.remove('hidden');
 }
 
@@ -1658,27 +1683,42 @@ function closeEditModal() {
 
 async function handleSaveStream(e) {
   e.preventDefault();
-  if (!currentUser) return;
+  if (!currentUser) return alert("يرجى تسجيل الدخول كمسؤول أولاً!");
 
   const streamId = document.getElementById('edit-stream-id').value;
+  const areaVal = document.getElementById('edit-area').value.trim();
+  const subCatSelect = document.getElementById('edit-subcategory');
+  const chosenSubCat = (areaVal === 'IPTV' && subCatSelect) ? subCatSelect.value.trim() : '';
+
   const payload = {
     title: document.getElementById('edit-title').value.trim(),
-    area: document.getElementById('edit-area').value.trim(),
+    area: areaVal,
     type: document.getElementById('edit-type').value,
     url: document.getElementById('edit-url').value.trim(),
-    category: 'سير',
+    category: chosenSubCat || areaVal,
+    subCategory: chosenSubCat || areaVal,
     status: 'active'
   };
 
+  const lockEl = document.getElementById('edit-is-locked');
+  if (lockEl) payload.isLocked = lockEl.checked;
+
   try {
     if (streamId) {
-      await db.ref('streams/' + streamId).set(payload);
-      alert("✓ تم حفظ التعديل بنجاح!");
+      await db.ref('streams/' + streamId).update(payload);
+      const idx = streamsData.findIndex(s => s.id === streamId);
+      if (idx !== -1) Object.assign(streamsData[idx], payload);
+      alert("✅ تم حفظ تعديل القناة ونقلها بنجاح!");
     } else {
-      await streamsRef.push(payload);
-      alert("✓ تم إضافة البث ونشره فوراً!");
+      const newRef = await streamsRef.push(payload);
+      payload.id = newRef.key;
+      streamsData.push(payload);
+      alert("✅ تم إضافة البث ونشره بنجاح!");
     }
     closeEditModal();
+    if (typeof setupFilters === 'function') setupFilters();
+    if (typeof setupIptvSubTabs === 'function') setupIptvSubTabs();
+    if (typeof renderCams === 'function') renderCams();
   } catch (err) {
     alert("خطأ أثناء الحفظ: " + err.message);
   }
