@@ -462,6 +462,13 @@ if ('caches' in window) {
           <button type="button" onclick="closeLoginModal()" class="px-3 py-1.5 text-xs text-slate-400 hover:text-white">إلغاء</button>
           <button type="submit" id="login-submit-btn" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-1.5 rounded-lg transition">دخول</button>
         </div>
+              <div class="flex items-center gap-2 pt-2 pb-1 border-t border-slate-800">
+          <input type="checkbox" id="edit-is-locked" class="accent-amber-500 w-4 h-4 rounded cursor-pointer">
+          <label for="edit-is-locked" class="text-amber-400 font-bold cursor-pointer select-none flex items-center gap-1.5">
+            <i class="fa-solid fa-lock"></i>
+            <span>قفل برمز أمان (رقابة أبوية 1415)</span>
+          </label>
+        </div>
       </form>
     </div>
   </div>
@@ -644,7 +651,27 @@ if ('caches' in window) {
       });
     }
 
-    async function handleSubscriberLogout() {
+    
+      function handleKickedSession() {
+        if (heartbeatTimer) clearInterval(heartbeatTimer);
+        localStorage.removeItem("albasem_subscriber");
+        localStorage.removeItem("albasem_session_id");
+        if (window.activeModalHlsInstance) {
+          try {
+            window.activeModalHlsInstance.stopLoad();
+            window.activeModalHlsInstance.detachMedia();
+            window.activeModalHlsInstance.destroy();
+          } catch(e){}
+        }
+        const modal = document.getElementById('player-modal');
+        if (modal) modal.classList.add('hidden');
+        const v = document.getElementById('modal-video');
+        if (v) { v.pause(); v.src = ''; }
+        alert("⚠️ تنبيه أمان الباسم سات:\n\nتم تسجيل الدخول إلى هذا الحساب من جهاز آخر!\nتم إنهاء هذه الجلسة فوراً لمنع مشاركة الحساب المتزامنة.");
+        location.reload();
+      }
+
+      async function handleSubscriberLogout() {
       if (currentSubscriber && currentSubscriber.username) {
         try {
           await fetch(`https://albasem-cams-default-rtdb.firebaseio.com/presence/${currentSubscriber.username}.json`, {

@@ -1,4 +1,164 @@
 
+// --- محرك الرقابة الأبوية الذكي Al-Basem Parental Engine ---
+function checkParentalAccess(streamId, onAllowed) {
+  const stream = streamsData.find(s => s.id === streamId);
+  if (!stream || !stream.isLocked) {
+    onAllowed();
+    return;
+  }
+
+  const isUnlocked = sessionStorage.getItem('albasem_parental_unlocked') === 'true';
+  if (isUnlocked) {
+    onAllowed();
+    return;
+  }
+
+  showParentalPinModal(() => onAllowed());
+}
+
+function showParentalPinModal(onSuccess) {
+  let modal = document.getElementById('parental-pin-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'parental-pin-modal';
+    modal.className = 'fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-4';
+    modal.innerHTML = `
+      <div class="bg-[#0f172a] border border-amber-500/40 rounded-2xl p-6 w-full max-w-sm shadow-2xl text-center">
+        <div class="w-14 h-14 bg-amber-500/10 border border-amber-500/30 rounded-full flex items-center justify-center mx-auto mb-3 text-amber-400 text-2xl">
+          <i class="fa-solid fa-lock"></i>
+        </div>
+        <h3 class="text-base font-bold text-white mb-1">محتوى محمي بنظام الرقابة الأبوية</h3>
+        <p class="text-xs text-slate-400 mb-4">أدخل رمز الأمان المعتمد (PIN) لفتح هذا المحتوى:</p>
+        
+        <input type="password" id="parental-pin-input" maxlength="10" placeholder="••••" class="w-full bg-slate-900 border border-slate-700 focus:border-amber-400 rounded-xl p-3 text-center text-xl tracking-[0.5em] text-amber-400 font-mono outline-none mb-2">
+        <div id="parental-pin-err" class="text-red-400 text-xs mb-3 hidden"></div>
+
+        <div class="flex gap-2">
+          <button id="parental-pin-submit" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs transition">تأكيد وفتح</button>
+          <button id="parental-pin-cancel" class="px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-xl text-xs transition">إلغاء</button>
+        </div>
+
+        <div class="mt-4 pt-3 border-t border-slate-800">
+          <button id="parental-change-pin-btn" class="text-[11px] text-slate-400 hover:text-amber-400 transition flex items-center justify-center gap-1 mx-auto">
+            <i class="fa-solid fa-gear"></i> <span>تغيير رمز الأمان</span>
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+
+  modal.classList.remove('hidden');
+  const input = document.getElementById('parental-pin-input');
+  const errDiv = document.getElementById('parental-pin-err');
+  input.value = '';
+  errDiv.classList.add('hidden');
+  input.focus();
+
+  document.getElementById('parental-pin-cancel').onclick = () => {
+    modal.classList.add('hidden');
+  };
+
+  const handleVerify = () => {
+    const entered = input.value.trim();
+    const currentPin = localStorage.getItem('albasem_custom_pin') || '1415';
+    if (entered === currentPin) {
+      sessionStorage.setItem('albasem_parental_unlocked', 'true');
+      modal.classList.add('hidden');
+      if (typeof onSuccess === 'function') onSuccess();
+    } else {
+      errDiv.textContent = '⚠️ رمز الأمان غير صحيح!';
+      errDiv.classList.remove('hidden');
+    }
+  };
+
+  document.getElementById('parental-pin-submit').onclick = handleVerify;
+  input.onkeydown = (e) => { if (e.key === 'Enter') handleVerify(); };
+
+  document.getElementById('parental-change-pin-btn').onclick = () => {
+    modal.classList.add('hidden');
+    showChangePinModal();
+  };
+}
+
+function showChangePinModal() {
+  let modal = document.getElementById('change-pin-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'change-pin-modal';
+    modal.className = 'fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-4';
+    modal.innerHTML = `
+      <div class="bg-[#0f172a] border border-slate-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl text-right">
+        <h3 class="text-sm font-bold text-white mb-2 flex items-center gap-2">
+          <i class="fa-solid fa-key text-amber-400"></i>
+          <span>تغيير رمز الرقابة الأبوية</span>
+        </h3>
+        <p class="text-[11px] text-slate-400 mb-4 leading-relaxed">
+          لتغيير الرمز، يجب إدخال الرمز المعتمد الحالي الذي تم استلامه من إدارة الباسم سات:
+        </p>
+
+        <div class="space-y-2.5 text-xs">
+          <div>
+            <label class="block text-slate-300 mb-1">الرمز الحالي (من الإدارة):</label>
+            <input type="password" id="old-pin-input" placeholder="الرمز الحالي..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white outline-none focus:border-amber-400">
+          </div>
+          <div>
+            <label class="block text-slate-300 mb-1">الرمز الجديد:</label>
+            <input type="password" id="new-pin-input" placeholder="أدخل 4 أرقام أو أكثر..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white outline-none focus:border-amber-400">
+          </div>
+          <div>
+            <label class="block text-slate-300 mb-1">تأكيد الرمز الجديد:</label>
+            <input type="password" id="confirm-pin-input" placeholder="أعد إدخال الرمز الجديد..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white outline-none focus:border-amber-400">
+          </div>
+        </div>
+
+        <div id="change-pin-err" class="text-red-400 text-xs mt-2 hidden"></div>
+
+        <div class="flex gap-2 mt-4">
+          <button id="save-new-pin-btn" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-lg text-xs transition">حفظ الرمز</button>
+          <button id="cancel-change-pin-btn" class="px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-lg text-xs transition">إلغاء</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+
+  modal.classList.remove('hidden');
+  const oldIn = document.getElementById('old-pin-input');
+  const newIn = document.getElementById('new-pin-input');
+  const confIn = document.getElementById('confirm-pin-input');
+  const errDiv = document.getElementById('change-pin-err');
+  oldIn.value = ''; newIn.value = ''; confIn.value = '';
+  errDiv.classList.add('hidden');
+
+  document.getElementById('cancel-change-pin-btn').onclick = () => modal.classList.add('hidden');
+
+  document.getElementById('save-new-pin-btn').onclick = () => {
+    const curSaved = localStorage.getItem('albasem_custom_pin') || '1415';
+    if (oldIn.value.trim() !== curSaved) {
+      errDiv.textContent = '⚠️ الرمز الحالي غير صحيح! يرجى مراجعة إدارة الباسم سات.';
+      errDiv.classList.remove('hidden');
+      return;
+    }
+    const n = newIn.value.trim();
+    const c = confIn.value.trim();
+    if (!n || n.length < 4) {
+      errDiv.textContent = '⚠️ يجب أن يتكون الرمز الجديد من 4 أرقام على الأقل.';
+      errDiv.classList.remove('hidden');
+      return;
+    }
+    if (n !== c) {
+      errDiv.textContent = '⚠️ الرمز الجديد وتأكيد الرمز غير متطابقين!';
+      errDiv.classList.remove('hidden');
+      return;
+    }
+    localStorage.setItem('albasem_custom_pin', n);
+    alert('✓ تم تغيير رمز الرقابة الأبوية بنجاح!');
+    modal.classList.add('hidden');
+  };
+}
+
+
 // --- محرك الفرز الذكي التلقائي لقنوات IPTV الباسم سات ---
 const IPTV_AUTO_RULES = [
   { cat: 'أفلام ومسلسلات', patterns: [/movie/i, /cinema/i, /action/i, /drama/i, /series/i, /film/i, /aflam/i, /box\s*office/i, /osn/i, /netflix/i, /hbo/i, /fox/i, /سينما/i, /افلام/i, /أفلام/i, /مسلسل/i, /دراما/i, /اكشن/i, /حكايات/i, /سهرة/i] },
@@ -1305,7 +1465,7 @@ function renderCams() {
       <div onclick="openModal('${stream.id}')" class="px-3 py-2 bg-[#121c33] border-b border-slate-800/80 flex justify-between items-center text-xs cursor-pointer hover:bg-slate-800/60 transition select-none">
         <div class="flex items-center gap-2 truncate">
           <span class="w-2 h-2 rounded-full ${stream.status === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}"></span>
-          <span class="font-bold text-slate-200 truncate hover:text-emerald-400 transition">${stream.title}</span>
+          <span class="font-bold text-slate-200 truncate hover:text-emerald-400 transition">${stream.title}</span>${stream.isLocked ? '<span class="bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[10px] px-1.5 py-0.5 rounded font-bold flex items-center gap-1 flex-shrink-0"><i class="fa-solid fa-lock text-[9px]"></i> مقفل</span>' : ''}
         </div>
         <div class="flex items-center gap-1.5 flex-shrink-0">
           ${adminActions}
@@ -1411,6 +1571,8 @@ function openEditModal(id) {
   document.getElementById('edit-area').value = stream.area;
   document.getElementById('edit-type').value = stream.type;
   document.getElementById('edit-url').value = stream.url;
+  const lockEl = document.getElementById('edit-is-locked');
+  if (lockEl) lockEl.checked = !!stream.isLocked;
 
   document.getElementById('edit-modal-title').textContent = "✏️ تعديل بيانات القناة";
   document.getElementById('edit-save-btn').textContent = "حفظ التعديلات";
@@ -1482,6 +1644,15 @@ function changeLayout(cols) {
 }
 
 function openModal(streamId) {
+  // فحص الرقابة الأبوية قبل تشغيل المشغل
+  if (!window._parentalBypass) {
+    checkParentalAccess(streamId, () => {
+      window._parentalBypass = true;
+      openModal(streamId);
+      window._parentalBypass = false;
+    });
+    return;
+  }
   // إعدام فوري لأي صوت أو مشغل سابق بالكامل
   if (window.activeModalHlsInstance) {
     try {
