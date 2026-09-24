@@ -1085,7 +1085,7 @@ function launchHlsStream(container, url, isModal = false, isIptv = false) {
         showOfflineBox();
       }
     }
-  }, 9000);
+  }, 16000);
 
   const onStreamReady = () => {
     if (isPlaying) return;
