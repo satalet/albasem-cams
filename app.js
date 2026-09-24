@@ -486,6 +486,62 @@ function populateTargetAreas() {
     };
 }
 
+
+window.executeBulkLock = async function(lockStatus) {
+    if (!currentUser) return alert("يرجى تسجيل الدخول كمسؤول أولاً!");
+    const selectedIds = getActiveSelectedIds();
+    if (!selectedIds || selectedIds.length === 0) {
+        return alert("⚠️ يرجى تحديد قناة واحدة على الأقل بالضغط على مربع [تحديد] الأخضر!");
+    }
+
+    const actionText = lockStatus ? "قفل" : "فك قفل";
+    if (!confirm(`هل أنت متأكد من ${actionText} (${selectedIds.length}) قناة محددة؟`)) return;
+
+    const updates = {};
+    selectedIds.forEach(id => {
+        updates[`streams/${id}/isLocked`] = !!lockStatus;
+        const s = streamsData.find(item => item && item.id === id);
+        if (s) s.isLocked = !!lockStatus;
+    });
+
+    try {
+        await db.ref().update(updates);
+        alert(`✅ تم ${actionText} (${selectedIds.length}) قناة بنجاح!`);
+        if (typeof renderCams === 'function') renderCams();
+    } catch(err) {
+        alert("خطأ أثناء العملية: " + err.message);
+    }
+};
+
+window.toggleSubcategoryLock = async function(subName) {
+    if (!currentUser) return alert("يرجى تسجيل الدخول كمسؤول أولاً!");
+    const subStreams = streamsData.filter(s => s && s.area === 'IPTV' && (s.subCategory === subName || s.category === subName));
+    if (!subStreams.length) return alert("لا توجد قنوات في هذا التفريع!");
+
+    const allLocked = subStreams.every(s => s.isLocked);
+    const targetStatus = !allLocked;
+    const msg = targetStatus
+        ? `هل تريد قفل جميع قنوات تفريع [${subName}] (${subStreams.length} قناة) برمز 1415؟`
+        : `هل تريد فك قفل جميع قنوات تفريع [${subName}] (${subStreams.length} قناة)؟`;
+
+    if (!confirm(msg)) return;
+
+    const updates = {};
+    subStreams.forEach(s => {
+        updates[`streams/${s.id}/isLocked`] = targetStatus;
+        s.isLocked = targetStatus;
+    });
+
+    try {
+        await db.ref().update(updates);
+        alert(`✅ تم ${targetStatus ? 'قفل' : 'فك قفل'} تفريع [${subName}] بالكامل!`);
+        if (typeof renderCategoryOrderList === 'function') renderCategoryOrderList();
+        if (typeof renderCams === 'function') renderCams();
+    } catch(err) {
+        alert("خطأ أثناء تحديث القفل: " + err.message);
+    }
+};
+
 window.executeBulkMove = async function() {
     if (!currentUser) return alert("يرجى تسجيل الدخول كمسؤول أولاً!");
 

@@ -346,14 +346,20 @@ if ('caches' in window) {
       <div class="flex flex-wrap items-center gap-2">
         <button type="button" onclick="selectAllBulk(true)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1 rounded border border-slate-700">تحديد الكل</button>
         <button type="button" onclick="selectAllBulk(false)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1 rounded border border-slate-700">إلغاء التحديد</button>
-        <div class="flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
-          <span class="text-slate-400 text-[11px]">ترحيل إلى:</span>
-          <select id="bulkTargetArea" onfocus="populateTargetAreas()" onmousedown="populateTargetAreas()" class="bg-slate-950 text-emerald-400 font-bold px-3 py-1.5 rounded-lg border-2 border-emerald-500/60 text-xs focus:outline-none min-w-[220px] cursor-pointer shadow-inner"></select>
-        </div>
+        <div class="flex items-center gap-1.5 bg-slate-950 px-2.5 py-1 rounded-lg border border-emerald-500/50 flex-shrink-0" style="min-width: 250px;">
+            <span class="text-emerald-400 font-bold text-xs flex-shrink-0"><i class="fa-solid fa-folder-tree"></i> ترحيل إلى:</span>
+            <select id="bulkTargetArea" onfocus="populateTargetAreas()" onmousedown="populateTargetAreas()" class="bg-slate-900 text-slate-100 font-bold px-2 py-1 rounded border border-slate-700 text-xs focus:outline-none cursor-pointer w-full" style="min-width: 170px; display: inline-block;"></select>
+          </div>
         <button type="button" onclick="executeBulkMove()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-2.5 py-1 rounded shadow flex items-center gap-1">
           <i class="fa-solid fa-folder-arrow-up"></i> <span>ترحيل</span>
         </button>
-        <button type="button" onclick="executeBulkDelete()" class="bg-rose-600 hover:bg-rose-500 text-white font-bold px-2.5 py-1 rounded shadow flex items-center gap-1">
+        <button type="button" onclick="executeBulkLock(true)" class="bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold px-2.5 py-1 rounded shadow flex items-center gap-1" title="قفل جميع القنوات المحددة برمز 1415">
+            <i class="fa-solid fa-lock"></i> <span>قفل</span>
+          </button>
+          <button type="button" onclick="executeBulkLock(false)" class="bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold px-2.5 py-1 rounded shadow flex items-center gap-1" title="فك قفل جميع القنوات المحددة">
+            <i class="fa-solid fa-lock-open"></i> <span>فك قفل</span>
+          </button>
+          <button type="button" onclick="executeBulkDelete()" class="bg-rose-600 hover:bg-rose-500 text-white font-bold px-2.5 py-1 rounded shadow flex items-center gap-1">
           <i class="fa-solid fa-trash"></i> <span>حذف</span>
         </button>
       </div>
@@ -513,7 +519,7 @@ if ('caches' in window) {
     </div>
   </div>
 
-  <script src="app.js?v=1790291622"></script>
+  <script src="app.js?v=1790292151"></script>
 
   <!-- نظام إدارة دخول المشتركين وفحص الجلسة -->
   <div id="sub-login-modal" style="display:none; position:fixed; inset:0; background:rgba(11,17,32,0.96); z-index:9999; justify-content:center; align-items:center; padding:15px;">
