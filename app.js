@@ -143,7 +143,7 @@ function markTvOsdLive() {
   _osdHideTimer = setTimeout(() => {
     hideTvOsd();
   }, 1600);
-});
+}
 
 // دالة فحص صلاحيات المشترك للبث
 window.isStreamAllowedForSubscriber = function(stream) {
