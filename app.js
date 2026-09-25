@@ -1737,6 +1737,7 @@ function renderCams() {
     const orderB = b.order !== undefined ? Number(b.order) : 9999;
     return orderA - orderB;
   });
+  window.activeCategoryStreams = filtered;
 
     // حماية معالج ورام الجوال عبر العرض السلس
   const totalMatches = filtered.length;
@@ -2035,6 +2036,17 @@ function openModal(streamId) {
   const stream = streamsData.find(s => s.id === streamId);
   if (!stream) return;
   document.getElementById('modal-title').textContent = stream.title + ' - ' + stream.area;
+  window.currentModalStreamId = streamId;
+  const navCounter = document.getElementById('modal-nav-counter');
+  if (navCounter && window.activeCategoryStreams) {
+    const curIdx = window.activeCategoryStreams.findIndex(s => s.id === streamId);
+    if (curIdx !== -1) {
+      navCounter.textContent = `قناة ${curIdx + 1} / ${window.activeCategoryStreams.length}`;
+      navCounter.classList.remove('hidden');
+    } else {
+      navCounter.classList.add('hidden');
+    }
+  }
   const modalBox = document.getElementById('modal-content');
   modalBox.innerHTML = '';
 
@@ -2300,3 +2312,75 @@ if (typeof db !== 'undefined') {
     }
   });
 }
+
+
+// ==========================================
+// ميزة تقليب القنوات الذكي (Channel Zapping)
+// ==========================================
+function navigateStream(dir) {
+  const list = window.activeCategoryStreams;
+  if (!list || list.length <= 1) return;
+
+  let curIdx = list.findIndex(s => s.id === window.currentModalStreamId);
+  if (curIdx === -1) curIdx = 0;
+
+  let nextIdx = curIdx + dir;
+  if (nextIdx >= list.length) nextIdx = 0;       // دوران تلقائي للبداية
+  if (nextIdx < 0) nextIdx = list.length - 1;   // دوران تلقائي للنهاية
+
+  const nextStream = list[nextIdx];
+  if (nextStream) {
+    openModal(nextStream.id);
+  }
+}
+
+// دعم أسهم الكيبورد (يمين / يسار) للتنقل
+document.addEventListener('keydown', (e) => {
+  const modal = document.getElementById('cam-modal');
+  if (!modal || modal.classList.contains('hidden')) return;
+
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
+
+  if (e.key === 'ArrowRight') {
+    navigateStream(1);
+  } else if (e.key === 'ArrowLeft') {
+    navigateStream(-1);
+  }
+});
+
+// دعم سحب الشاشة باللمس (Swipe) عالجوال
+(function initSwipeNavigation() {
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchStartTime = 0;
+
+  document.addEventListener('touchstart', (e) => {
+    const modal = document.getElementById('cam-modal');
+    if (!modal || modal.classList.contains('hidden')) return;
+    if (e.touches.length === 1) {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      touchStartTime = Date.now();
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', (e) => {
+    const modal = document.getElementById('cam-modal');
+    if (!modal || modal.classList.contains('hidden')) return;
+
+    if (e.changedTouches.length === 1) {
+      const diffX = e.changedTouches[0].clientX - touchStartX;
+      const diffY = e.changedTouches[0].clientY - touchStartY;
+      const diffTime = Date.now() - touchStartTime;
+
+      // فحص أن الحركة أفقية وسريعة (Swipe) وليست سكرول عمودي
+      if (diffTime < 500 && Math.abs(diffX) > 55 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
+        if (diffX < 0) {
+          navigateStream(1);  // سحب لليسار -> القناة التالية
+        } else {
+          navigateStream(-1); // سحب لليمين -> القناة السابقة
+        }
+      }
+    }
+  }, { passive: true });
+})();
