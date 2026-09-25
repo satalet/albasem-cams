@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <!-- وسوم المعاينة الاحترافية للواتساب وميتا -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="الباسم سات">
+  <meta property="og:title" content="الباسم سات 👑 | بإشراف وإدارة محمد زربا (أبو باسم)">
+  <meta property="og:description" content="منصة وتجميع قنوات البث المباشر والستلايت وكاميرات المراقبة - خدمة زبائننا الكرام 24/7">
+  <meta property="og:image" content="https://satalet.github.io/albasem-cams/icons/icon-ios.png">
+  <meta property="og:image:secure_url" content="https://satalet.github.io/albasem-cams/icons/icon-ios.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
+  <meta property="og:url" content="https://satalet.github.io/albasem-cams/">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://satalet.github.io/albasem-cams/icons/icon-ios.png">
+      <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>الباسم سات | منصة ودليل البث المباشر المفتوح</title>
+  
+  <link rel="icon" type="image/png" sizes="180x180" href="./icons/icon-ios.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/icon-ios.png">
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#059669">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
+  <link rel="stylesheet" href="style.css?v=26.0922.0135">
+
+    <style>
+    .bulk-action-bar {
+        position: sticky;
+        top: 70px;
+        z-index: 100;
+        background: #111827;
+        border: 1px solid #374151;
+        border-radius: 10px;
+        padding: 10px 15px;
+        margin: 10px auto 20px auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    }
+    .bulk-info span { color: #10b981; font-weight: bold; font-size: 0.95rem; }
+    .bulk-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .btn-action { padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem; font-family: inherit; font-weight: 500; }
+    .btn-action.secondary { background: #374151; color: #f3f4f6; }
+    .btn-action.secondary:hover { background: #4b5563; }
+    .btn-action.move-btn { background: #2563eb; color: #fff; }
+    .btn-action.move-btn:hover { background: #1d4ed8; }
+    .btn-action.danger { background: #dc2626; color: #fff; }
+    .btn-action.danger:hover { background: #b91c1c; }
+    .admin-select { background: #1f2937; color: #f3f4f6; border: 1px solid #4b5563; padding: 6px 10px; border-radius: 6px; font-family: inherit; }
+    .card-checkbox-container {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 25;
+        background: rgba(17, 24, 39, 0.85);
+        border-radius: 6px;
+        padding: 3px 6px;
+        border: 1px solid #4b5563;
+        display: none;
+    }
+    .card-checkbox-container input { cursor: pointer; width: 18px; height: 18px; accent-color: #10b981; }
+    </style>
+    
+
+<script>
+// إجبار المتصفح على تنظيف كاش PWA عند تغير الفيرجن
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for(let registration of registrations) {
+            registration.unregister();
+        }
+    });
+}
+if ('caches' in window) {
+    caches.keys().then(names => {
+        for (let name of names) caches.delete(name);
+    });
+}
+</script>
+
+<style>
+    /* --- توحيد أحجام وارتفاع شريط أزرار الإدارة (الباسم سات) --- */
+    .admin-actions, .admin-controls, .admin-buttons, #adminBar, [id*="admin-controls"], [id*="adminBar"] {
+        display: grid !important;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 6px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 4px 6px !important;
+        box-sizing: border-box !important;
+    }
+    .admin-actions button, .admin-controls button, #adminBar button,
+    .admin-actions a, .admin-controls a, #adminBar a {
+        height: 44px !important;
+        min-height: 44px !important;
+        max-height: 44px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 12px !important;
+        font-weight: bold !important;
+        padding: 4px 6px !important;
+        margin: 0 !important;
+        border-radius: 8px !important;
+        text-align: center !important;
+        line-height: 1.2 !important;
+        box-sizing: border-box !important;
+        white-space: normal !important;
+    }
+    /* إخفاء شريط الفرز والترحيل السفلي نهائياً إلا عند تفعيله */
+    #batchActionsBar, #batchBar, #bulkBar, .batch-bar, .bulk-actions-bar, [id*="batch"], [id*="bulk"] {
+        display: none;
+    }
+</style>
+<style id="albasem-scroll-bar">
+    /* --- شريط أزرار الإدارة الأفقي الانسيابي (الباسم سات) --- */
+    .admin-actions, .admin-controls, .admin-buttons, #adminBar, [id*="admin-controls"], [id*="adminBar"] {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        gap: 8px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        padding: 6px 10px !important;
+        scrollbar-width: none !important; /* إخفاء المسطرة في فايرفوكس */
+    }
+    .admin-actions::-webkit-scrollbar, 
+    .admin-controls::-webkit-scrollbar, 
+    #adminBar::-webkit-scrollbar,
+    [id*="admin-controls"]::-webkit-scrollbar {
+        display: none !important; /* إخفاء مسطرة التمرير في كروم والجوال */
+    }
+    .admin-actions button, .admin-controls button, #adminBar button {
+        flex: 0 0 auto !important; /* منع انكماش أو خروج الأزرار */
+        white-space: nowrap !important;
+        min-width: fit-content !important;
+        padding: 7px 14px !important;
+        font-size: 13px !important;
+    }
+
+    /* إخفاء شريط الفرز والترحيل السفلي نهائياً */
+    #batchActionsBar, #batchBar, #bulkBar, .batch-bar, .bulk-actions-bar, [data-batch-container="true"] {
+        display: none !important;
+    }
+</style>
+
+
+<style id="albasem-responsive-toolbar">
+    /* الحاوية الأساسية للأزرار */
+    #adminToolbar {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        padding: 6px 4px !important;
+    }
+
+    #adminToolbar button, #adminToolbar a {
+        border-radius: 8px !important;
+        font-weight: bold !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
+        box-sizing: border-box !important;
+        margin: 0 !important;
+    }
+
+    /* 1. الوضع العرضي والكمبيوتر (أكبر من 650px أو عند تدوير الجوال بالعرض): سطر واحد كامل */
+    @media (min-width: 651px), (orientation: landscape) {
+        #adminToolbar {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            justify-content: center !important;
+            gap: 6px !important;
+        }
+        #adminToolbar button, #adminToolbar a {
+            flex: 1 1 auto !important;
+            height: 38px !important;
+            min-height: 38px !important;
+            max-height: 38px !important;
+            font-size: 13px !important;
+            padding: 4px 10px !important;
+            white-space: nowrap !important;
+        }
+    }
+
+    /* 2. الوضع الطولي للجوال (أقل من 650px بالطول): شبكة سطرين (3 أزرار فوق و 3 تحت) */
+    @media (max-width: 650px) and (orientation: portrait) {
+        #adminToolbar {
+            display: grid !important;
+            grid-template-columns: repeat(3, 1fr) !important;
+            gap: 5px !important;
+        }
+        #adminToolbar button, #adminToolbar a {
+            height: 42px !important;
+            min-height: 42px !important;
+            max-height: 42px !important;
+            font-size: 11px !important;
+            line-height: 1.15 !important;
+            padding: 2px 4px !important;
+            white-space: normal !important;
+        }
+    }
+</style>
+</head>
+<body class="bg-[#070a12] text-slate-100 min-h-screen flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
+<!-- شريط ترحيب المشترك وتسجيل الخروج -->
+  <div class="admin-grid-box" id="sub-welcome-bar" style="display:none; background:#1e293b; border-bottom:2px solid #00e5ff; padding:8px 15px; font-size:0.85rem; color:#fff; display:none; justify-content:space-between; align-items:center;">
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+      <span>👋 مرحباً: <strong id="sub-display-name" style="color:#00e5ff;"></strong></span>
+      <span style="color:#94a3b8;">|</span>
+      <span>📅 الاشتراك ينتهي: <strong id="sub-display-expire" style="color:#10b981;"></strong></span>
+    </div>
+    <button onclick="handleSubscriberLogout()" style="background:#ef4444; color:#fff; border:none; padding:4px 10px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:0.8rem;">
+      <i class="fa-solid fa-arrow-right-from-bracket"></i> تسجيل خروج
+    </button>
+  </div>
+
+  <header class="sticky top-0 z-40 bg-[#0c1222]/90 backdrop-blur-md border-b border-slate-800/80 px-4 py-3 transition">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      
+      <div class="flex items-center gap-2.5">
+        <a href="https://cutt.ly/abu-basem" target="_blank" title="زيارة الكرت الرقمي">
+          <img src="./icons/icon-ios.png" alt="الباسم سات" class="w-11 h-11 sm:w-12 sm:h-12 rounded-xl shadow-lg border-2 border-emerald-500/50 object-cover hover:scale-105 transition transform">
+        </a>
+        <div>
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <h1 class="font-extrabold text-sm sm:text-base tracking-wide text-white flex items-center gap-1">
+              <span>الباسم سات</span>
+              <span class="text-amber-400 text-xs sm:text-sm">👑</span>
+            </h1>
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-sm">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1 ml-0.5"></span> بث مباشر VIP
+            </span>
+          </div>
+          
+          <div class="flex items-center gap-1.5 mt-0.5">
+            <span class="text-[11px] sm:text-xs text-slate-300 font-medium">بإشراف وإدارة:</span>
+            <span class="text-xs sm:text-sm font-black text-emerald-400 tracking-wide drop-shadow">محمد زربا</span>
+            <span class="text-[11px] sm:text-xs font-bold text-amber-400">(أبو باسم)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="pwa-install-btn" class="hidden bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition shadow-sm animate-pulse">
+          <i class="fa-solid fa-download text-xs"></i> <span>تثبيت التطبيق</span>
+        </button>
+
+        <a href="https://wa.me/972534829927" target="_blank" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition shadow-sm">
+          <i class="fa-brands fa-whatsapp text-sm"></i> <span>واتساب</span>
+        </a>
+        <a href="tel:0534829927" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-phone text-xs"></i> <span class="hidden sm:inline">0534829927</span>
+        </a>
+        
+        <button id="auth-btn" onclick="handleAuthButtonClick()" class="bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1">
+          <i class="fa-solid fa-lock text-[10px]"></i> <span id="auth-btn-text">الإدارة</span>
+        </button>
+
+        <div class="hidden sm:flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5">
+          <button id="btn-grid-1" onclick="changeLayout(1)" class="p-1.5 text-slate-400 hover:text-white rounded" title="شاشة واحدة"><i class="fa-solid fa-square"></i></button>
+          <button id="btn-grid-2" onclick="changeLayout(2)" class="p-1.5 text-slate-400 hover:text-white rounded active-btn" title="شاشتين"><i class="fa-solid fa-table-cells-large"></i></button>
+          <button id="btn-grid-3" onclick="changeLayout(3)" class="p-1.5 text-slate-400 hover:text-white rounded" title="ثلاث شاشات"><i class="fa-solid fa-table-cells"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <div id="admin-bar" class="hidden max-w-7xl mx-auto mt-2 pt-2 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2">
+      <span class="text-xs text-emerald-400 font-semibold flex items-center gap-1.5">
+        <i class="fa-solid fa-circle-check"></i> وضع إدارة البثوث والأقسام مفعل
+      </span>
+      <div id="adminToolbar">
+        <button onclick="openStreamOrderModal()" class="bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold px-2.5 py-1 rounded transition shadow flex items-center gap-1">
+          <i class="fa-solid fa-arrow-down-short-wide text-xs"></i> <span>ترتيب قنوات القسم</span>
+        </button>
+        <button onclick="openCategoryOrderModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded transition shadow flex items-center gap-1">
+          <i class="fa-solid fa-arrow-down-up-across-line"></i> <span>ترتيب الأقسام</span>
+
+
+
+
+
+
+        </button>
+        <button id="addNewCatDirectBtn" type="button" onclick="addNewCategoryDirect()" class="bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold px-2.5 py-1 rounded transition shadow flex items-center gap-1">
+          <i class="fa-solid fa-folder-plus text-xs"></i> <span>قسم جديد</span>
+        </button>
+        <button id="toggleBulkSortBtn" type="button" onclick="toggleBulkSortMode()" class="bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold px-2.5 py-1 rounded transition shadow flex items-center gap-1">
+          <i class="fa-solid fa-list-check text-xs"></i> <span>فرز وترحيل</span>
+        </button>
+        <a href="admin-users.html" class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold px-3 py-1 rounded transition shadow flex items-center gap-1" style="text-decoration: none;">
+          <i class="fa-solid fa-users-gear"></i> <span>إدارة المشتركين</span>
+        </a>
+        <button onclick="openAddModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded transition shadow flex items-center gap-1"
+          <i class="fa-solid fa-plus"></i> <span>إضافة بث جديد</span>
+        </button>
+        <button onclick="handleAdminLogout()" class="bg-rose-600/80 hover:bg-rose-600 text-white text-xs px-2.5 py-1 rounded transition">
+          خروج
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-4 py-4">
+    <div class="mb-4 overflow-x-auto pb-1.5 no-scrollbar">
+      <div id="filter-buttons" class="flex items-center gap-1.5"></div>
+    </div>
+
+    
+
+
+
+
+
+
+    <!-- شريط الفرز والترحيل الجماعي -->
+    <div id="bulkActionBar" class="hidden bg-slate-900/95 border border-violet-500/50 backdrop-blur-md rounded-xl p-2.5 mb-4 shadow-2xl flex flex-wrap items-center justify-between gap-2 text-xs">
+      <div class="flex items-center gap-2 text-slate-200 font-bold">
+        <span class="text-violet-400"><i class="fa-solid fa-list-check"></i> فرز القنوات:</span>
+        <span>المحددة: <strong id="bulkSelectedCount" class="text-amber-400 font-extrabold px-1.5 py-0.5 bg-slate-950 rounded border border-slate-800">0</strong></span>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <button type="button" onclick="selectAllBulk(true)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1 rounded border border-slate-700">تحديد الكل</button>
+        <button type="button" onclick="selectAllBulk(false)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1 rounded border border-slate-700">إلغاء التحديد</button>
+        <div class="flex items-center gap-1.5 bg-slate-950 px-2.5 py-1 rounded-lg border border-emerald-500/50 flex-shrink-0" style="min-width: 250px;">
+            <span class="text-emerald-400 font-bold text-xs flex-shrink-0"><i class="fa-solid fa-folder-tree"></i> ترحيل إلى:</span>
+            <select id="bulkTargetArea" onfocus="populateTargetAreas()" onmousedown="populateTargetAreas()" class="bg-slate-900 text-slate-100 font-bold px-2 py-1 rounded border border-slate-700 text-xs focus:outline-none cursor-pointer w-full" style="min-width: 170px; display: inline-block;"></select>
+          </div>
+        <button type="button" onclick="executeBulkMove()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-2.5 py-1 rounded shadow flex items-center gap-1">
+          <i class="fa-solid fa-folder-arrow-up"></i> <span>ترحيل</span>
+        </button>
+        <button type="button" onclick="executeBulkLock(true)" class="bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold px-2.5 py-1 rounded shadow flex items-center gap-1" title="قفل جميع القنوات المحددة برمز 1415">
+            <i class="fa-solid fa-lock"></i> <span>قفل</span>
+          </button>
+          <button type="button" onclick="executeBulkLock(false)" class="bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold px-2.5 py-1 rounded shadow flex items-center gap-1" title="فك قفل جميع القنوات المحددة">
+            <i class="fa-solid fa-lock-open"></i> <span>فك قفل</span>
+          </button>
+          <button type="button" onclick="executeBulkDelete()" class="bg-rose-600 hover:bg-rose-500 text-white font-bold px-2.5 py-1 rounded shadow flex items-center gap-1">
+          <i class="fa-solid fa-trash"></i> <span>حذف</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="cams-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="col-span-full py-20 text-center text-slate-500 text-sm flex flex-col items-center justify-center gap-3">
+        <span class="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></span>
+        <span>جاري مزامنة قنوات البث المباشر...</span>
+      </div>
+    </div>
+  </main>
+
+  <footer class="bg-[#080d1a] border-t border-slate-800/80 mt-6 py-4 px-3 sm:px-4 text-slate-400 text-xs">
+    <div class="max-w-4xl mx-auto flex flex-col items-center gap-3 text-center">
+      
+      <!-- كرت الباسم سات الرقمي التفاعلي -->
+      <div class="w-full bg-gradient-to-r from-slate-900/90 via-[#0e172a] to-slate-900/90 border border-emerald-500/30 rounded-2xl p-3.5 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div class="flex items-center gap-3 text-right">
+          <a href="https://cutt.ly/abu-basem" target="_blank" title="زيارة كرت الباسم سات الرقمي" class="flex-shrink-0">
+            <img src="./icons/icon-ios.png" alt="الباسم سات" class="w-12 h-12 rounded-xl border-2 border-emerald-500/60 shadow-lg shadow-emerald-950/50 object-cover hover:scale-105 transition transform">
+          </a>
+          <div>
+            <a href="https://cutt.ly/abu-basem" target="_blank" rel="noopener noreferrer" class="group/title block">
+              <h3 class="text-white group-hover/title:text-emerald-400 font-bold text-xs sm:text-sm transition flex items-center gap-1.5 cursor-pointer">
+                <span>الباسم سات لأنظمة الستلايت وكاميرات المراقبة</span>
+                <i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-emerald-400 opacity-80 group-hover/title:translate-x-0.5 transition"></i>
+              </h3>
+            </a>
+            <p class="text-[11px] text-slate-400">الرام - كفر عقب - القدس وضواحيها • خدمة متميزة 24/7</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap justify-center">
+          <a href="https://cutt.ly/abu-basem" target="_blank" rel="noopener noreferrer" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg shadow-md flex items-center gap-1.5 transition active:scale-95">
+            <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> <span>الكرت الرقمي</span>
+          </a>
+          <a href="https://wa.me/972534829927" target="_blank" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition">
+            <i class="fa-brands fa-whatsapp text-xs"></i> <span>واتساب</span>
+          </a>
+          <a href="tel:0534829927" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition">
+            <i class="fa-solid fa-phone text-[10px]"></i> <span>0534829927</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- سطر حقوق مصغر وأنيق -->
+      <div class="text-[10px] text-slate-500 flex items-center justify-center gap-2">
+        <span>جميع الحقوق محفوظة © الباسم سات</span>
+        <span>•</span>
+        <span>منصة رقمية لخدمة زبائننا الكرام</span>
+      </div>
+
+    </div>
+  </footer>
+
+  <!-- مودال تكبير القناة بالكامل -->
+  <div id="cam-modal" class="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm hidden flex items-center justify-center p-2 sm:p-6">
+    <div class="bg-[#0d1322] border border-slate-800 rounded-2xl w-full max-w-5xl h-full max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
+      <div class="px-4 py-3 bg-[#11192e] border-b border-slate-800 flex justify-between items-center text-sm">
+        <h3 id="modal-title" class="font-bold text-white truncate"></h3>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-white p-1 rounded-lg transition" title="إغلاق">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <div id="modal-content" class="flex-1 bg-black flex items-center justify-center overflow-hidden relative"></div>
+    </div>
+  </div>
+
+  <!-- مودال ترتيب الأقسام والفولدرات من الجوال والكمبيوتر -->
+  <div id="category-order-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-5 w-full max-w-md shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+        <h3 class="font-bold text-sm text-white flex items-center gap-2">
+          <i class="fa-solid fa-arrow-down-up-across-line text-emerald-400"></i> ترتيب أولويات الأقسام
+        </h3>
+        <button onclick="closeCategoryOrderModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <p class="text-[11px] text-slate-400 mb-3">استخدم الأسهم لتقديم أو تأخير ظهور القسم في شريط الفولدرات العلوي:</p>
+      
+      <div id="category-order-list" class="space-y-1.5 max-h-64 overflow-y-auto pr-1"></div>
+
+      <div class="flex items-center justify-end gap-2 pt-4 border-t border-slate-800 mt-4">
+        <button type="button" onclick="closeCategoryOrderModal()" class="px-3 py-1.5 text-xs text-slate-400 hover:text-white">إلغاء</button>
+        <button type="button" onclick="saveCategoryOrder()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-1.5 rounded-lg transition shadow">حفظ الترتيب فوراً</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- مودال تسجيل الدخول للإدارة -->
+  <div id="login-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-6 w-full max-w-sm shadow-2xl">
+      <h3 class="font-bold text-base text-white mb-4 flex items-center gap-2">
+        <i class="fa-solid fa-user-shield text-emerald-400"></i> دخول إدارة الباسم سات
+      </h3>
+      <form onsubmit="handleAdminLogin(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">البريد الإلكتروني</label>
+          <input type="email" id="login-email" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" required>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">كلمة المرور</label>
+          <input type="password" id="login-password" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" required>
+        </div>
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button type="button" onclick="closeLoginModal()" class="px-3 py-1.5 text-xs text-slate-400 hover:text-white">إلغاء</button>
+          <button type="submit" id="login-submit-btn" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-1.5 rounded-lg transition">دخول</button>
+        </div>
+              <div class="flex items-center gap-2 pt-2 pb-1 border-t border-slate-800">
+          <input type="checkbox" id="edit-is-locked" class="accent-amber-500 w-4 h-4 rounded cursor-pointer">
+          <label for="edit-is-locked" class="text-amber-400 font-bold cursor-pointer select-none flex items-center gap-1.5">
+            <i class="fa-solid fa-lock"></i>
+            <span>قفل برمز أمان (رقابة أبوية 1415)</span>
+          </label>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- مودال تعديل وإضافة الكاميرات -->
+  <div id="edit-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-5 w-full max-w-md shadow-2xl">
+      <h3 id="edit-modal-title" class="font-bold text-sm text-white mb-4"></h3>
+      <form id="edit-form" onsubmit="handleSaveStream(event)" class="space-y-3 text-xs">
+        <input type="hidden" id="edit-stream-id">
+        <div>
+          <label class="block text-slate-400 mb-1">اسم / عنوان القناة</label>
+          <input type="text" id="edit-title" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white" required>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+                      <div>
+              <label class="block text-slate-400 mb-1">المنطقة / التبويب</label>
+              <input type="text" id="edit-area" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white" required>
+            </div>
+            <div id="edit-subcat-wrapper">
+              <label class="block text-slate-400 mb-1 text-emerald-400 font-bold">تفريع IPTV الفرعي</label>
+              <select id="edit-subcategory" class="w-full bg-slate-900 border border-emerald-500/50 rounded-lg px-3 py-2 text-white font-semibold text-xs"></select>
+            </div>
+          <div>
+            <label class="block text-slate-400 mb-1">نوع البث</label>
+            <select id="edit-type" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white">
+              <option value="hls">بث مباشر (M3U8 HLS)</option>
+              <option value="youtube">بث يوتيوب (YouTube)</option>
+              <option value="image">صورة متجددة (Live Image)</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">رابط البث المباشر (URL)</label>
+          <input type="text" id="edit-url" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono text-[11px]" required>
+        </div>
+        <div class="flex items-center justify-end gap-2 pt-3">
+          <button type="button" onclick="closeEditModal()" class="px-3 py-1.5 text-slate-400 hover:text-white">إلغاء</button>
+          <button type="submit" id="edit-save-btn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-1.5 rounded-lg transition"></button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js?v=1790292151"></script>
+
+  <!-- نظام إدارة دخول المشتركين وفحص الجلسة -->
+  <div id="sub-login-modal" style="display:none; position:fixed; inset:0; background:rgba(11,17,32,0.96); z-index:9999; justify-content:center; align-items:center; padding:15px;">
+    <div style="background:#1e293b; border:1px solid #00e5ff; border-radius:14px; max-width:380px; width:100%; padding:24px; text-align:center; box-shadow:0 8px 30px rgba(0,0,0,0.5);">
+      <h2 style="color:#00e5ff; font-size:1.3rem; margin-bottom:8px;"><i class="fa-solid fa-satellite-dish"></i> منصة الباسم سات</h2>
+      <p style="color:#94a3b8; font-size:0.85rem; margin-bottom:18px;">تسجيل الدخول للمشتركين وإدارة المنصة</p>
+      
+      <div style="margin-bottom:12px; text-align:right;">
+        <input type="text" id="client-user" placeholder="اسم المستخدم أو بريد الأدمن" dir="ltr" style="width:100%; padding:11px; background:#0f172a; border:1px solid #334155; border-radius:8px; color:#fff; outline:none; text-align:center; font-size:0.95rem;">
+      </div>
+
+      <div style="margin-bottom:15px; position:relative; text-align:right;">
+        <input type="password" id="client-pass" placeholder="كلمة المرور" dir="ltr" style="width:100%; padding:11px; background:#0f172a; border:1px solid #334155; border-radius:8px; color:#fff; outline:none; text-align:center; font-size:0.95rem;">
+        <button type="button" onclick="togglePassView()" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:#94a3b8; cursor:pointer;"><i id="eye-icon" class="fa-solid fa-eye"></i></button>
+      </div>
+      
+      <button onclick="handleSmartLogin()" style="width:100%; padding:11px; background:#00e5ff; color:#000; border:none; border-radius:8px; font-weight:bold; cursor:pointer; font-size:0.95rem; margin-bottom:10px;">دخول للمنصة</button>
+      <div id="login-error-msg" style="color:#ef4444; font-size:0.82rem; min-height:20px; font-weight:600;"></div>
+    </div>
+  </div>
+
+  <script>
+    const FIREBASE_API_KEY = "AIzaSyD4U4DFTtO8zuqIlrJp19ji1ESptfuVr9E";
+    let currentSubscriber = JSON.parse(localStorage.getItem("albasem_subscriber") || "null");
+    let heartbeatTimer = null;
+
+    function togglePassView() {
+      const p = document.getElementById("client-pass");
+      const icon = document.getElementById("eye-icon");
+      if (p.type === "password") {
+        p.type = "text";
+        icon.classList.replace("fa-eye", "fa-eye-slash");
+      } else {
+        p.type = "password";
+        icon.classList.replace("fa-eye-slash", "fa-eye");
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      let adminToken = localStorage.getItem("albasem_admin_token");
+      if (adminToken) {
+        return; // الأدمن مسجل وموثق مسبقاً
+      }
+      if (!currentSubscriber) {
+        document.getElementById("sub-login-modal").style.display = "flex";
+      } else {
+        verifySubscriberStatus(currentSubscriber.username);
+      }
+    });
+
+    async function handleSmartLogin() {
+      const u = document.getElementById("client-user").value.trim();
+      const p = document.getElementById("client-pass").value.trim();
+      const err = document.getElementById("login-error-msg");
+      err.innerText = "";
+
+      if (!u || !p) {
+        err.innerText = "يرجى كتابة اسم الحساب وكلمة المرور";
+        return;
+      }
+
+      // 1. فحص إذا كان الداخل هو الأدمن الرسمي (بريد إلكتروني)
+      if (u.includes("@")) {
+        try {
+          const resp = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: u, password: p, returnSecureToken: true })
+          });
+          const data = await resp.json();
+          if (data.idToken) {
+            localStorage.setItem("albasem_admin_token", data.idToken);
+            document.getElementById("sub-login-modal").style.display = "none";
+            location.reload();
+            return;
+          }
+        } catch(e) {}
+      }
+
+      // 2. فحص إذا كان مشترك زبون عادي
+      try {
+        const usernameClean = u.toLowerCase();
+        const resp = await fetch(`https://albasem-cams-default-rtdb.firebaseio.com/subscribers/${usernameClean}.json`);
+        const sub = await resp.json();
+
+        if (!sub || String(sub.password).trim() !== p) {
+          err.innerText = "بيانات الدخول غير صحيحة!";
+          return;
+        }
+
+        if (sub.status === "blocked") {
+          err.innerText = "الحساب موقف مؤقتاً، يرجى مراجعة إدارة الباسم سات";
+          return;
+        }
+
+        const today = new Date().toISOString().split('T')[0];
+        if (sub.expireDate < today) {
+          err.innerText = "انتهت فترة اشتراكك، يرجى التواصل للتجديد";
+          return;
+        }
+
+        localStorage.setItem("albasem_subscriber", JSON.stringify(sub));
+        currentSubscriber = sub;
+        document.getElementById("sub-login-modal").style.display = "none";
+        startHeartbeat(usernameClean);
+        filterStreamsForSubscriber(sub);
+      } catch(e) {
+        err.innerText = "خطأ في الاتصال بقاعدة البيانات";
+      }
+    }
+
+    async function verifySubscriberStatus(username) {
+      try {
+        const resp = await fetch(`https://albasem-cams-default-rtdb.firebaseio.com/subscribers/${username}.json`);
+        const sub = await resp.json();
+        const today = new Date().toISOString().split('T')[0];
+
+        if (!sub || sub.status === "blocked" || sub.expireDate < today) {
+          localStorage.removeItem("albasem_subscriber");
+          location.reload();
+          return;
+        }
+        startHeartbeat(username);
+        filterStreamsForSubscriber(sub);
+      } catch(e) {}
+    }
+
+    function startHeartbeat(username) {
+      const sendBeat = () => {
+        fetch(`https://albasem-cams-default-rtdb.firebaseio.com/subscribers/${username}/isOnline.json`, { method: 'PUT', body: JSON.stringify(true) });
+        fetch(`https://albasem-cams-default-rtdb.firebaseio.com/subscribers/${username}/lastSeen.json`, { method: 'PUT', body: JSON.stringify(new Date().toISOString()) });
+      };
+      sendBeat();
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+      heartbeatTimer = setInterval(sendBeat, 60000);
+      
+      window.addEventListener("beforeunload", () => {
+        navigator.sendBeacon(`https://albasem-cams-default-rtdb.firebaseio.com/subscribers/${username}/isOnline.json`, JSON.stringify(false));
+      });
+    }
+
+    
+      function handleKickedSession() {
+        if (heartbeatTimer) clearInterval(heartbeatTimer);
+        localStorage.removeItem("albasem_subscriber");
+        localStorage.removeItem("albasem_session_id");
+        if (window.activeModalHlsInstance) {
+          try {
+            window.activeModalHlsInstance.stopLoad();
+            window.activeModalHlsInstance.detachMedia();
+            window.activeModalHlsInstance.destroy();
+          } catch(e){}
+        }
+        const modal = document.getElementById('player-modal');
+        if (modal) modal.classList.add('hidden');
+        const v = document.getElementById('modal-video');
+        if (v) { v.pause(); v.src = ''; }
+        alert("⚠️ تنبيه أمان الباسم سات:\n\nتم تسجيل الدخول إلى هذا الحساب من جهاز آخر!\nتم إنهاء هذه الجلسة فوراً لمنع مشاركة الحساب المتزامنة.");
+        location.reload();
+      }
+
+      async function handleSubscriberLogout() {
+      if (currentSubscriber && currentSubscriber.username) {
+        try {
+          await fetch(`https://albasem-cams-default-rtdb.firebaseio.com/presence/${currentSubscriber.username}.json`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ isOnline: false, lastSeen: new Date().toISOString() })
+          });
+        } catch(e){}
+      }
+      localStorage.removeItem("albasem_subscriber");
+      location.reload();
+    }
+
+    function showSubscriberBar(sub) {
+      const bar = document.getElementById("sub-welcome-bar");
+      if (bar) {
+        document.getElementById("sub-display-name").textContent = sub.fullName || sub.username;
+        document.getElementById("sub-display-expire").textContent = sub.expireDate;
+        bar.style.display = "flex";
+      }
+    }
+
+    function startHeartbeat(username) {
+      const sendBeat = () => {
+        fetch(`https://albasem-cams-default-rtdb.firebaseio.com/presence/${username}.json`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ isOnline: true, lastSeen: new Date().toISOString() })
+        }).catch(()=>{});
+      };
+      sendBeat();
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+      heartbeatTimer = setInterval(sendBeat, 45000);
+      
+      window.addEventListener("beforeunload", () => {
+        navigator.sendBeacon(`https://albasem-cams-default-rtdb.firebaseio.com/presence/${username}.json`, JSON.stringify({ isOnline: false, lastSeen: new Date().toISOString() }));
+      });
+    }
+
+    function filterStreamsForSubscriber(sub) {
+      showSubscriberBar(sub);
+      if (!sub || sub.allowedAreas.includes("all")) return;
+      document.querySelectorAll("[data-area]").forEach(el => {
+        let area = el.getAttribute("data-area");
+        if (area && !sub.allowedAreas.includes(area)) {
+          el.style.display = "none";
+        }
+      });
+    }
+  </script>
+
+
+
+
+
+
+  <!-- مودال ترتيب قنوات القسم الحالي -->
+  <div id="stream-order-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-3">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+      <div class="p-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+        <div>
+          <h3 class="text-sm font-bold text-white flex items-center gap-1.5">
+            <i class="fa-solid fa-arrow-down-short-wide text-amber-400"></i>
+            <span>ترتيب قنوات قسم:</span>
+            <span id="stream-order-target-name" class="text-emerald-400"></span>
+          </h3>
+          <p class="text-[10px] text-slate-400">رتّب القنوات لتظهر أولاً بوجه الزوار عند فتح القسم</p>
+        </div>
+        <button onclick="closeStreamOrderModal()" class="text-slate-400 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-base"></i>
+        </button>
+      </div>
+
+      <div id="stream-order-list" class="p-3 overflow-y-auto space-y-1.5 flex-1 max-h-[55vh]">
+        <!-- القنوات تُرندر هنا -->
+      </div>
+
+      <div class="p-3 border-t border-slate-800 bg-slate-950/60 flex items-center justify-end gap-2">
+        <button onclick="closeStreamOrderModal()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700">إلغاء</button>
+        <button onclick="saveStreamOrder()" class="px-4 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow flex items-center gap-1.5">
+          <i class="fa-solid fa-floppy-disk"></i> حفظ الترتيب
+        </button>
+      </div>
+    </div>
+  </div>
+
+</body>
