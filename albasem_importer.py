@@ -54,10 +54,15 @@ if os.path.exists(config_path):
 DB_BASE = "https://albasem-cams-default-rtdb.firebaseio.com"
 
 PRESET_SOURCES = {
-    "قنوات العالم العربي المفتوحة (IPTV-org)": "https://iptv-org.github.io/iptv/languages/ara.m3u",
-    "قنوات إخبارية عربية وعالمية": "https://iptv-org.github.io/iptv/categories/news.m3u",
-    "قنوات وثائقية مفتوحة": "https://iptv-org.github.io/iptv/categories/documentary.m3u",
-    "قنوات أطفال مفتوحة": "https://iptv-org.github.io/iptv/categories/kids.m3u"
+    "🇵🇸 قنوات فلسطين المفتوحة (Free-TV)": "https://raw.githubusercontent.com/Free-TV/IPTV/master/countries/ps.m3u",
+    "🌍 قنوات العالم العربي (Free-TV Arabic)": "https://raw.githubusercontent.com/Free-TV/IPTV/master/languages/ara.m3u",
+    "🇰🇷 كوريا الجنوبية (Free-TV South Korea)": "https://raw.githubusercontent.com/Free-TV/IPTV/master/countries/kr.m3u",
+    "⚽ باقة الرياضة المباشرة (Free-TV Sports)": "https://raw.githubusercontent.com/Free-TV/IPTV/master/categories/sports.m3u",
+    "📰 باقة الأخبار المباشرة (Free-TV News)": "https://raw.githubusercontent.com/Free-TV/IPTV/master/categories/news.m3u",
+    "🎬 باقة وثائقيات وثقافة (Free-TV Doc)": "https://raw.githubusercontent.com/Free-TV/IPTV/master/categories/documentary.m3u",
+    "👶 باقة أطفال ورسوم متحركة (Free-TV Kids)": "https://raw.githubusercontent.com/Free-TV/IPTV/master/categories/kids.m3u",
+    "🍿 أفلام ومسلسلات منوعة (Free-TV Movies)": "https://raw.githubusercontent.com/Free-TV/IPTV/master/categories/movies.m3u",
+    "🌐 باقة العالم العربي الشاملة (IPTV-org)": "https://iptv-org.github.io/iptv/languages/ara.m3u"
 }
 
 def smart_subcat(raw_group):
