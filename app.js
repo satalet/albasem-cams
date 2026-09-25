@@ -1743,7 +1743,8 @@ function renderCams() {
   const isLimited = totalMatches > window.iptvDisplayLimit;
   const displayList = isLimited ? filtered.slice(0, window.iptvDisplayLimit) : filtered;
 
-  displayList.forEach(stream => {
+  displayList.forEach((stream, idx) => {
+      const channelNum = idx + 1;
     const card = document.createElement('div');
     card.className = 'bg-[#0f172a] border border-slate-800/90 rounded-xl overflow-hidden shadow-xl flex flex-col transition hover:border-slate-700 cursor-pointer active:border-slate-600';
     card.onclick = (e) => {
@@ -1774,7 +1775,8 @@ function renderCams() {
     const header = `
       <div onclick="openModal('${stream.id}')" class="px-3 py-2 bg-[#121c33] border-b border-slate-800/80 flex justify-between items-center text-xs cursor-pointer hover:bg-slate-800/60 transition select-none">
         <div class="flex items-center gap-2 truncate">
-          <span class="w-2 h-2 rounded-full ${stream.status === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}"></span>
+          <span class="inline-flex items-center justify-center bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[11px] font-mono font-black px-1.5 py-0.5 rounded shadow-sm flex-shrink-0" title="رقم القناة في هذا القسم">#${channelNum}</span>
+          <span class="w-2 h-2 rounded-full ${stream.status === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'} flex-shrink-0"></span>
           <span class="font-bold text-slate-200 truncate hover:text-emerald-400 transition">${stream.title}</span>${stream.isLocked ? '<span class="bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[10px] px-1.5 py-0.5 rounded font-bold flex items-center gap-1 flex-shrink-0"><i class="fa-solid fa-lock text-[9px]"></i> مقفل</span>' : ''}
         </div>
         <div class="flex items-center gap-1.5 flex-shrink-0">
