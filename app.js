@@ -34,18 +34,27 @@ async function toggleStreamLock(streamId, e) {
 // --- محرك الرقابة الأبوية الذكي Al-Basem Parental Engine ---
 function checkParentalAccess(streamId, onAllowed) {
   const stream = streamsData.find(s => s.id === streamId);
-  if (!stream || !stream.isLocked) {
-    onAllowed();
+  if (!stream) {
+    if (typeof onAllowed === 'function') onAllowed();
     return;
   }
 
-  const isUnlocked = sessionStorage.getItem('albasem_parental_unlocked') === 'true';
-  if (isUnlocked) {
-    onAllowed();
+  // 1. فحص الجلسة المؤقتة للقسم
+  const streamSub = stream.subCategory || stream.category;
+  if (window.activeUnlockedSub && streamSub === window.activeUnlockedSub) {
+    if (typeof onAllowed === 'function') onAllowed();
     return;
   }
 
-  showParentalPinModal(() => onAllowed());
+  // 2. فحص قفل المحطة الفردية
+  if (!stream.isLocked) {
+    if (typeof onAllowed === 'function') onAllowed();
+    return;
+  }
+
+  showParentalPinModal(() => {
+    if (typeof onAllowed === 'function') onAllowed();
+  });
 }
 
 function showParentalPinModal(onSuccess) {
@@ -779,6 +788,18 @@ const streamsRef = db.ref('streams');
 const orderRef = db.ref('streams/_config_categories');
 // مزامنة تفريعات IPTV المخصصة مع الفايربيس
 window.iptvCustomSubs = [];
+window.iptvLockedSubs = [];
+window.activeUnlockedSub = null;
+
+db.ref('streams/_config_locked_subs').on('value', snap => {
+    const val = snap.val();
+    window.iptvLockedSubs = val ? (Array.isArray(val) ? val : Object.values(val)) : [];
+    if (typeof setupFilters === 'function') setupFilters();
+    if (typeof renderCategoryOrderList === 'function' && document.getElementById('category-order-modal') && !document.getElementById('category-order-modal').classList.contains('hidden')) {
+        renderCategoryOrderList();
+    }
+});
+
 db.ref('streams/_config_iptv_subs').on('value', snap => {
     const val = snap.val();
     window.iptvCustomSubs = val ? (Array.isArray(val) ? val : Object.values(val)) : [];
@@ -946,6 +967,7 @@ function setupFilters() {
   favBtn.onclick = () => {
     currentFilter = 'FAVORITES';
     currentSubFilter = '';
+        window.activeUnlockedSub = null;
     window.iptvDisplayLimit = 40;
     localStorage.setItem('albasem_active_cat', 'FAVORITES');
     setupFilters();
@@ -963,6 +985,7 @@ function setupFilters() {
       if (currentFilter !== area) {
         currentFilter = area;
         currentSubFilter = '';
+        window.activeUnlockedSub = null;
         window.iptvDisplayLimit = 40;
         localStorage.setItem('albasem_active_cat', area);
         setupFilters();
@@ -1006,10 +1029,23 @@ function setupFilters() {
     rawSubCats.forEach(sub => {
       const sBtn = document.createElement('button');
       const isSubActive = sub === currentSubFilter;
-      sBtn.className = `flex-shrink-0 px-3 py-1 rounded-lg border text-[11px] font-semibold whitespace-nowrap transition ${isSubActive ? 'bg-emerald-600 text-white border-emerald-500 shadow-md' : 'bg-slate-800/80 text-slate-400 border-slate-700/60 hover:bg-slate-700'}`;
-      sBtn.textContent = sub;
+      const isSubLocked = (window.iptvLockedSubs || []).includes(sub);
+      sBtn.className = `flex-shrink-0 px-3 py-1 rounded-lg border text-[11px] font-semibold whitespace-nowrap transition flex items-center gap-1.5 ${isSubActive ? 'bg-emerald-600 text-white border-emerald-500 shadow-md' : (isSubLocked ? 'bg-amber-950/40 text-amber-300 border-amber-600/40 hover:bg-amber-900/50' : 'bg-slate-800/80 text-slate-400 border-slate-700/60 hover:bg-slate-700')}`;
+      sBtn.innerHTML = `${isSubLocked ? '<i class="fa-solid fa-lock text-[10px] text-amber-400"></i>' : ''}<span>${sub}</span>`;
+      
       sBtn.onclick = () => {
         if (currentSubFilter !== sub) {
+          if (isSubLocked && window.activeUnlockedSub !== sub) {
+            showParentalPinModal(() => {
+              window.activeUnlockedSub = sub;
+              currentSubFilter = sub;
+              window.iptvDisplayLimit = 40;
+              setupFilters();
+              renderCams();
+            });
+            return;
+          }
+          window.activeUnlockedSub = null;
           currentSubFilter = sub;
           window.iptvDisplayLimit = 40;
           setupFilters();
@@ -1027,6 +1063,7 @@ function setupFilters() {
 function filterByArea(area) {
   currentFilter = area; localStorage.setItem('albasem_active_cat', area);
   currentSubFilter = 'all';
+  window.activeUnlockedSub = null;
   sessionStorage.setItem('albasem_active_cat', area);
   if (area === 'all') {
     history.replaceState(null, '', window.location.pathname);
@@ -1089,6 +1126,27 @@ function closeCategoryOrderModal() {
   if (modalEl) modalEl.classList.add('hidden');
 }
 
+
+async function toggleCategoryLock(catName) {
+  if (!currentUser) return alert('⚠️ يجب تسجيل الدخول كمسؤول أولاً!');
+  let locked = window.iptvLockedSubs ? [...window.iptvLockedSubs] : [];
+  const isNowLocked = !locked.includes(catName);
+  if (isNowLocked) {
+    locked.push(catName);
+  } else {
+    locked = locked.filter(c => c !== catName);
+  }
+  try {
+    await db.ref('streams/_config_locked_subs').set(locked);
+    window.iptvLockedSubs = locked;
+    renderCategoryOrderList();
+    if (typeof setupFilters === 'function') setupFilters();
+  } catch(err) {
+    alert('حدث خطأ أثناء حفظ القفل: ' + err.message);
+  }
+}
+window.toggleCategoryLock = toggleCategoryLock;
+
 function renderCategoryOrderList() {
   const listEl = document.getElementById('category-order-list');
   if (!listEl) return;
@@ -1113,6 +1171,9 @@ function renderCategoryOrderList() {
         <span class="text-[10px] text-slate-500 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 shrink-0">(${streamCount} قناة)</span>
       </div>
       <div class="flex items-center gap-1 shrink-0">
+        <button type="button" onclick="toggleCategoryLock('${cat.replace(/'/g, "\'")}')" class="w-7 h-7 ${((window.iptvLockedSubs || []).includes(cat)) ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' : 'bg-slate-800 hover:bg-slate-700 text-slate-400'} rounded flex items-center justify-center transition" title="${((window.iptvLockedSubs || []).includes(cat)) ? 'إلغاء قفل هذا القسم' : 'قفل هذا القسم بالكامل برمز 1415'}">
+          <i class="fa-solid ${((window.iptvLockedSubs || []).includes(cat)) ? 'fa-lock text-amber-400' : 'fa-lock-open'} text-[10px]"></i>
+        </button>
         <button type="button" onclick="renameCategory('${cat.replace(/'/g, "\\'")}')" class="w-7 h-7 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded flex items-center justify-center transition" title="إعادة تسمية">
           <i class="fa-solid fa-pen text-[10px]"></i>
         </button>
