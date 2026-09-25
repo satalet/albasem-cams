@@ -463,8 +463,39 @@ if ('caches' in window) {
         </div>
       </div>
 
+    
+      <!-- بنر معلومات الرسيفر التلفزيوني (TV Channel OSD Bar) -->
+      <div id="tv-channel-osd" class="absolute bottom-5 inset-x-3 sm:inset-x-8 z-40 transition-all duration-300 opacity-0 pointer-events-none transform translate-y-4">
+        <div class="bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-2xl p-3 sm:p-4 shadow-2xl flex items-center justify-between gap-3 text-white">
+          <div class="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+            <!-- رقم القناة بتصميم شاشات التلفزيون -->
+            <div class="flex flex-col items-center justify-center bg-gradient-to-br from-sky-500 to-blue-700 text-white font-black rounded-xl w-12 h-12 sm:w-14 sm:h-14 shadow-lg shrink-0">
+              <span class="text-[9px] uppercase tracking-wider opacity-80 leading-none">CH</span>
+              <span id="osd-channel-num" class="text-lg sm:text-xl font-mono leading-none">01</span>
+            </div>
+            <!-- تفاصيل واسم القناة بالكامل -->
+            <div class="min-w-0 flex-1">
+              <h2 id="osd-channel-title" class="font-bold text-sm sm:text-base text-white truncate drop-shadow"></h2>
+              <div class="flex items-center gap-2 text-[11px] sm:text-xs text-slate-300 mt-1">
+                <span id="osd-channel-area" class="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-sky-400 font-medium"></span>
+                <span id="osd-channel-counter" class="text-slate-400 font-mono"></span>
+                <span id="osd-channel-status" class="flex items-center gap-1 text-amber-400 font-medium">
+                  <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+                  <span>جاري فتح القناة...</span>
+                </span>
+              </div>
+            </div>
+          </div>
+          <div class="hidden sm:flex flex-col items-end text-[10px] text-slate-400 shrink-0 border-r border-slate-800 pr-3">
+            <span>قلّب بالسحب ↕</span>
+            <span>أو بالأسهم ↑ ↓</span>
+          </div>
+        </div>
+      </div>
     </div>
-  </div><!-- مودال ترتيب الأقسام والفولدرات من الجوال والكمبيوتر -->
+  </div>
+
+  <!-- مودال ترتيب الأقسام والفولدرات من الجوال والكمبيوتر -->
   <div id="category-order-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
     <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-5 w-full max-w-md shadow-2xl">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">

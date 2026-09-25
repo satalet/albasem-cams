@@ -1,5 +1,84 @@
 
 // ==========================================
+// نظام البنر التلفزيوني الذكي (TV OSD & Auto-Hide)
+// ==========================================
+let _osdHideTimer = null;
+let _headerHideTimer = null;
+
+function showChannelOSD(stream, channelNum, totalCount) {
+  const osd = document.getElementById('tv-channel-osd');
+  if (!osd || !stream) return;
+
+  const numEl = document.getElementById('osd-channel-num');
+  const titleEl = document.getElementById('osd-channel-title');
+  const areaEl = document.getElementById('osd-channel-area');
+  const counterEl = document.getElementById('osd-channel-counter');
+  const statusEl = document.getElementById('osd-channel-status');
+
+  if (numEl) numEl.textContent = String(channelNum).padStart(2, '0');
+  if (titleEl) titleEl.textContent = stream.title || 'بث مباشر';
+  if (areaEl) areaEl.textContent = stream.area || 'IPTV';
+  if (counterEl) counterEl.textContent = `(${channelNum} / ${totalCount})`;
+  if (statusEl) {
+    statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span><span>جاري فتح القناة...</span>`;
+  }
+
+  // إظهار البنر والشريط العلوي فوراً
+  osd.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-4');
+  osd.classList.add('opacity-100', 'translate-y-0');
+  
+  toggleHeaderBar(true);
+
+  if (_osdHideTimer) clearTimeout(_osdHideTimer);
+  _osdHideTimer = setTimeout(() => {
+    hideChannelOSD();
+  }, 3200);
+
+  resetHeaderAutoHide();
+}
+
+function hideChannelOSD() {
+  const osd = document.getElementById('tv-channel-osd');
+  if (osd) {
+    osd.classList.add('opacity-0', 'pointer-events-none', 'translate-y-4');
+    osd.classList.remove('opacity-100', 'translate-y-0');
+  }
+}
+
+function toggleHeaderBar(show) {
+  const header = document.getElementById('modal-header-bar');
+  if (!header) return;
+  if (show) {
+    header.classList.remove('opacity-0', '-translate-y-full', 'pointer-events-none');
+    header.classList.add('opacity-100', 'translate-y-0');
+  } else {
+    header.classList.add('opacity-0', '-translate-y-full', 'pointer-events-none');
+    header.classList.remove('opacity-100', 'translate-y-0');
+  }
+}
+
+function resetHeaderAutoHide() {
+  if (_headerHideTimer) clearTimeout(_headerHideTimer);
+  _headerHideTimer = setTimeout(() => {
+    toggleHeaderBar(false);
+  }, 3200);
+}
+
+// لمس الشاشة يظهر البنر والشريط
+document.addEventListener('click', (e) => {
+  const modal = document.getElementById('cam-modal');
+  if (!modal || modal.classList.contains('hidden')) return;
+  if (e.target.closest('#modal-header-bar, #tv-channel-osd, button')) return;
+
+  const header = document.getElementById('modal-header-bar');
+  if (header && header.classList.contains('opacity-0')) {
+    toggleHeaderBar(true);
+    resetHeaderAutoHide();
+  }
+});
+
+
+// ==========================================
 // نظام بنر الرسيفر وإخفاء الشريط التلقائي (OSD)
 // ==========================================
 let _controlsHideTimer = null;
