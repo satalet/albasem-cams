@@ -1,9 +1,8 @@
-
 // ==========================================
 // نظام البنر التلفزيوني الذكي (TV OSD & Auto-Hide)
 // ==========================================
-let _osdHideTimer = null;
-let _headerHideTimer = null;
+var _osdHideTimer = null;
+var _headerHideTimer = null;
 
 function showChannelOSD(stream, channelNum, totalCount) {
   const osd = document.getElementById('tv-channel-osd');
@@ -82,7 +81,7 @@ document.addEventListener('click', (e) => {
 // نظام بنر الرسيفر وإخفاء الشريط التلقائي (OSD)
 // ==========================================
 let _controlsHideTimer = null;
-let _osdHideTimer = null;
+var _osdHideTimer = null;
 
 function resetControlsTimer() {
   const header = document.getElementById('modal-header-bar');
