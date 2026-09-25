@@ -417,33 +417,54 @@ if ('caches' in window) {
   </footer>
 
   <!-- مودال تكبير القناة بالكامل -->
-  <div id="cam-modal" class="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm hidden flex items-center justify-center p-2 sm:p-6">
-    <div class="bg-[#0d1322] border border-slate-800 rounded-2xl w-full max-w-5xl h-full max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
-      <div class="px-3 sm:px-4 py-2.5 bg-[#11192e] border-b border-slate-800 flex justify-between items-center text-sm gap-2">
+  <div id="cam-modal" class="fixed inset-0 z-50 bg-black hidden flex items-center justify-center select-none overflow-hidden">
+    <div id="modal-container-box" class="relative w-full h-full flex flex-col bg-black overflow-hidden">
+      
+      <!-- الشريط العلوي العائم (يختفي تلقائياً) -->
+      <div id="modal-header-bar" class="absolute top-0 inset-x-0 z-40 bg-gradient-to-b from-black/90 via-black/50 to-transparent px-3 sm:px-6 py-3 flex justify-between items-center transition-all duration-300">
         <div class="flex items-center gap-2 min-w-0 flex-1">
-          <span id="modal-nav-counter" class="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-sky-500/20 text-sky-400 border border-sky-500/30 whitespace-nowrap hidden sm:inline-block">#</span>
-          <h3 id="modal-title" class="font-bold text-white truncate text-xs sm:text-sm"></h3>
+          <span id="modal-nav-counter" class="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-sky-500/30 text-sky-300 border border-sky-500/40 whitespace-nowrap">#</span>
+          <h3 id="modal-title" class="font-bold text-white truncate text-xs sm:text-base drop-shadow-md"></h3>
         </div>
         
-        <!-- أزرار التنقل السريعة في الهيدر -->
-        <div class="flex items-center gap-1.5 shrink-0">
-          <button onclick="navigateStream(-1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white flex items-center justify-center transition border border-slate-700/80 shadow" title="القناة السابقة (سهم يسار)">
-            <i class="fa-solid fa-chevron-right text-xs"></i>
+        <!-- أزرار التنقل والإغلاق -->
+        <div class="flex items-center gap-2 shrink-0">
+          <button onclick="navigateStream(-1)" class="w-9 h-9 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-white flex items-center justify-center transition border border-slate-700/80 shadow-lg active:scale-95" title="السابق (CH-)">
+            <i class="fa-solid fa-chevron-up text-xs"></i>
           </button>
-          <button onclick="navigateStream(1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white flex items-center justify-center transition border border-slate-700/80 shadow" title="القناة التالية (سهم يمين)">
-            <i class="fa-solid fa-chevron-left text-xs"></i>
+          <button onclick="navigateStream(1)" class="w-9 h-9 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-white flex items-center justify-center transition border border-slate-700/80 shadow-lg active:scale-95" title="التالي (CH+)">
+            <i class="fa-solid fa-chevron-down text-xs"></i>
           </button>
           <div class="w-px h-5 bg-slate-700/60 mx-1"></div>
-          <button onclick="closeModal()" class="w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 flex items-center justify-center transition border border-red-500/20" title="إغلاق (Esc)">
-            <i class="fa-solid fa-xmark text-base"></i>
+          <button onclick="closeModal()" class="w-9 h-9 rounded-xl bg-red-600/30 hover:bg-red-600/50 text-red-300 hover:text-white flex items-center justify-center transition border border-red-500/30 active:scale-95" title="إغلاق">
+            <i class="fa-solid fa-xmark text-lg"></i>
           </button>
         </div>
       </div>
-      <div id="modal-content" class="flex-1 bg-black flex items-center justify-center overflow-hidden relative"></div>
-    </div>
-  </div>
 
-  <!-- مودال ترتيب الأقسام والفولدرات من الجوال والكمبيوتر -->
+      <!-- مساحة تشغيل الفيديو كاملة الشاشة -->
+      <div id="modal-content" class="w-full h-full flex items-center justify-center bg-black relative cursor-pointer"></div>
+
+      <!-- بنر الرسيفر الذكي OSD (يظهر فوراً عند تقليب القناة) -->
+      <div id="modal-osd-banner" class="absolute bottom-6 inset-x-4 sm:inset-x-auto sm:right-8 sm:w-[420px] z-40 transition-all duration-300 pointer-events-none transform translate-y-8 opacity-0">
+        <div class="bg-slate-950/90 backdrop-blur-md border border-slate-700/80 rounded-2xl p-3.5 shadow-2xl flex items-center gap-3.5">
+          <div id="osd-channel-num" class="bg-sky-600 text-white font-mono font-black text-sm px-2.5 py-1.5 rounded-xl shadow-md min-w-[36px] text-center">
+            #
+          </div>
+          <div class="flex-1 min-w-0">
+            <div id="osd-channel-name" class="font-bold text-white text-sm sm:text-base truncate">
+              اسم القناة
+            </div>
+            <div id="osd-status" class="text-xs text-amber-400 flex items-center gap-1.5 mt-0.5 font-medium">
+              <i class="fa-solid fa-circle-notch fa-spin text-[10px]"></i>
+              <span>جاري فتح البث...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div><!-- مودال ترتيب الأقسام والفولدرات من الجوال والكمبيوتر -->
   <div id="category-order-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
     <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-5 w-full max-w-md shadow-2xl">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">

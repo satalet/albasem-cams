@@ -1,3 +1,82 @@
+
+// ==========================================
+// نظام بنر الرسيفر وإخفاء الشريط التلقائي
+// ==========================================
+let _controlsHideTimer = null;
+let _osdHideTimer = null;
+
+function resetControlsTimer() {
+  const header = document.getElementById('modal-header-bar');
+  if (!header) return;
+  header.classList.remove('opacity-0', '-translate-y-4', 'pointer-events-none');
+  header.classList.add('opacity-100', 'translate-y-0');
+
+  if (_controlsHideTimer) clearTimeout(_controlsHideTimer);
+  _controlsHideTimer = setTimeout(() => {
+    header.classList.remove('opacity-100', 'translate-y-0');
+    header.classList.add('opacity-0', '-translate-y-4', 'pointer-events-none');
+  }, 2800);
+}
+
+function showTvOsd(stream, curIdx, total) {
+  const banner = document.getElementById('modal-osd-banner');
+  const numEl = document.getElementById('osd-channel-num');
+  const nameEl = document.getElementById('osd-channel-name');
+  const statusEl = document.getElementById('osd-status');
+  if (!banner || !numEl || !nameEl || !statusEl) return;
+
+  numEl.textContent = (curIdx !== -1) ? `${curIdx + 1}` : '#';
+  nameEl.textContent = stream.title || 'بث مباشر';
+  statusEl.className = 'text-xs text-amber-400 flex items-center gap-1.5 mt-0.5 font-medium';
+  statusEl.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin text-[10px]"></i> <span>جاري فتح البث...</span>';
+
+  banner.classList.remove('opacity-0', 'translate-y-8');
+  banner.classList.add('opacity-100', 'translate-y-0');
+
+  if (_osdHideTimer) clearTimeout(_osdHideTimer);
+  _osdHideTimer = setTimeout(() => {
+    hideTvOsd();
+  }, 3500);
+}
+
+function hideTvOsd() {
+  const banner = document.getElementById('modal-osd-banner');
+  if (banner) {
+    banner.classList.remove('opacity-100', 'translate-y-0');
+    banner.classList.add('opacity-0', 'translate-y-8');
+  }
+}
+
+function markTvOsdLive() {
+  const statusEl = document.getElementById('osd-status');
+  if (statusEl) {
+    statusEl.className = 'text-xs text-emerald-400 flex items-center gap-1.5 mt-0.5 font-medium';
+    statusEl.innerHTML = '<i class="fa-solid fa-circle text-[8px] animate-pulse"></i> <span>بث حي ومباشر</span>';
+  }
+  if (_osdHideTimer) clearTimeout(_osdHideTimer);
+  _osdHideTimer = setTimeout(() => {
+    hideTvOsd();
+  }, 1800);
+}
+
+// ضغطة خفيفة على الشاشة لإظهار أو إخفاء عناصر التحكم
+document.addEventListener('click', (e) => {
+  const modal = document.getElementById('cam-modal');
+  if (!modal || modal.classList.contains('hidden')) return;
+
+  if (e.target.closest('#modal-header-bar') || e.target.closest('button')) return;
+
+  const header = document.getElementById('modal-header-bar');
+  if (header) {
+    if (header.classList.contains('opacity-0')) {
+      resetControlsTimer();
+    } else {
+      header.classList.remove('opacity-100', 'translate-y-0');
+      header.classList.add('opacity-0', '-translate-y-4', 'pointer-events-none');
+    }
+  }
+});
+
 // دالة فحص صلاحيات المشترك للبث
 window.isStreamAllowedForSubscriber = function(stream) {
   if (typeof currentUser !== 'undefined' && currentUser) return true;
