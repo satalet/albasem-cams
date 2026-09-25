@@ -1,3 +1,4 @@
+window._modalJustClosed = false;
 var customCategoryOrder = [];
 isOrderingIptvMode = false;
 
@@ -41,7 +42,7 @@ function checkParentalAccess(streamId, onAllowed) {
 
   // 1. فحص الجلسة المؤقتة للقسم
   const streamSub = stream.subCategory || stream.category;
-  if (window.activeUnlockedSub && streamSub === window.activeUnlockedSub) {
+  if (window.activeUnlockedSub && (streamSub === window.activeUnlockedSub || currentSubFilter === window.activeUnlockedSub)) {
     if (typeof onAllowed === 'function') onAllowed();
     return;
   }
@@ -98,6 +99,8 @@ function showParentalPinModal(onSuccess) {
 
   document.getElementById('parental-pin-cancel').onclick = () => {
     modal.classList.add('hidden');
+    window._modalJustClosed = true;
+    setTimeout(() => { window._modalJustClosed = false; }, 600);
   };
 
   const handleVerify = () => {
@@ -1040,6 +1043,10 @@ function setupFilters() {
               window.activeUnlockedSub = sub;
               currentSubFilter = sub;
               window.iptvDisplayLimit = 40;
+              localStorage.setItem('albasem_active_sub', sub);
+              if (typeof updateNavigationHistory === 'function') {
+                updateNavigationHistory(currentFilter || 'IPTV', sub);
+              }
               setupFilters();
               renderCams();
             });
@@ -1048,6 +1055,10 @@ function setupFilters() {
           window.activeUnlockedSub = null;
           currentSubFilter = sub;
           window.iptvDisplayLimit = 40;
+          localStorage.setItem('albasem_active_sub', sub);
+          if (typeof updateNavigationHistory === 'function') {
+            updateNavigationHistory(currentFilter || 'IPTV', sub);
+          }
           setupFilters();
           renderCams();
         }
@@ -2034,6 +2045,7 @@ function closeModal(fromHistory = false) {
 }
 
 window.addEventListener('popstate', () => {
+  if (window._modalJustClosed) { window._modalJustClosed = false; return; }
   closeModal(true);
 });
 
@@ -2082,6 +2094,7 @@ window.onload = initRealtimeSync;
 
 // معالجة زر الرجوع الفيزيائي / إيماءات الهاتف خطوة بخطوة
 window.addEventListener('popstate', (e) => {
+  if (window._modalJustClosed) { window._modalJustClosed = false; return; }
   // 1. إذا كان المودال مفتوحاً، أغلقه أولاً دون مغادرة القسم
   const modal = document.getElementById('cam-modal');
   if (modal && !modal.classList.contains('hidden')) {
