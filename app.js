@@ -2334,21 +2334,21 @@ function navigateStream(dir) {
   }
 }
 
-// دعم أسهم الكيبورد (يمين / يسار) للتنقل
+// دعم أسهم الكيبورد (فوق/تحت ويمين/يسار) للتنقل زي الريموت
 document.addEventListener('keydown', (e) => {
   const modal = document.getElementById('cam-modal');
   if (!modal || modal.classList.contains('hidden')) return;
 
   if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
 
-  if (e.key === 'ArrowRight') {
-    navigateStream(1);
-  } else if (e.key === 'ArrowLeft') {
-    navigateStream(-1);
+  if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+    navigateStream(1);  // القناة التالية
+  } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+    navigateStream(-1); // القناة السابقة
   }
 });
 
-// دعم سحب الشاشة باللمس (Swipe) عالجوال
+// دعم سحب الشاشة باللمس عمودياً (Swipe Up / Down) زي الريلز والفيسبوك
 (function initSwipeNavigation() {
   let touchStartX = 0;
   let touchStartY = 0;
@@ -2373,12 +2373,12 @@ document.addEventListener('keydown', (e) => {
       const diffY = e.changedTouches[0].clientY - touchStartY;
       const diffTime = Date.now() - touchStartTime;
 
-      // فحص أن الحركة أفقية وسريعة (Swipe) وليست سكرول عمودي
-      if (diffTime < 500 && Math.abs(diffX) > 55 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
-        if (diffX < 0) {
-          navigateStream(1);  // سحب لليسار -> القناة التالية
+      // فحص أن الحركة عمودية وسريعة (Swipe Up/Down)
+      if (diffTime < 550 && Math.abs(diffY) > 45 && Math.abs(diffY) > Math.abs(diffX) * 1.2) {
+        if (diffY < 0) {
+          navigateStream(1);  // سحب لفوق -> القناة التالية
         } else {
-          navigateStream(-1); // سحب لليمين -> القناة السابقة
+          navigateStream(-1); // سحب لتحت -> القناة السابقة
         }
       }
     }
