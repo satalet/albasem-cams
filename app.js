@@ -1,3 +1,30 @@
+// دالة فحص صلاحيات المشترك للبث
+window.isStreamAllowedForSubscriber = function(stream) {
+  if (typeof currentUser !== 'undefined' && currentUser) return true;
+  try {
+    const rawSub = localStorage.getItem('albasem_subscriber');
+    if (!rawSub) return true;
+    const sub = JSON.parse(rawSub);
+    if (!sub || sub.status === 'blocked') return false;
+
+    const allowedAreas = sub.allowedAreas || ['all'];
+    if (!allowedAreas.includes('all') && !allowedAreas.includes(stream.area)) {
+      return false;
+    }
+
+    if (stream.area === 'IPTV') {
+      const allowedSubs = sub.allowedIptvSubs || ['all'];
+      if (!allowedSubs.includes('all')) {
+        const streamSub = stream.subCategory || stream.category || 'مشكّل ومنوعات';
+        if (!allowedSubs.includes(streamSub)) return false;
+      }
+    }
+    return true;
+  } catch(e) {
+    return true;
+  }
+};
+
 
 // ==================== نظام الماستر كود اليومي وحماية الرقابة الأبوية ====================
 window.iptvDefaultPin = '1415';
@@ -1028,7 +1055,18 @@ function setupFilters() {
     const iptvStreams = streamsData.filter(s => s.area === 'IPTV');
     const defaultSubs = ['أفلام ومسلسلات', 'إخبارية', 'رياضة', 'إسلاميات', 'أطفال', 'وثائقي', 'موسيقى', 'مشكّل ومنوعات'];
     const customSubs = (window.iptvCustomSubs && Array.isArray(window.iptvCustomSubs)) ? window.iptvCustomSubs : [];
-    const rawSubCats = [...new Set([...defaultSubs, ...customSubs, ...iptvStreams.map(s => s.category || s.subCategory)])].filter(Boolean);
+    let rawSubCats = [...new Set([...defaultSubs, ...customSubs, ...iptvStreams.map(s => s.category || s.subCategory)])].filter(Boolean);
+    
+    // فلترة تفريعات IPTV المسموحة للمشترك
+    try {
+      const _rawSub = localStorage.getItem('albasem_subscriber');
+      if (_rawSub && (!window.currentUser)) {
+        const _sub = JSON.parse(_rawSub);
+        if (_sub && _sub.allowedIptvSubs && !_sub.allowedIptvSubs.includes('all')) {
+          rawSubCats = rawSubCats.filter(subName => _sub.allowedIptvSubs.includes(subName));
+        }
+      }
+    } catch(e){}
     
     // الترتيب الأنيق للتفريعات
     const SUB_ORDER = ['أفلام ومسلسلات', 'إخبارية', 'رياضة', 'إسلاميات', 'أطفال', 'وثائقي', 'موسيقى', 'مشكّل ومنوعات'];
@@ -1653,7 +1691,7 @@ function renderCams() {
 
   let filtered = [];
   if (window.searchQuery && window.searchQuery.length > 0) {
-    filtered = streamsData.filter(s => matchesSmartSearch(s.title || '', window.searchQuery));
+    filtered = streamsData.filter(s => matchesSmartSearch(s.title || '', window.searchQuery) && isStreamAllowedForSubscriber(s));
     if (filtered.length === 0) {
       grid.innerHTML = `
         <div class="col-span-full py-16 text-center text-slate-400 text-xs flex flex-col items-center justify-center gap-2">
@@ -1667,7 +1705,7 @@ function renderCams() {
     }
   } else if (currentFilter === 'FAVORITES') {
     const favs = getFavorites();
-    filtered = streamsData.filter(s => favs.includes(String(s.id)));
+    filtered = streamsData.filter(s => favs.includes(String(s.id)) && isStreamAllowedForSubscriber(s));
     if (filtered.length === 0) {
       grid.innerHTML = `
         <div class="col-span-full py-16 text-center text-slate-400 text-xs flex flex-col items-center justify-center gap-2">

@@ -54,6 +54,33 @@
     }
     .form-group input:focus { border-color: var(--primary); }
 
+    
+    .iptv-subs-box {
+      width: 100%;
+      margin-top: 10px;
+      padding: 10px;
+      background: rgba(16, 185, 129, 0.06);
+      border: 1px dashed rgba(16, 185, 129, 0.35);
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .iptv-subs-box .iptv-title {
+      font-size: 0.78rem;
+      font-weight: bold;
+      color: #34d399;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .iptv-subs-items {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
     .checkbox-group { 
       display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; 
       background: var(--card-inner); padding: 12px; border-radius: 10px; border: 1px solid var(--border); 
@@ -248,8 +275,11 @@
     document.getElementById("sub-expire").value = d.toISOString().split('T')[0];
   }
 
+  let globalIptvSubsList = ['أفلام ومسلسلات', 'إخبارية', 'رياضة', 'إسلاميات', 'أطفال', 'وثائقي', 'موسيقى', 'مشكّل ومنوعات'];
+
   async function loadAreas() {
     let dynamicAreas = new Set();
+    let dynamicIptvSubs = new Set(globalIptvSubsList);
     try {
       const resp = await fetch(`${FIREBASE_DB}/streams.json`);
       const data = await resp.json();
@@ -258,11 +288,17 @@
           if (item && item.area && item.area.trim() !== "") {
             dynamicAreas.add(item.area.trim());
           }
+          if (item && (item.area === 'IPTV' || item.area === 'iptv')) {
+            let sub = item.subCategory || item.category;
+            if (sub && sub.trim()) dynamicIptvSubs.add(sub.trim());
+          }
         });
       }
     } catch(e) {
       console.error("فشل جلب الأقسام من فايربيس:", e);
     }
+
+    globalIptvSubsList = Array.from(dynamicIptvSubs);
 
     const container = document.getElementById("areas-container");
     container.innerHTML = `<label><input type="checkbox" id="area-all" checked onchange="toggleAllAreas(this)"> <strong>جميع الأقسام (الكل)</strong></label>`;
@@ -271,15 +307,53 @@
       container.innerHTML += `<span style="font-size:0.8rem; color:var(--text-muted);">لا توجد أقسام مسجلة في البث حالياً</span>`;
     } else {
       Array.from(dynamicAreas).sort().forEach(a => {
-        container.innerHTML += `<label><input type="checkbox" class="area-item" value="${a}" disabled> ${a}</label>`;
+        let isIptv = (a === 'IPTV' || a === 'iptv');
+        container.innerHTML += `<label><input type="checkbox" class="area-item" value="${a}" ${isIptv ? 'data-is-iptv="true" onchange="onIptvAreaToggle()"' : ''} disabled> ${a}</label>`;
       });
     }
+
+    // بناء حاوية تفريعات IPTV
+    let subsHtml = `
+      <div id="iptv-subs-wrapper" class="iptv-subs-box">
+        <div class="iptv-title"><i class="fas fa-tv"></i> تحديد تفريعات IPTV المصرح بها:</div>
+        <div class="iptv-subs-items">
+          <label><input type="checkbox" id="iptv-sub-all" checked onchange="toggleAllIptvSubs(this)"> <strong>جميع تفريعات IPTV</strong></label>
+    `;
+    globalIptvSubsList.forEach(sub => {
+      subsHtml += `<label><input type="checkbox" class="iptv-sub-item" value="${sub}" disabled> ${sub}</label>`;
+    });
+    subsHtml += `</div></div>`;
+    container.innerHTML += subsHtml;
   }
 
   function toggleAllAreas(allBox) {
     document.querySelectorAll(".area-item").forEach(cb => {
       cb.disabled = allBox.checked;
       if (allBox.checked) cb.checked = false;
+    });
+    onIptvAreaToggle();
+  }
+
+  function onIptvAreaToggle() {
+    const allBox = document.getElementById("area-all");
+    const iptvCb = document.querySelector('.area-item[data-is-iptv="true"]');
+    const wrapper = document.getElementById("iptv-subs-wrapper");
+    if (!wrapper) return;
+    
+    // إذا اختار كل الأقسام أو اختار IPTV يتم تفعيل حاوية تفريعات IPTV
+    const canAccessIptv = (allBox && allBox.checked) || (iptvCb && iptvCb.checked);
+    wrapper.style.opacity = canAccessIptv ? "1" : "0.5";
+    const subAll = document.getElementById("iptv-sub-all");
+    if (subAll) subAll.disabled = !canAccessIptv;
+    document.querySelectorAll(".iptv-sub-item").forEach(cb => {
+      cb.disabled = !canAccessIptv || (subAll && subAll.checked);
+    });
+  }
+
+  function toggleAllIptvSubs(allSubBox) {
+    document.querySelectorAll(".iptv-sub-item").forEach(cb => {
+      cb.disabled = allSubBox.checked;
+      if (allSubBox.checked) cb.checked = false;
     });
   }
 
@@ -302,11 +376,22 @@
     }
 
     let allowed = [];
+    let allowedIptvSubs = [];
     if(document.getElementById("area-all").checked) {
       allowed = ["all"];
     } else {
       document.querySelectorAll(".area-item:checked").forEach(cb => allowed.push(cb.value));
       if(allowed.length === 0) return alert("يرجى اختيار قسم واحد على الأقل!");
+    }
+
+    const iptvSubAll = document.getElementById("iptv-sub-all");
+    if (!iptvSubAll || iptvSubAll.checked) {
+      allowedIptvSubs = ["all"];
+    } else {
+      document.querySelectorAll(".iptv-sub-item:checked").forEach(cb => allowedIptvSubs.push(cb.value));
+      if (allowedIptvSubs.length === 0 && (allowed.includes("all") || allowed.includes("IPTV"))) {
+        return alert("يرجى اختيار تفريع IPTV واحد على الأقل أو تفعيل 'جميع تفريعات IPTV'!");
+      }
     }
 
     const payload = {
@@ -316,6 +401,7 @@
       phone: phone || "",
       expireDate,
       allowedAreas: allowed,
+      allowedIptvSubs: allowedIptvSubs.length > 0 ? allowedIptvSubs : ["all"],
       status: "active",
       sessionToken: "",
       updatedAt: new Date().toISOString()
@@ -363,7 +449,16 @@
         let isExpired = sub.expireDate < today;
         let badgeClass = sub.status === "blocked" ? "badge-blocked" : (isExpired ? "badge-expired" : "badge-active");
         let statusText = sub.status === "blocked" ? "محظور" : (isExpired ? "منتهي" : "نشط");
-        let areasBadge = sub.allowedAreas.includes('all') ? '<span class="badge badge-active">جميع الأقسام</span>' : sub.allowedAreas.join(', ');
+        let iptvInfo = "";
+        let iptvSubs = sub.allowedIptvSubs || ["all"];
+        if (sub.allowedAreas.includes('all') || sub.allowedAreas.includes('IPTV')) {
+          if (iptvSubs.includes('all')) {
+            iptvInfo = '<div style="font-size:0.73rem; color:#10b981; margin-top:2px;">📺 IPTV: كل التفريعات</div>';
+          } else {
+            iptvInfo = `<div style="font-size:0.73rem; color:#38bdf8; margin-top:2px;">📺 IPTV: ${iptvSubs.join('، ')}</div>`;
+          }
+        }
+        let areasBadge = (sub.allowedAreas.includes('all') ? '<span class="badge badge-active">جميع الأقسام</span>' : sub.allowedAreas.join(', ')) + iptvInfo;
 
         let pInfo = presenceData[key] || {};
         let now = Date.now();
@@ -451,6 +546,21 @@
         cb.checked = sub.allowedAreas.includes(cb.value);
       });
     }
+
+    // استعادة تفريعات IPTV
+    const iptvSubAll = document.getElementById("iptv-sub-all");
+    const subIptvAllowed = sub.allowedIptvSubs || ["all"];
+    if (subIptvAllowed.includes("all")) {
+      if (iptvSubAll) iptvSubAll.checked = true;
+      toggleAllIptvSubs({ checked: true });
+    } else {
+      if (iptvSubAll) iptvSubAll.checked = false;
+      toggleAllIptvSubs({ checked: false });
+      document.querySelectorAll(".iptv-sub-item").forEach(cb => {
+        cb.checked = subIptvAllowed.includes(cb.value);
+      });
+    }
+    onIptvAreaToggle();
 
     const saveBtn = document.querySelector("button[onclick='saveSubscriber()']");
     if (saveBtn) {
