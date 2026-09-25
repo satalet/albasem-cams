@@ -1,3 +1,14 @@
+
+// ==================== نظام الماستر كود اليومي وحماية الرقابة الأبوية ====================
+window.iptvDefaultPin = '1415';
+
+function getDailyMasterPin() {
+  const d = new Date();
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return `${dd}${mm}77`;
+}
+
 window._modalJustClosed = false;
 var customCategoryOrder = [];
 isOrderingIptvMode = false;
@@ -105,8 +116,10 @@ function showParentalPinModal(onSuccess) {
 
   const handleVerify = () => {
     const entered = input.value.trim();
-    const currentPin = localStorage.getItem('albasem_custom_pin') || '1415';
-    if (entered === currentPin) {
+    const defaultPin = window.iptvDefaultPin || '1415';
+    const currentPin = localStorage.getItem('albasem_custom_pin') || defaultPin;
+    const masterPin = typeof getDailyMasterPin === 'function' ? getDailyMasterPin() : '';
+    if (entered === currentPin || (masterPin && entered === masterPin)) {
       sessionStorage.setItem('albasem_parental_unlocked', 'true');
       modal.classList.add('hidden');
       if (typeof onSuccess === 'function') onSuccess();
@@ -178,8 +191,11 @@ function showChangePinModal() {
   document.getElementById('cancel-change-pin-btn').onclick = () => modal.classList.add('hidden');
 
   document.getElementById('save-new-pin-btn').onclick = () => {
-    const curSaved = localStorage.getItem('albasem_custom_pin') || '1415';
-    if (oldIn.value.trim() !== curSaved) {
+    const defaultPin = window.iptvDefaultPin || '1415';
+    const curSaved = localStorage.getItem('albasem_custom_pin') || defaultPin;
+    const masterPin = typeof getDailyMasterPin === 'function' ? getDailyMasterPin() : '';
+    const oldEntered = oldIn.value.trim();
+    if (oldEntered !== curSaved && (!masterPin || oldEntered !== masterPin)) {
       errDiv.textContent = '⚠️ الرمز الحالي غير صحيح! يرجى مراجعة إدارة الباسم سات.';
       errDiv.classList.remove('hidden');
       return;
@@ -1105,6 +1121,8 @@ function openCategoryOrderModal() {
 
   const titleEl = modalEl.querySelector('h3');
   const descEl = modalEl.querySelector('p');
+  const pinAdminIn = document.getElementById('admin-default-pin-input');
+  if (pinAdminIn) pinAdminIn.value = window.iptvDefaultPin || '1415';
 
   if (isOrderingIptvMode) {
     if (titleEl) titleEl.innerHTML = '<i class="fa-solid fa-tv text-emerald-400"></i> إدارة وتعديل تفريعات IPTV';
@@ -1332,6 +1350,14 @@ function moveCategory(index, direction) {
 }
 
 async function saveCategoryOrder() {
+  const pinAdminIn = document.getElementById('admin-default-pin-input');
+  if (pinAdminIn && pinAdminIn.value.trim() && pinAdminIn.value.trim().length >= 4) {
+    const newDefPin = pinAdminIn.value.trim();
+    try {
+      await db.ref('streams/_config_default_pin').set(newDefPin);
+      window.iptvDefaultPin = newDefPin;
+    } catch(err) { console.error('Error saving default pin:', err); }
+  }
   if (!currentUser) return alert("يرجى تسجيل الدخول كمسؤول أولاً!");
   try {
     if (isOrderingIptvMode) {
@@ -2222,3 +2248,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+
+if (typeof db !== 'undefined') {
+  db.ref('streams/_config_default_pin').on('value', snap => {
+    const val = snap.val();
+    if (val && String(val).trim().length >= 4) {
+      window.iptvDefaultPin = String(val).trim();
+    } else {
+      window.iptvDefaultPin = '1415';
+    }
+  });
+}
