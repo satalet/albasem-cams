@@ -362,6 +362,11 @@ class AlbasemImporterGtk(Gtk.Window):
         btn_upload.connect("clicked", self.on_upload_clicked)
         bot_bar.pack_end(btn_upload, False, False, 0)
 
+        btn_clean = Gtk.Button(label="🧹 تنظيف مكررات القسم")
+        btn_clean.get_style_context().add_class("btn-warning")
+        btn_clean.connect("clicked", self.on_clean_duplicates_clicked)
+        bot_bar.pack_end(btn_clean, False, False, 0)
+
         main_vbox.pack_start(bot_bar, False, False, 0)
 
         # شريط الحالة
@@ -673,6 +678,83 @@ class AlbasemImporterGtk(Gtk.Window):
         self.target_sub_combo.get_child().set_text(self.firebase_subs[0] if self.firebase_subs else "أفلام ومسلسلات")
 
         self.status_lbl.set_text("✅ تم مزامنة أقسام وتفريعات الباسم سات لايف من الفايربيس!")
+
+
+    def on_clean_duplicates_clicked(self, widget):
+        target_area = ""
+        if hasattr(self, "target_main_combo"):
+            child = self.target_main_combo.get_child()
+            if child and hasattr(child, "get_text"):
+                target_area = child.get_text().strip()
+            if not target_area:
+                target_area = self.target_main_combo.get_active_text() or ""
+        
+        if not target_area:
+            self.show_message("تنبيه", "يرجى تحديد أو كتابة اسم القسم المراد تنظيفه أولاً!", Gtk.MessageType.WARNING)
+            return
+
+        if not self.ask_yes_no("تأكيد التنظيف الذكي", f"هل ترغب بفحص وحذف جميع القنوات ذات الروابط المكررة 100% في قسم [{target_area}] من السيرفر؟"):
+            return
+
+        self.status_lbl.set_text(f"⏳ جاري فحص وتنظيف القنوات المكررة في قسم [{target_area}]...")
+        threading.Thread(target=self._clean_duplicates_worker, args=(target_area,), daemon=True).start()
+
+    def _clean_duplicates_worker(self, target_area):
+        token = self.get_firebase_token()
+        if not token:
+            GLib.idle_add(self.show_message, "خطأ دخول", "فشل المصادقة مع الفايربيس! تأكد من ملف config.json", Gtk.MessageType.ERROR)
+            GLib.idle_add(lambda: self.status_lbl.set_text("فشلت المصادقة مع السيرفر."))
+            return
+
+        try:
+            resp = session.get(f"{DB_BASE}/streams.json?auth={token}", timeout=10)
+            data = resp.json()
+        except Exception as e:
+            GLib.idle_add(self.show_message, "خطأ اتصال", f"فشل جلب القنوات من السيرفر: {e}", Gtk.MessageType.ERROR)
+            GLib.idle_add(lambda: self.status_lbl.set_text("فشل الاتصال بالسيرفر."))
+            return
+
+        if not data or not isinstance(data, dict):
+            GLib.idle_add(self.show_message, "تنبيه", "لا توجد أي قنوات مسجلة في السيرفر حالياً.", Gtk.MessageType.INFO)
+            GLib.idle_add(lambda: self.status_lbl.set_text("السيرفر فارغ."))
+            return
+
+        seen_urls = {}
+        duplicates = []
+
+        for key, item in data.items():
+            if not isinstance(item, dict):
+                continue
+            if item.get("area", "").strip() != target_area.strip():
+                continue
+
+            stream_url = (item.get("streamUrl") or item.get("url") or "").strip()
+            if not stream_url:
+                continue
+
+            match_key = stream_url.lower()
+            if match_key in seen_urls:
+                duplicates.append((key, item.get("title", "بدون اسم")))
+            else:
+                seen_urls[match_key] = key
+
+        if not duplicates:
+            GLib.idle_add(self.show_message, "القسم نظيف", f"قسم [{target_area}] نظيف تماماً ولا توجد به أي روابط مكررة! ✨", Gtk.MessageType.INFO)
+            GLib.idle_add(lambda: self.status_lbl.set_text(f"قسم [{target_area}] سليم وخالٍ من التكرار."))
+            return
+
+        deleted_count = 0
+        for key, title in duplicates:
+            try:
+                del_res = session.delete(f"{DB_BASE}/streams/{key}.json?auth={token}", timeout=6)
+                if del_res.status_code == 200:
+                    deleted_count += 1
+            except Exception:
+                pass
+
+        msg = f"تم بنجاح تنظيف ({deleted_count}) قناة مكررة من قسم [{target_area}]!"
+        GLib.idle_add(self.show_message, "تم التنظيف بنجاح", msg, Gtk.MessageType.INFO)
+        GLib.idle_add(lambda: self.status_lbl.set_text(f"✅ {msg}"))
 
     def get_firebase_token(self):
         if not FIREBASE_API_KEY or not CONFIG_PASSWORD:

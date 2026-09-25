@@ -419,11 +419,25 @@ if ('caches' in window) {
   <!-- مودال تكبير القناة بالكامل -->
   <div id="cam-modal" class="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm hidden flex items-center justify-center p-2 sm:p-6">
     <div class="bg-[#0d1322] border border-slate-800 rounded-2xl w-full max-w-5xl h-full max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
-      <div class="px-4 py-3 bg-[#11192e] border-b border-slate-800 flex justify-between items-center text-sm">
-        <h3 id="modal-title" class="font-bold text-white truncate"></h3>
-        <button onclick="closeModal()" class="text-slate-400 hover:text-white p-1 rounded-lg transition" title="إغلاق">
-          <i class="fa-solid fa-xmark text-lg"></i>
-        </button>
+      <div class="px-3 sm:px-4 py-2.5 bg-[#11192e] border-b border-slate-800 flex justify-between items-center text-sm gap-2">
+        <div class="flex items-center gap-2 min-w-0 flex-1">
+          <span id="modal-nav-counter" class="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-sky-500/20 text-sky-400 border border-sky-500/30 whitespace-nowrap hidden sm:inline-block">#</span>
+          <h3 id="modal-title" class="font-bold text-white truncate text-xs sm:text-sm"></h3>
+        </div>
+        
+        <!-- أزرار التنقل السريعة في الهيدر -->
+        <div class="flex items-center gap-1.5 shrink-0">
+          <button onclick="navigateStream(-1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white flex items-center justify-center transition border border-slate-700/80 shadow" title="القناة السابقة (سهم يسار)">
+            <i class="fa-solid fa-chevron-right text-xs"></i>
+          </button>
+          <button onclick="navigateStream(1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white flex items-center justify-center transition border border-slate-700/80 shadow" title="القناة التالية (سهم يمين)">
+            <i class="fa-solid fa-chevron-left text-xs"></i>
+          </button>
+          <div class="w-px h-5 bg-slate-700/60 mx-1"></div>
+          <button onclick="closeModal()" class="w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 flex items-center justify-center transition border border-red-500/20" title="إغلاق (Esc)">
+            <i class="fa-solid fa-xmark text-base"></i>
+          </button>
+        </div>
       </div>
       <div id="modal-content" class="flex-1 bg-black flex items-center justify-center overflow-hidden relative"></div>
     </div>
