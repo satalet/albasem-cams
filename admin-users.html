@@ -226,6 +226,35 @@
   const FIREBASE_DB = "https://albasem-cams-default-rtdb.firebaseio.com";
   const API_KEY = "AIzaSyD4U4DFTtO8zuqIlrJp19ji1ESptfuVr9E";
   let idToken = localStorage.getItem("albasem_admin_token") || null;
+
+  let refreshToken = localStorage.getItem("albasem_admin_refresh_token") || null;
+
+  async function getValidToken() {
+    if (!idToken && !refreshToken) return null;
+    // محاولة تجديد التوكن تلقائياً باستخدام Refresh Token
+    if (refreshToken) {
+      try {
+        const res = await fetch(`https://securetoken.googleapis.com/v1/token?key=${API_KEY}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: `grant_type=refresh_token&refresh_token=${refreshToken}`
+        });
+        const d = await res.json();
+        if (d.id_token) {
+          idToken = d.id_token;
+          refreshToken = d.refresh_token;
+          localStorage.setItem("albasem_admin_token", idToken);
+        if(data.refreshToken) { refreshToken = data.refreshToken; localStorage.setItem("albasem_admin_refresh_token", refreshToken); }
+          localStorage.setItem("albasem_admin_refresh_token", refreshToken);
+          return idToken;
+        }
+      } catch(e) {
+        console.error("فشل تجديد التوكن:", e);
+      }
+    }
+    return idToken;
+  }
+
   let availableAreas = ["رام الله", "نابلس", "شباب اف ام نابلس", "قنوات أخبار", "القدس", "كفر عقب", "الرام", "جنين", "الخليل", "عام"];
 
   window.onload = () => {
@@ -249,6 +278,7 @@
       if (data.idToken) {
         idToken = data.idToken;
         localStorage.setItem("albasem_admin_token", idToken);
+        if(data.refreshToken) { refreshToken = data.refreshToken; localStorage.setItem("albasem_admin_refresh_token", refreshToken); }
         showDashboard();
       } else {
         alert("بيانات الدخول غير صحيحة!");
@@ -260,6 +290,7 @@
 
   function logoutAdmin() {
     localStorage.removeItem("albasem_admin_token");
+    localStorage.removeItem("albasem_admin_refresh_token");
     location.reload();
   }
 
@@ -408,18 +439,23 @@
     };
 
     try {
-      const resp = await fetch(`${FIREBASE_DB}/subscribers/${username}.json?auth=${idToken}`, {
+      const currentToken = await getValidToken();
+      const resp = await fetch(`${FIREBASE_DB}/subscribers/${username}.json?auth=${currentToken}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
       if(resp.ok) {
-        alert(`تم تفعيل حساب [${username}] بنجاح!`);
+        alert(`تم حفظ وتحديث حساب [${username}] بنجاح!`);
         shareSubscriber(payload);
         loadSubscribers();
-    setInterval(loadSubscribers, 10000); // فحص تلقائي كل 10 ثواني
       } else {
-        alert("فشل الحفظ في فايربيس.");
+        const errJson = await resp.json().catch(() => ({}));
+        if (resp.status === 401) {
+          alert("انتهت صلاحية جلسة المشرف، يرجى الضغط على زر (خروج) وتسجيل الدخول مجدداً.");
+        } else {
+          alert("فشل الحفظ في فايربيس: " + (errJson.error || resp.statusText));
+        }
       }
     } catch(e) {
       alert("خطأ: " + e.message);
@@ -576,11 +612,11 @@
     d.setDate(d.getDate() + 30);
     const newExpire = d.toISOString().split('T')[0];
 
-    await fetch(`${FIREBASE_DB}/subscribers/${username}/expireDate.json?auth=${idToken}`, {
+    await fetch(`${FIREBASE_DB}/subscribers/${username}/expireDate.json?auth=${await getValidToken()}`, {
       method: 'PUT',
       body: JSON.stringify(newExpire)
     });
-    await fetch(`${FIREBASE_DB}/subscribers/${username}/status.json?auth=${idToken}`, {
+    await fetch(`${FIREBASE_DB}/subscribers/${username}/status.json?auth=${await getValidToken()}`, {
       method: 'PUT',
       body: JSON.stringify("active")
     });
@@ -591,7 +627,7 @@
 
   async function toggleBlock(username, currentStatus) {
     const nextStatus = currentStatus === "blocked" ? "active" : "blocked";
-    await fetch(`${FIREBASE_DB}/subscribers/${username}/status.json?auth=${idToken}`, {
+    await fetch(`${FIREBASE_DB}/subscribers/${username}/status.json?auth=${await getValidToken()}`, {
       method: 'PUT',
       body: JSON.stringify(nextStatus)
     });
@@ -601,7 +637,7 @@
 
   async function deleteSubscriber(username) {
     if(!confirm(`هل تريد بالتأكيد حذف حساب المشترك [${username}]؟`)) return;
-    await fetch(`${FIREBASE_DB}/subscribers/${username}.json?auth=${idToken}`, {
+    await fetch(`${FIREBASE_DB}/subscribers/${username}.json?auth=${await getValidToken()}`, {
       method: 'DELETE'
     });
     loadSubscribers();
