@@ -1160,7 +1160,7 @@ function getDynamicSubCategories(folderId) {
     const customLocal = (window.localCustomSubs && Array.isArray(window.localCustomSubs)) ? window.localCustomSubs : [];
     const legacyCats = (window.customCategoryOrder && Array.isArray(window.customCategoryOrder)) ? window.customCategoryOrder : [];
     const streamCities = localStreams.map(s => (s.subCategory || s.category || s.area || '').trim()).filter(Boolean);
-    const all = [...new Set([...customLocal, ...legacyCats, ...streamCities])].filter(s => s && s !== 'all' && s !== 'FAVORITES' && s !== 'LOCAL' && s !== 'قنوات محلية');
+    const all = [...new Set([...customLocal, ...legacyCats, ...streamCities])].filter(s => s && !['all', 'FAVORITES', 'LOCAL', 'قنوات محلية', 'IPTV', 'قنوات عربية', 'قنوات عربيه', 'قنوات أجنبية'].includes(s));
     return all.sort((a, b) => a.localeCompare('ar'));
   }
   
