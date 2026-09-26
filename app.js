@@ -556,6 +556,52 @@ function matchesSmartSearch(stream, query) {
   return true;
 }
 
+function getSearchSuggestion(query) {
+  if (!query || query.length < 3) return null;
+  const qNorm = normalizeArabic(query);
+  const qWords = qNorm.split(' ').filter(Boolean);
+  if (!qWords.length) return null;
+
+  const dictionary = new Map();
+  if (Array.isArray(window.streamsData)) {
+    window.streamsData.forEach(s => {
+      const full = `${s.name || s.title || ''} ${s.area || ''} ${s.subCategory || ''}`;
+      full.split(/[\s,._\-\(\)\[\]\/]+/).forEach(rawWord => {
+        const norm = normalizeArabic(rawWord);
+        if (norm.length >= 3 && !dictionary.has(norm)) {
+          dictionary.set(norm, rawWord);
+        }
+      });
+    });
+  }
+
+  let hasCorrection = false;
+  const correctedWords = qWords.map(qw => {
+    if (dictionary.has(qw)) return dictionary.get(qw);
+
+    let bestMatch = qw;
+    let minDistance = 999;
+    const maxAllowedDist = qw.length >= 6 ? 2 : 1;
+
+    for (const [normWord, originalWord] of dictionary.entries()) {
+      if (Math.abs(normWord.length - qw.length) <= maxAllowedDist) {
+        const dist = levenshteinDist(qw, normWord);
+        if (dist <= maxAllowedDist && dist < minDistance) {
+          minDistance = dist;
+          bestMatch = originalWord;
+        }
+      }
+    }
+
+    if (bestMatch !== qw) {
+      hasCorrection = true;
+    }
+    return bestMatch;
+  });
+
+  return hasCorrection ? correctedWords.join(' ') : null;
+}
+
 function setupSearchBar() {
   if (document.getElementById('global-search-container')) return;
   const filterBox = document.getElementById('filter-buttons');
@@ -575,11 +621,32 @@ function setupSearchBar() {
         <i class="fa-solid fa-xmark text-sm"></i>
       </button>
     </div>
+    <div id="search-suggestion-box" class="hidden mt-1.5 px-3 py-1 bg-slate-900/90 border border-emerald-500/30 rounded-lg text-xs text-slate-300 flex items-center gap-1.5 transition-all">
+      <i class="fa-solid fa-wand-magic-sparkles text-emerald-400 text-[11px]"></i>
+      <span>هل تقصد:</span>
+      <button id="search-suggestion-btn" class="text-emerald-400 hover:text-emerald-300 font-bold underline cursor-pointer"></button>
+    </div>
   `;
   filterBox.parentElement.insertBefore(searchDiv, filterBox);
 
   const sInput = document.getElementById('global-search-input');
   const cBtn = document.getElementById('clear-search-btn');
+  const suggBox = document.getElementById('search-suggestion-box');
+  const suggBtn = document.getElementById('search-suggestion-btn');
+
+  function updateSuggestion(val) {
+    if (!val || val.length < 3) {
+      if (suggBox) suggBox.classList.add('hidden');
+      return;
+    }
+    const suggestion = getSearchSuggestion(val);
+    if (suggestion && suggestion.toLowerCase() !== val.toLowerCase()) {
+      suggBtn.textContent = suggestion;
+      suggBox.classList.remove('hidden');
+    } else {
+      suggBox.classList.add('hidden');
+    }
+  }
 
   sInput.addEventListener('input', (e) => {
     window.searchQuery = e.target.value.trim();
@@ -588,29 +655,32 @@ function setupSearchBar() {
     } else {
       cBtn.classList.add('hidden');
     }
+    updateSuggestion(window.searchQuery);
     renderCams();
-      if (typeof populateTargetAreas === 'function') populateTargetAreas();
+    if (typeof populateTargetAreas === 'function') populateTargetAreas();
   });
+
+  if (suggBtn) {
+    suggBtn.addEventListener('click', () => {
+      const correctVal = suggBtn.textContent;
+      sInput.value = correctVal;
+      window.searchQuery = correctVal;
+      suggBox.classList.add('hidden');
+      renderCams();
+      if (typeof populateTargetAreas === 'function') populateTargetAreas();
+    });
+  }
 
   cBtn.addEventListener('click', () => {
     sInput.value = '';
     window.searchQuery = '';
     cBtn.classList.add('hidden');
+    if (suggBox) suggBox.classList.add('hidden');
     renderCams();
-      if (typeof populateTargetAreas === 'function') populateTargetAreas();
+    if (typeof populateTargetAreas === 'function') populateTargetAreas();
   });
 }
 
-// كتم جميع شاشات الشبكة بشكل قاطع
-function muteAllGridVideos() {
-  document.querySelectorAll('#cams-grid video, #cams-grid audio').forEach(v => {
-    try {
-      v.muted = true;
-      v.volume = 0;
-      v.setAttribute('muted', '');
-    } catch(e){}
-  });
-}
 window.muteAllGridVideos = muteAllGridVideos;
 
 
