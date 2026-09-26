@@ -485,27 +485,75 @@ window.searchQuery = '';
 function normalizeArabic(text) {
   if (!text) return '';
   return text.toLowerCase()
-    .replace(/[أإآ]/g, 'ا')
+    .replace(/[أإآء]/g, 'ا')
     .replace(/ة/g, 'ه')
     .replace(/[ىي]/g, 'ي')
-    .replace(/[ً-ٟ]/g, '')
-    .replace(/[^a-z0-9؀-ۿ]/g, '')
+    .replace(/[\u064B-\u065F]/g, '')
+    .replace(/[-_]/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim();
 }
 
-function matchesSmartSearch(title, query) {
-  const cleanTitle = normalizeArabic(title);
-  const cleanQuery = normalizeArabic(query);
-  if (!cleanQuery) return true;
-  if (cleanTitle.includes(cleanQuery)) return true;
-
-  if (cleanQuery.length >= 3) {
-    for (let i = 0; i <= cleanQuery.length - 3; i++) {
-      const sub = cleanQuery.substr(i, 3);
-      if (cleanTitle.includes(sub)) return true;
+function levenshteinDist(a, b) {
+  const m = a.length, n = b.length;
+  if (!m) return n;
+  if (!n) return m;
+  const d = [];
+  for (let i = 0; i <= m; i++) d[i] = [i];
+  for (let j = 0; j <= n; j++) d[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
     }
   }
-  return false;
+  return d[m][n];
+}
+
+function matchesSmartSearch(stream, query) {
+  if (!query) return true;
+  const q = normalizeArabic(query);
+  if (!q) return true;
+
+  const name = typeof stream === 'object' ? (stream.name || stream.title || '') : (stream || '');
+  const area = typeof stream === 'object' ? (stream.area || '') : '';
+  const sub = typeof stream === 'object' ? (stream.subCategory || stream.category || '') : '';
+  const fullText = normalizeArabic(`${name} ${area} ${sub}`);
+
+  if (fullText.includes(q)) return true;
+
+  const qWords = q.split(' ').filter(w => w.length > 0);
+  const targetWords = fullText.split(' ').filter(w => w.length > 0);
+
+  for (const qw of qWords) {
+    let wordMatched = false;
+    if (fullText.includes(qw)) {
+      wordMatched = true;
+    } else {
+      for (const tw of targetWords) {
+        const maxDist = qw.length >= 6 ? 2 : (qw.length >= 3 ? 1 : 0);
+        if (Math.abs(tw.length - qw.length) <= maxDist) {
+          if (levenshteinDist(qw, tw) <= maxDist) {
+            wordMatched = true;
+            break;
+          }
+        }
+        if (qw.length >= 3) {
+          const chunkLen = Math.min(4, qw.length);
+          for (let i = 0; i <= qw.length - chunkLen; i++) {
+            const chunk = qw.substr(i, chunkLen);
+            if (tw.includes(chunk)) {
+              wordMatched = true;
+              break;
+            }
+          }
+          if (wordMatched) break;
+        }
+      }
+    }
+    if (!wordMatched) return false;
+  }
+  return true;
 }
 
 function setupSearchBar() {
@@ -2060,7 +2108,7 @@ function renderCams() {
 
   let filtered = [];
   if (window.searchQuery && window.searchQuery.length > 0) {
-    filtered = streamsData.filter(s => matchesSmartSearch(s.title || '', window.searchQuery) && isStreamAllowedForSubscriber(s));
+    filtered = streamsData.filter(s => matchesSmartSearch(s, window.searchQuery) && isStreamAllowedForSubscriber(s));
     if (filtered.length === 0) {
       grid.innerHTML = `
         <div class="col-span-full py-16 text-center text-slate-400 text-xs flex flex-col items-center justify-center gap-2">
