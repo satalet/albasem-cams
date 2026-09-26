@@ -1,11 +1,11 @@
 // ==========================================
-// نظام البنر التلفزيوني الذكي (TV OSD & Auto-Hide)
+// نظام البنر التلفزيوني الذكي وإيماءات السحب (TV OSD & Reels Gestures)
 // ==========================================
 var _osdHideTimer = null;
 var _headerHideTimer = null;
 window._lastOsdShowTime = 0;
 
-function showChannelOSD(stream, channelNum, totalCount) {
+function showChannelOSD(stream, channelNum, totalCount, isStillLoading = true) {
   window._lastOsdShowTime = Date.now();
   const osd = document.getElementById('tv-channel-osd');
   if (!osd || !stream) return;
@@ -20,12 +20,17 @@ function showChannelOSD(stream, channelNum, totalCount) {
   if (titleEl) titleEl.textContent = stream.title || 'بث مباشر';
   if (areaEl) areaEl.textContent = stream.area || 'IPTV';
   if (counterEl) counterEl.textContent = '(' + channelNum + ' / ' + totalCount + ')';
+  
   if (statusEl) {
-    statusEl.className = 'flex items-center gap-1.5 text-xs text-amber-400 mt-1';
-    statusEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span><span>جاري فتح القناة...</span>';
+    if (isStillLoading) {
+      statusEl.className = 'flex items-center gap-1.5 text-xs text-amber-400 mt-1';
+      statusEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span><span>جاري فتح القناة...</span>';
+    } else {
+      statusEl.className = 'flex items-center gap-1.5 text-xs text-emerald-400 mt-1 font-bold';
+      statusEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span>بث حي ومباشر</span>';
+    }
   }
 
-  // إظهار البنر والشريط العلوي فوراً
   osd.style.transition = 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)';
   osd.style.opacity = '1';
   osd.style.transform = 'translateY(0)';
@@ -34,9 +39,11 @@ function showChannelOSD(stream, channelNum, totalCount) {
   toggleHeaderBar(true);
 
   if (_osdHideTimer) clearTimeout(_osdHideTimer);
+  // أثناء التحميل يظل البنر ظاهراً 8 ثوانٍ ليبقى اسم القناة واضحاً
+  const displayDuration = isStillLoading ? 8000 : 3500;
   _osdHideTimer = setTimeout(() => {
     hideChannelOSD();
-  }, 5000);
+  }, displayDuration);
 
   resetHeaderAutoHide();
 }
@@ -74,10 +81,16 @@ function resetHeaderAutoHide() {
 }
 
 function markTvOsdLive() {
+  const osd = document.getElementById('tv-channel-osd');
   const statusEl = document.getElementById('osd-channel-status');
   if (statusEl) {
     statusEl.className = 'flex items-center gap-1.5 text-xs text-emerald-400 mt-1 font-bold';
     statusEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span>بث حي ومباشر</span>';
+  }
+  if (osd) {
+    osd.style.transition = 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)';
+    osd.style.opacity = '1';
+    osd.style.transform = 'translateY(0)';
   }
   if (_osdHideTimer) clearTimeout(_osdHideTimer);
   _osdHideTimer = setTimeout(() => {
@@ -86,14 +99,13 @@ function markTvOsdLive() {
 }
 window.markTvOsdLive = markTvOsdLive;
 
-// تفاعل لمس أو نقر الشاشة مع حماية القفل الزمني
+// لمس أو نقر الشاشة يُظهر الشريط والبنر معاً
 document.addEventListener('click', (e) => {
   const modal = document.getElementById('cam-modal');
   if (!modal || modal.classList.contains('hidden')) return;
   if (e.target.closest('#modal-header-bar') || e.target.closest('#tv-channel-osd')) return;
 
-  // حماية: إذا تم فتح القناة أو إظهار البنر قبل أقل من 750 ملي ثانية نتجاهل النقرة لحمايته من الإغلاق
-  if (Date.now() - (window._lastOsdShowTime || 0) < 750) return;
+  if (Date.now() - (window._lastOsdShowTime || 0) < 600) return;
 
   const header = document.getElementById('modal-header-bar');
   const isHidden = header && (header.style.opacity === '0' || header.classList.contains('opacity-0'));
@@ -105,13 +117,64 @@ document.addEventListener('click', (e) => {
     const curStream = list.find(s => s.id === curId);
     if (curStream) {
       const idx = list.findIndex(s => s.id === curId);
-      showChannelOSD(curStream, idx !== -1 ? idx + 1 : 1, list.length || 1);
+      showChannelOSD(curStream, idx !== -1 ? idx + 1 : 1, list.length || 1, false);
     }
   } else {
     toggleHeaderBar(false);
     hideChannelOSD();
   }
 });
+
+// إيماءات السحب العمودي الاحترافية للجوال (Vertical Reels/TikTok Swipe)
+let touchStartY = 0;
+let touchStartX = 0;
+let touchStartTime = 0;
+let isSwiping = false;
+
+document.addEventListener('touchstart', (e) => {
+  const modal = document.getElementById('cam-modal');
+  if (!modal || modal.classList.contains('hidden')) return;
+  if (e.touches.length === 1) {
+    touchStartY = e.touches[0].clientY;
+    touchStartX = e.touches[0].clientX;
+    touchStartTime = Date.now();
+    isSwiping = true;
+  }
+}, { passive: true });
+
+document.addEventListener('touchmove', (e) => {
+  const modal = document.getElementById('cam-modal');
+  if (!modal || modal.classList.contains('hidden') || !isSwiping) return;
+  
+  const currentY = e.touches[0].clientY;
+  const currentX = e.touches[0].clientX;
+  const diffY = currentY - touchStartY;
+  const diffX = currentX - touchStartX;
+
+  if (Math.abs(diffY) > Math.abs(diffX) && e.cancelable) {
+    e.preventDefault();
+  }
+}, { passive: false });
+
+document.addEventListener('touchend', (e) => {
+  const modal = document.getElementById('cam-modal');
+  if (!modal || modal.classList.contains('hidden') || !isSwiping) return;
+  isSwiping = false;
+
+  if (e.changedTouches.length === 1) {
+    const diffY = e.changedTouches[0].clientY - touchStartY;
+    const diffX = e.changedTouches[0].clientX - touchStartX;
+    const diffTime = Date.now() - touchStartTime;
+
+    if (diffTime < 600 && Math.abs(diffY) > 35 && Math.abs(diffY) > Math.abs(diffX) * 1.1) {
+      if (diffY < 0) {
+        navigateStream(1);  // سحب لأعلى -> القناة التالية
+      } else {
+        navigateStream(-1); // سحب لأسفل -> القناة السابقة
+      }
+    }
+  }
+}, { passive: true });
 
 window.isStreamAllowedForSubscriber = function(stream) {
   if (typeof currentUser !== 'undefined' && currentUser) return true;
@@ -2472,6 +2535,9 @@ function navigateStream(dir) {
 
   const nextStream = list[nextIdx];
   if (nextStream) {
+    if (typeof showChannelOSD === 'function') {
+      showChannelOSD(nextStream, nextIdx + 1, list.length, true);
+    }
     openModal(nextStream.id);
   }
 }
