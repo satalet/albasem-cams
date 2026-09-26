@@ -3,8 +3,10 @@
 // ==========================================
 var _osdHideTimer = null;
 var _headerHideTimer = null;
+window._lastOsdShowTime = 0;
 
-function showChannelOSD(stream, channelNum, totalCount, keepLoading) {
+function showChannelOSD(stream, channelNum, totalCount) {
+  window._lastOsdShowTime = Date.now();
   const osd = document.getElementById('tv-channel-osd');
   if (!osd || !stream) return;
 
@@ -32,11 +34,9 @@ function showChannelOSD(stream, channelNum, totalCount, keepLoading) {
   toggleHeaderBar(true);
 
   if (_osdHideTimer) clearTimeout(_osdHideTimer);
-  // أثناء التحميل يظل ظاهر 7 ثوانٍ ليعطي المشاهد وقتاً كافياً، وعند التقليب السريع 3.5 ثانية
-  const waitMs = keepLoading ? 7000 : 3500;
   _osdHideTimer = setTimeout(() => {
     hideChannelOSD();
-  }, waitMs);
+  }, 5000);
 
   resetHeaderAutoHide();
 }
@@ -82,39 +82,36 @@ function markTvOsdLive() {
   if (_osdHideTimer) clearTimeout(_osdHideTimer);
   _osdHideTimer = setTimeout(() => {
     hideChannelOSD();
-  }, 2200);
+  }, 2500);
 }
+window.markTvOsdLive = markTvOsdLive;
 
-// لمس أو نقر الشاشة يُظهر الشريط والبنر معاً
+// تفاعل لمس أو نقر الشاشة مع حماية القفل الزمني
 document.addEventListener('click', (e) => {
   const modal = document.getElementById('cam-modal');
   if (!modal || modal.classList.contains('hidden')) return;
   if (e.target.closest('#modal-header-bar') || e.target.closest('#tv-channel-osd')) return;
+
+  // حماية: إذا تم فتح القناة أو إظهار البنر قبل أقل من 750 ملي ثانية نتجاهل النقرة لحمايته من الإغلاق
+  if (Date.now() - (window._lastOsdShowTime || 0) < 750) return;
 
   const header = document.getElementById('modal-header-bar');
   const isHidden = header && (header.style.opacity === '0' || header.classList.contains('opacity-0'));
   if (isHidden) {
     toggleHeaderBar(true);
     resetHeaderAutoHide();
-    // إظهار بنر القناة مع الشريط عند لمس الشاشة
     const curId = window.currentModalStreamId;
     const list = window.activeCategoryStreams || (typeof streamsData !== 'undefined' ? streamsData : []);
     const curStream = list.find(s => s.id === curId);
     if (curStream) {
       const idx = list.findIndex(s => s.id === curId);
-      showChannelOSD(curStream, idx !== -1 ? idx + 1 : 1, list.length || 1, false);
+      showChannelOSD(curStream, idx !== -1 ? idx + 1 : 1, list.length || 1);
     }
   } else {
     toggleHeaderBar(false);
     hideChannelOSD();
   }
 });
-
-window.showChannelOSD = showChannelOSD;
-window.hideChannelOSD = hideChannelOSD;
-window.toggleHeaderBar = toggleHeaderBar;
-window.resetHeaderAutoHide = resetHeaderAutoHide;
-window.markTvOsdLive = markTvOsdLive;
 
 window.isStreamAllowedForSubscriber = function(stream) {
   if (typeof currentUser !== 'undefined' && currentUser) return true;
