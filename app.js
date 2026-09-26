@@ -2975,3 +2975,64 @@ if (typeof db !== 'undefined') {
     });
   } catch(e) {}
 }
+
+
+// تهيئة وإدارة نافذة الباركود للمنصة
+function initQRCodeModal() {
+  const qrBtn = document.getElementById('show-qr-btn');
+  const qrModal = document.getElementById('qr-modal');
+  const closeBtn = document.getElementById('close-qr-btn');
+  const copyBtn = document.getElementById('copy-site-url-btn');
+  const qrCanvasContainer = document.getElementById('qrcode-canvas');
+
+  if (!qrBtn || !qrModal) return;
+
+  let qrGenerated = false;
+
+  qrBtn.addEventListener('click', () => {
+    qrModal.classList.remove('hidden');
+    if (!qrGenerated && typeof QRCode !== 'undefined' && qrCanvasContainer) {
+      qrCanvasContainer.innerHTML = '';
+      new QRCode(qrCanvasContainer, {
+        text: window.location.href.split('#')[0].split('?')[0],
+        width: 170,
+        height: 170,
+        colorDark: "#020617",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H
+      });
+      qrGenerated = true;
+    }
+  });
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      qrModal.classList.add('hidden');
+    });
+  }
+
+  qrModal.addEventListener('click', (e) => {
+    if (e.target === qrModal) qrModal.classList.add('hidden');
+  });
+
+  if (copyBtn) {
+    copyBtn.addEventListener('click', () => {
+      const url = window.location.href.split('#')[0].split('?')[0];
+      navigator.clipboard.writeText(url).then(() => {
+        const origText = copyBtn.innerHTML;
+        copyBtn.innerHTML = '<i class="fa-solid fa-check"></i> <span>تم نسخ الرابط بنجاح!</span>';
+        copyBtn.classList.replace('bg-emerald-600', 'bg-teal-600');
+        setTimeout(() => {
+          copyBtn.innerHTML = origText;
+          copyBtn.classList.replace('bg-teal-600', 'bg-emerald-600');
+        }, 2000);
+      });
+    });
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initQRCodeModal);
+} else {
+  initQRCodeModal();
+}
