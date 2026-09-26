@@ -4,7 +4,7 @@
 var _osdHideTimer = null;
 var _headerHideTimer = null;
 
-function showChannelOSD(stream, channelNum, totalCount) {
+function showChannelOSD(stream, channelNum, totalCount, keepLoading) {
   const osd = document.getElementById('tv-channel-osd');
   if (!osd || !stream) return;
 
@@ -19,10 +19,11 @@ function showChannelOSD(stream, channelNum, totalCount) {
   if (areaEl) areaEl.textContent = stream.area || 'IPTV';
   if (counterEl) counterEl.textContent = '(' + channelNum + ' / ' + totalCount + ')';
   if (statusEl) {
+    statusEl.className = 'flex items-center gap-1.5 text-xs text-amber-400 mt-1';
     statusEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span><span>جاري فتح القناة...</span>';
   }
 
-  // إظهار البنر والشريط العلوي فوراً بستيلات مباشرة ومضمونة
+  // إظهار البنر والشريط العلوي فوراً
   osd.style.transition = 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)';
   osd.style.opacity = '1';
   osd.style.transform = 'translateY(0)';
@@ -31,9 +32,11 @@ function showChannelOSD(stream, channelNum, totalCount) {
   toggleHeaderBar(true);
 
   if (_osdHideTimer) clearTimeout(_osdHideTimer);
+  // أثناء التحميل يظل ظاهر 7 ثوانٍ ليعطي المشاهد وقتاً كافياً، وعند التقليب السريع 3.5 ثانية
+  const waitMs = keepLoading ? 7000 : 3500;
   _osdHideTimer = setTimeout(() => {
     hideChannelOSD();
-  }, 3200);
+  }, waitMs);
 
   resetHeaderAutoHide();
 }
@@ -73,16 +76,16 @@ function resetHeaderAutoHide() {
 function markTvOsdLive() {
   const statusEl = document.getElementById('osd-channel-status');
   if (statusEl) {
-    statusEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span class="text-emerald-400 font-bold">بث حي ومباشر</span>';
+    statusEl.className = 'flex items-center gap-1.5 text-xs text-emerald-400 mt-1 font-bold';
+    statusEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span>بث حي ومباشر</span>';
   }
   if (_osdHideTimer) clearTimeout(_osdHideTimer);
   _osdHideTimer = setTimeout(() => {
     hideChannelOSD();
-  }, 1800);
+  }, 2200);
 }
-window.markTvOsdLive = markTvOsdLive;
 
-// لمس أو نقر الشاشة يُظهر الشريط والبنر
+// لمس أو نقر الشاشة يُظهر الشريط والبنر معاً
 document.addEventListener('click', (e) => {
   const modal = document.getElementById('cam-modal');
   if (!modal || modal.classList.contains('hidden')) return;
@@ -93,10 +96,25 @@ document.addEventListener('click', (e) => {
   if (isHidden) {
     toggleHeaderBar(true);
     resetHeaderAutoHide();
+    // إظهار بنر القناة مع الشريط عند لمس الشاشة
+    const curId = window.currentModalStreamId;
+    const list = window.activeCategoryStreams || (typeof streamsData !== 'undefined' ? streamsData : []);
+    const curStream = list.find(s => s.id === curId);
+    if (curStream) {
+      const idx = list.findIndex(s => s.id === curId);
+      showChannelOSD(curStream, idx !== -1 ? idx + 1 : 1, list.length || 1, false);
+    }
   } else {
     toggleHeaderBar(false);
+    hideChannelOSD();
   }
 });
+
+window.showChannelOSD = showChannelOSD;
+window.hideChannelOSD = hideChannelOSD;
+window.toggleHeaderBar = toggleHeaderBar;
+window.resetHeaderAutoHide = resetHeaderAutoHide;
+window.markTvOsdLive = markTvOsdLive;
 
 window.isStreamAllowedForSubscriber = function(stream) {
   if (typeof currentUser !== 'undefined' && currentUser) return true;

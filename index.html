@@ -444,45 +444,28 @@ if ('caches' in window) {
 
       <!-- مساحة تشغيل الفيديو كاملة الشاشة -->
       <div id="modal-content" class="w-full h-full flex items-center justify-center bg-black relative cursor-pointer"></div>
-
-      <!-- بنر معلومات الرسيفر التلفزيوني (TV Channel OSD Bar) -->
-      <div id="tv-channel-osd" class="absolute bottom-6 inset-x-3 sm:inset-x-8 z-50 pointer-events-none" style="transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1); opacity: 0; transform: translateY(24px);">
+      <!-- بنر معلومات الرسيفر التلفزيوني الذكي (TV Channel OSD) -->
+      <div id="tv-channel-osd" class="absolute bottom-6 inset-x-3 sm:inset-x-8 z-[9999] pointer-events-none transition-all duration-300" style="opacity: 0; transform: translateY(24px);">
         <div class="bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-2xl p-3 sm:p-4 shadow-2xl flex items-center justify-between gap-3 text-white">
-          <div class="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
-            <!-- رقم القناة بتصميم شاشات التلفزيون -->
-            <div class="flex flex-col items-center justify-center bg-gradient-to-br from-sky-500 to-blue-700 text-white font-black rounded-xl w-12 h-12 sm:w-14 sm:h-14 shadow-lg shrink-0">
-              <span class="text-[9px] uppercase tracking-wider opacity-80 leading-none">CH</span>
-              <span id="osd-channel-num" class="text-lg sm:text-xl font-mono leading-none">01</span>
-            </div>
-            <!-- تفاصيل واسم القناة بالكامل -->
-            <div class="min-w-0 flex-1">
-              <h2 id="osd-channel-title" class="font-bold text-sm sm:text-base text-white truncate drop-shadow"></h2>
-              <div class="flex items-center gap-2 text-[11px] sm:text-xs text-slate-300 mt-1">
-                <span id="osd-channel-area" class="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-sky-400 font-medium"></span>
-                <span id="osd-channel-counter" class="text-slate-400 font-mono"></span>
-                <span id="osd-channel-status" class="flex items-center gap-1 text-amber-400 font-medium">
-                  <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
-                  <span>جاري فتح القناة...</span>
-                </span>
+          <div class="flex items-center gap-3 min-w-0">
+            <span id="osd-channel-num" class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-sky-500/20 border border-sky-500/40 text-sky-400 font-mono font-black text-base sm:text-xl flex items-center justify-center shrink-0">01</span>
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <h4 id="osd-channel-title" class="font-black text-sm sm:text-lg text-white truncate">اسم القناة</h4>
+                <span id="osd-channel-area" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 shrink-0">IPTV</span>
+              </div>
+              <div id="osd-channel-status" class="flex items-center gap-1.5 text-xs text-amber-400 mt-1">
+                <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+                <span>جاري فتح القناة...</span>
               </div>
             </div>
-
-      <!-- بنر الرسيفر الذكي OSD (يظهر فوراً عند تقليب القناة) -->
-      <div id="modal-osd-banner" class="absolute bottom-6 inset-x-4 sm:inset-x-auto sm:right-8 sm:w-[420px] z-40 transition-all duration-300 pointer-events-none transform translate-y-8 opacity-0">
-        <div class="bg-slate-950/90 backdrop-blur-md border border-slate-700/80 rounded-2xl p-3.5 shadow-2xl flex items-center gap-3.5">
-          <div id="osd-channel-num" class="bg-sky-600 text-white font-mono font-black text-sm px-2.5 py-1.5 rounded-xl shadow-md min-w-[36px] text-center">
-            #
           </div>
-          <div class="flex-1 min-w-0">
-            <div id="osd-channel-name" class="font-bold text-white text-sm sm:text-base truncate">
-              اسم القناة
-            </div>
-            <div id="osd-status" class="text-xs text-amber-400 flex items-center gap-1.5 mt-0.5 font-medium">
-              <i class="fa-solid fa-circle-notch fa-spin text-[10px]"></i>
-              <span>جاري فتح البث...</span>
-            </div>
-          </div>
+          <div class="text-xs sm:text-sm font-mono font-bold text-slate-400 shrink-0 bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700/60" id="osd-channel-counter">(1 / 50)</div>
         </div>
+      </div>
+
+
+      
       </div>
 
     
@@ -600,7 +583,7 @@ if ('caches' in window) {
     </div>
   </div>
 
-  <script src="./app.js?v=1790440378"></script>
+  <script src="./app.js?v=1790440701"></script>
 
   <!-- نظام إدارة دخول المشتركين وفحص الجلسة -->
   <div id="sub-login-modal" style="display:none; position:fixed; inset:0; background:rgba(11,17,32,0.96); z-index:9999; justify-content:center; align-items:center; padding:15px;">
