@@ -445,27 +445,8 @@ if ('caches' in window) {
       <!-- مساحة تشغيل الفيديو كاملة الشاشة -->
       <div id="modal-content" class="w-full h-full flex items-center justify-center bg-black relative cursor-pointer"></div>
 
-      <!-- بنر الرسيفر الذكي OSD (يظهر فوراً عند تقليب القناة) -->
-      <div id="modal-osd-banner" class="absolute bottom-6 inset-x-4 sm:inset-x-auto sm:right-8 sm:w-[420px] z-40 transition-all duration-300 pointer-events-none transform translate-y-8 opacity-0">
-        <div class="bg-slate-950/90 backdrop-blur-md border border-slate-700/80 rounded-2xl p-3.5 shadow-2xl flex items-center gap-3.5">
-          <div id="osd-channel-num" class="bg-sky-600 text-white font-mono font-black text-sm px-2.5 py-1.5 rounded-xl shadow-md min-w-[36px] text-center">
-            #
-          </div>
-          <div class="flex-1 min-w-0">
-            <div id="osd-channel-name" class="font-bold text-white text-sm sm:text-base truncate">
-              اسم القناة
-            </div>
-            <div id="osd-status" class="text-xs text-amber-400 flex items-center gap-1.5 mt-0.5 font-medium">
-              <i class="fa-solid fa-circle-notch fa-spin text-[10px]"></i>
-              <span>جاري فتح البث...</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    
       <!-- بنر معلومات الرسيفر التلفزيوني (TV Channel OSD Bar) -->
-      <div id="tv-channel-osd" class="absolute bottom-5 inset-x-3 sm:inset-x-8 z-40 transition-all duration-300 opacity-0 pointer-events-none transform translate-y-4">
+      <div id="tv-channel-osd" class="absolute bottom-6 inset-x-3 sm:inset-x-8 z-50 pointer-events-none" style="transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1); opacity: 0; transform: translateY(24px);">
         <div class="bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-2xl p-3 sm:p-4 shadow-2xl flex items-center justify-between gap-3 text-white">
           <div class="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
             <!-- رقم القناة بتصميم شاشات التلفزيون -->
@@ -485,6 +466,27 @@ if ('caches' in window) {
                 </span>
               </div>
             </div>
+
+      <!-- بنر الرسيفر الذكي OSD (يظهر فوراً عند تقليب القناة) -->
+      <div id="modal-osd-banner" class="absolute bottom-6 inset-x-4 sm:inset-x-auto sm:right-8 sm:w-[420px] z-40 transition-all duration-300 pointer-events-none transform translate-y-8 opacity-0">
+        <div class="bg-slate-950/90 backdrop-blur-md border border-slate-700/80 rounded-2xl p-3.5 shadow-2xl flex items-center gap-3.5">
+          <div id="osd-channel-num" class="bg-sky-600 text-white font-mono font-black text-sm px-2.5 py-1.5 rounded-xl shadow-md min-w-[36px] text-center">
+            #
+          </div>
+          <div class="flex-1 min-w-0">
+            <div id="osd-channel-name" class="font-bold text-white text-sm sm:text-base truncate">
+              اسم القناة
+            </div>
+            <div id="osd-status" class="text-xs text-amber-400 flex items-center gap-1.5 mt-0.5 font-medium">
+              <i class="fa-solid fa-circle-notch fa-spin text-[10px]"></i>
+              <span>جاري فتح البث...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    
+      
           </div>
           <div class="hidden sm:flex flex-col items-end text-[10px] text-slate-400 shrink-0 border-r border-slate-800 pr-3">
             <span>قلّب بالسحب ↕</span>
@@ -598,7 +600,7 @@ if ('caches' in window) {
     </div>
   </div>
 
-  <script src="./app.js?v=1790439808"></script>
+  <script src="./app.js?v=1790440378"></script>
 
   <!-- نظام إدارة دخول المشتركين وفحص الجلسة -->
   <div id="sub-login-modal" style="display:none; position:fixed; inset:0; background:rgba(11,17,32,0.96); z-index:9999; justify-content:center; align-items:center; padding:15px;">

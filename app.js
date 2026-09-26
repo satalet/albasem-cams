@@ -17,15 +17,17 @@ function showChannelOSD(stream, channelNum, totalCount) {
   if (numEl) numEl.textContent = String(channelNum).padStart(2, '0');
   if (titleEl) titleEl.textContent = stream.title || 'بث مباشر';
   if (areaEl) areaEl.textContent = stream.area || 'IPTV';
-  if (counterEl) counterEl.textContent = `(${channelNum} / ${totalCount})`;
+  if (counterEl) counterEl.textContent = '(' + channelNum + ' / ' + totalCount + ')';
   if (statusEl) {
-    statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span><span>جاري فتح القناة...</span>`;
+    statusEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span><span>جاري فتح القناة...</span>';
   }
 
-  // إظهار البنر والشريط العلوي فوراً
-  osd.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-4');
-  osd.classList.add('opacity-100', 'translate-y-0');
-  
+  // إظهار البنر والشريط العلوي فوراً بستيلات مباشرة ومضمونة
+  osd.style.transition = 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)';
+  osd.style.opacity = '1';
+  osd.style.transform = 'translateY(0)';
+  osd.style.pointerEvents = 'auto';
+
   toggleHeaderBar(true);
 
   if (_osdHideTimer) clearTimeout(_osdHideTimer);
@@ -39,20 +41,25 @@ function showChannelOSD(stream, channelNum, totalCount) {
 function hideChannelOSD() {
   const osd = document.getElementById('tv-channel-osd');
   if (osd) {
-    osd.classList.add('opacity-0', 'pointer-events-none', 'translate-y-4');
-    osd.classList.remove('opacity-100', 'translate-y-0');
+    osd.style.transition = 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)';
+    osd.style.opacity = '0';
+    osd.style.transform = 'translateY(24px)';
+    osd.style.pointerEvents = 'none';
   }
 }
 
 function toggleHeaderBar(show) {
   const header = document.getElementById('modal-header-bar');
   if (!header) return;
+  header.style.transition = 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)';
   if (show) {
-    header.classList.remove('opacity-0', '-translate-y-full', 'pointer-events-none');
-    header.classList.add('opacity-100', 'translate-y-0');
+    header.style.opacity = '1';
+    header.style.transform = 'translateY(0)';
+    header.style.pointerEvents = 'auto';
   } else {
-    header.classList.add('opacity-0', '-translate-y-full', 'pointer-events-none');
-    header.classList.remove('opacity-100', 'translate-y-0');
+    header.style.opacity = '0';
+    header.style.transform = 'translateY(-100%)';
+    header.style.pointerEvents = 'none';
   }
 }
 
@@ -63,87 +70,33 @@ function resetHeaderAutoHide() {
   }, 3200);
 }
 
-// لمس الشاشة يظهر البنر والشريط
-document.addEventListener('click', (e) => {
-  const modal = document.getElementById('cam-modal');
-  if (!modal || modal.classList.contains('hidden')) return;
-  if (e.target.closest('#modal-header-bar, #tv-channel-osd, button')) return;
-
-  const header = document.getElementById('modal-header-bar');
-  if (header && header.classList.contains('opacity-0')) {
-    toggleHeaderBar(true);
-    resetHeaderAutoHide();
-  }
-});
-
-
-// ==========================================
-// نظام بنر الرسيفر وإخفاء الشريط التلقائي (OSD)
-// ==========================================
-let _controlsHideTimer = null;
-var _osdHideTimer = null;
-
-function resetControlsTimer() {
-  const header = document.getElementById('modal-header-bar');
-  if (!header) return;
-  header.style.opacity = '1';
-  header.style.transform = 'translateY(0)';
-  header.style.pointerEvents = 'auto';
-
-  if (_controlsHideTimer) clearTimeout(_controlsHideTimer);
-  _controlsHideTimer = setTimeout(() => {
-    header.style.opacity = '0';
-    header.style.transform = 'translateY(-16px)';
-    header.style.pointerEvents = 'none';
-  }, 2800);
-}
-
-function showTvOsd(stream, curIdx, total) {
-  const banner = document.getElementById('modal-osd-banner');
-  const numEl = document.getElementById('osd-channel-num');
-  const nameEl = document.getElementById('osd-channel-name');
-  const statusEl = document.getElementById('osd-status');
-  if (!banner || !numEl || !nameEl || !statusEl) return;
-
-  const displayNum = (curIdx !== -1) ? (curIdx + 1) : '#';
-  const totalCount = total > 0 ? total : (window.activeCategoryStreams ? window.activeCategoryStreams.length : '');
-  numEl.textContent = totalCount ? `${displayNum} / ${totalCount}` : `${displayNum}`;
-  nameEl.textContent = stream.title || 'بث مباشر';
-  
-  statusEl.className = 'text-xs text-amber-400 flex items-center gap-1.5 mt-0.5 font-medium';
-  statusEl.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin text-[11px]"></i> <span>جاري فتح البث...</span>';
-
-  // ظهور قوي وواضح فوق كل الطبقات
-  banner.style.zIndex = '99999';
-  banner.style.opacity = '1';
-  banner.style.transform = 'translateY(0)';
-  banner.style.display = 'block';
-
-  if (_osdHideTimer) clearTimeout(_osdHideTimer);
-  _osdHideTimer = setTimeout(() => {
-    hideTvOsd();
-  }, 3800);
-}
-
-function hideTvOsd() {
-  const banner = document.getElementById('modal-osd-banner');
-  if (banner) {
-    banner.style.opacity = '0';
-    banner.style.transform = 'translateY(24px)';
-  }
-}
-
 function markTvOsdLive() {
   const statusEl = document.getElementById('osd-channel-status');
   if (statusEl) {
-    statusEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span class="text-emerald-400 font-bold">\u0628\u062b \u062d\u064a \u0648\u0645\u0628\u0627\u0634\u0631</span>';
+    statusEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span class="text-emerald-400 font-bold">بث حي ومباشر</span>';
   }
   if (_osdHideTimer) clearTimeout(_osdHideTimer);
   _osdHideTimer = setTimeout(() => {
-    if (typeof hideChannelOSD === 'function') hideChannelOSD();
+    hideChannelOSD();
   }, 1800);
 }
 window.markTvOsdLive = markTvOsdLive;
+
+// لمس أو نقر الشاشة يُظهر الشريط والبنر
+document.addEventListener('click', (e) => {
+  const modal = document.getElementById('cam-modal');
+  if (!modal || modal.classList.contains('hidden')) return;
+  if (e.target.closest('#modal-header-bar') || e.target.closest('#tv-channel-osd')) return;
+
+  const header = document.getElementById('modal-header-bar');
+  const isHidden = header && (header.style.opacity === '0' || header.classList.contains('opacity-0'));
+  if (isHidden) {
+    toggleHeaderBar(true);
+    resetHeaderAutoHide();
+  } else {
+    toggleHeaderBar(false);
+  }
+});
 
 window.isStreamAllowedForSubscriber = function(stream) {
   if (typeof currentUser !== 'undefined' && currentUser) return true;
