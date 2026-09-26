@@ -666,142 +666,69 @@ function getActiveSelectedIds() {
     return Array.from(checkboxes).map(cb => cb.value).filter(Boolean);
 }
 
+// تعبئة قائمة وجهة الترحيل الذكية المتوافقة مع المجلدات وفروعها
 function populateTargetAreas() {
     const sel = document.getElementById('bulkTargetArea');
     if (!sel) return;
 
     const currentVal = sel.value;
+    const cur = (typeof currentFilter !== 'undefined') ? currentFilter : 'LOCAL';
+    const folderNames = {
+        'LOCAL': 'قنوات محلية',
+        'ARABIC': 'قنوات عربية',
+        'FOREIGN': 'قنوات أجنبية',
+        'IPTV': 'IPTV'
+    };
+
     let opts = '<option value="" style="background-color:#0f172a; color:#94a3b8;">-- 📍 اختر وجهة الترحيل من هنا --</option>';
 
-    // 1. سحب تفريعات IPTV (من الفايربيس + الكروت + الأزرار)
-    const defaultSubs = ['أفلام ومسلسلات', 'إخبارية', 'رياضة', 'إسلاميات', 'أطفال', 'وثائقي', 'موسيقى', 'مشكّل ومنوعات'];
-    const customSubs = (window.iptvCustomSubs && Array.isArray(window.iptvCustomSubs)) ? window.iptvCustomSubs : [];
-    const streamSubs = (typeof streamsData !== 'undefined' && Array.isArray(streamsData))
-        ? streamsData.filter(s => s && s.area === 'IPTV').map(s => s.subCategory || s.category).filter(Boolean)
-        : [];
-    const domSubs = Array.from(document.querySelectorAll('#iptv-sub-tabs button, .sub-filter-btn'))
-        .map(b => b.textContent.trim().replace(/^[📺📁\s]+/, ''))
-        .filter(t => t && t !== 'الكل' && !t.includes('إدارة'));
-
-    const allSubs = [...new Set([...defaultSubs, ...customSubs, ...streamSubs, ...domSubs])].filter(Boolean);
-    if (allSubs.length > 0) {
-        opts += '<optgroup label="📺 تفريعات IPTV الفرعية" style="background-color:#0b1329; color:#34d399; font-weight:bold;">';
-        allSubs.forEach(sub => {
-            const isSel = (currentVal === `SUB:${sub}`) ? 'selected' : '';
-            opts += `<option value="SUB:${sub}" ${isSel} style="background-color:#1e293b; color:#ffffff; font-weight:bold; padding:4px;">📺 تفريع: ${sub}</option>`;
+    // 1. فروع المجلد المفتوح حالياً في الصدارة
+    if (cur !== 'FAVORITES') {
+        const curSubs = (typeof getDynamicSubCategories === 'function') ? getDynamicSubCategories(cur) : [];
+        const curTitle = folderNames[cur] || cur;
+        opts += `<optgroup label="⭐ فروع المجلد الحالي (${curTitle})" style="background-color:#0b1329; color:#38bdf8; font-weight:bold;">`;
+        curSubs.forEach(sub => {
+            const val = `${cur}:${sub}`;
+            const isSel = (currentVal === val) ? 'selected' : '';
+            opts += `<option value="${val}" ${isSel} style="background-color:#1e293b; color:#ffffff; font-weight:bold; padding:4px;">📍 إلى فرع: ${sub}</option>`;
         });
         opts += '</optgroup>';
     }
 
-    // 2. سحب الأقسام العامة (من الفايربيس + الكروت + أزرار التبويبات)
-    const catsOrder = (typeof customCategoryOrder !== 'undefined' && Array.isArray(customCategoryOrder)) ? customCategoryOrder : [];
-    const streamsAreas = (typeof streamsData !== 'undefined' && Array.isArray(streamsData)) ? streamsData.map(s => s && s.area).filter(Boolean) : [];
-    const domAreas = Array.from(document.querySelectorAll('#filter-buttons button, .filter-btn'))
-        .map(b => b.textContent.trim().replace(/^[📺📁\s]+/, ''))
-        .filter(t => t && t !== 'الكل' && t !== 'المفضلة' && !t.includes('ترتيب'));
-
-    const allMain = [...new Set([...catsOrder, ...streamsAreas, ...domAreas])].filter(a => a && a !== 'all' && a !== 'FAVORITES');
-    if (allMain.length > 0) {
-        opts += '<optgroup label="📁 الأقسام العامة" style="background-color:#0b1329; color:#60a5fa; font-weight:bold;">';
-        allMain.forEach(area => {
-            const isSel = (currentVal === `AREA:${area}`) ? 'selected' : '';
-            opts += `<option value="AREA:${area}" ${isSel} style="background-color:#1e293b; color:#ffffff; font-weight:bold; padding:4px;">📁 قسم: ${area}</option>`;
+    // 2. فروع المجلدات الأخرى (لتسهيل الترحيل بين المجلدات)
+    ['LOCAL', 'ARABIC', 'FOREIGN', 'IPTV'].forEach(fId => {
+        if (fId === cur) return;
+        const fSubs = (typeof getDynamicSubCategories === 'function') ? getDynamicSubCategories(fId) : [];
+        const fTitle = folderNames[fId] || fId;
+        opts += `<optgroup label="📁 ${fTitle}" style="background-color:#0b1329; color:#94a3b8; font-weight:bold;">`;
+        fSubs.forEach(sub => {
+            const val = `${fId}:${sub}`;
+            const isSel = (currentVal === val) ? 'selected' : '';
+            opts += `<option value="${val}" ${isSel} style="background-color:#1e293b; color:#ffffff; padding:4px;">${fTitle} > ${sub}</option>`;
         });
         opts += '</optgroup>';
-    }
+    });
 
-    // 3. خيار الكتابة باليد
+    // 3. كتابة فرع جديد يدوياً
     opts += '<optgroup label="✏️ خيارات إضافية" style="background-color:#0b1329; color:#fbbf24; font-weight:bold;">';
-    opts += '<option value="__NEW_CUSTOM__" style="background-color:#1e293b; color:#38bdf8; font-weight:bold; padding:4px;">➕ كتابة وجهة جديدة باليد...</option>';
+    opts += '<option value="__NEW_CUSTOM__" style="background-color:#1e293b; color:#38bdf8; font-weight:bold; padding:4px;">➕ إنشاء فرع جديد باليد...</option>';
     opts += '</optgroup>';
 
     sel.innerHTML = opts;
 
     sel.onchange = function() {
         if (this.value === '__NEW_CUSTOM__') {
-            const isNowIptv = (typeof currentFilter !== 'undefined' && currentFilter === 'IPTV');
-            const promptMsg = isNowIptv
-                ? 'أدخل اسم تصنيف IPTV الجديد لنقل القنوات المحددة إليه:'
-                : 'أدخل اسم القسم العام الجديد لنقل القنوات المحددة إليه:';
-            const userEntered = prompt(promptMsg);
-            if (userEntered && userEntered.trim()) {
-                const clean = userEntered.trim();
-                const newOptVal = isNowIptv ? ('SUB:' + clean) : ('AREA:' + clean);
-                const opt = document.createElement('option');
-                opt.value = newOptVal;
-                opt.textContent = (isNowIptv ? '📺 تفريع جديد: ' : '📁 قسم جديد: ') + clean;
-                opt.selected = true;
-                opt.style.backgroundColor = '#1e293b';
-                opt.style.color = '#ffffff';
-                sel.appendChild(opt);
-                sel.value = newOptVal;
-            } else {
-                sel.value = '';
-            }
+            this.value = '';
+            window.addNewCategoryDirect();
         }
     };
 }
 
-
-window.executeBulkLock = async function(lockStatus) {
-    if (!currentUser) return alert("يرجى تسجيل الدخول كمسؤول أولاً!");
-    const selectedIds = getActiveSelectedIds();
-    if (!selectedIds || selectedIds.length === 0) {
-        return alert("⚠️ يرجى تحديد قناة واحدة على الأقل بالضغط على مربع [تحديد] الأخضر!");
-    }
-
-    const actionText = lockStatus ? "قفل" : "فك قفل";
-    if (!confirm(`هل أنت متأكد من ${actionText} (${selectedIds.length}) قناة محددة؟`)) return;
-
-    const updates = {};
-    selectedIds.forEach(id => {
-        updates[`streams/${id}/isLocked`] = !!lockStatus;
-        const s = streamsData.find(item => item && item.id === id);
-        if (s) s.isLocked = !!lockStatus;
-    });
-
-    try {
-        await db.ref().update(updates);
-        alert(`✅ تم ${actionText} (${selectedIds.length}) قناة بنجاح!`);
-        if (typeof renderCams === 'function') renderCams();
-    } catch(err) {
-        alert("خطأ أثناء العملية: " + err.message);
-    }
-};
-
-window.toggleSubcategoryLock = async function(subName) {
-    if (!currentUser) return alert("يرجى تسجيل الدخول كمسؤول أولاً!");
-    const subStreams = streamsData.filter(s => s && s.area === 'IPTV' && (s.subCategory === subName || s.category === subName));
-    if (!subStreams.length) return alert("لا توجد قنوات في هذا التفريع!");
-
-    const allLocked = subStreams.every(s => s.isLocked);
-    const targetStatus = !allLocked;
-    const msg = targetStatus
-        ? `هل تريد قفل جميع قنوات تفريع [${subName}] (${subStreams.length} قناة) برمز 1415؟`
-        : `هل تريد فك قفل جميع قنوات تفريع [${subName}] (${subStreams.length} قناة)؟`;
-
-    if (!confirm(msg)) return;
-
-    const updates = {};
-    subStreams.forEach(s => {
-        updates[`streams/${s.id}/isLocked`] = targetStatus;
-        s.isLocked = targetStatus;
-    });
-
-    try {
-        await db.ref().update(updates);
-        alert(`✅ تم ${targetStatus ? 'قفل' : 'فك قفل'} تفريع [${subName}] بالكامل!`);
-        if (typeof renderCategoryOrderList === 'function') renderCategoryOrderList();
-        if (typeof renderCams === 'function') renderCams();
-    } catch(err) {
-        alert("خطأ أثناء تحديث القفل: " + err.message);
-    }
-};
-
+// تنفيذ الترحيل الفعلي في الفايربيس مع تحديث الفروع
 window.executeBulkMove = async function() {
     if (!currentUser) return alert("يرجى تسجيل الدخول كمسؤول أولاً!");
 
-    const selectedIds = getActiveSelectedIds();
+    const selectedIds = (typeof getActiveSelectedIds === 'function') ? getActiveSelectedIds() : [];
     if (!selectedIds || selectedIds.length === 0) {
         return alert('⚠️ يرجى تحديد قناة واحدة على الأقل بالضغط على مربع [تحديد] الأخضر!');
     }
@@ -809,142 +736,176 @@ window.executeBulkMove = async function() {
     const sel = document.getElementById('bulkTargetArea');
     let target = sel ? sel.value : '';
 
-    // إذا لم يختر وجهة من القائمة، نفتح له نافذة إدخال فورية بدلاً من التعليق
-    if (!target) {
-        const isIptv = (typeof currentFilter !== 'undefined' && currentFilter === 'IPTV');
-        const askMsg = isIptv
-            ? `لم تختر وجهة من القائمة!\nأدخل اسم تفريع IPTV لترحيل (${selectedIds.length}) قناة إليه (مثال: أفلام ومسلسلات، رياضة...):`
-            : `لم تختر وجهة من القائمة!\nأدخل اسم القسم العام لترحيل (${selectedIds.length}) قناة إليه:`;
+    const cur = (typeof currentFilter !== 'undefined') ? currentFilter : 'LOCAL';
+    const folderNames = {
+        'LOCAL': 'قنوات محلية',
+        'ARABIC': 'قنوات عربية',
+        'FOREIGN': 'قنوات أجنبية',
+        'IPTV': 'IPTV'
+    };
+
+    let targetFolder = cur;
+    let targetSub = '';
+
+    if (!target || target === '__NEW_CUSTOM__') {
+        const askMsg = (cur === 'LOCAL')
+            ? `لم تختر وجهة من القائمة!\nأدخل اسم الفرع المحلي لترحيل (${selectedIds.length}) قناة إليه (مثال: نابلس، جنين، القدس...):`
+            : (cur === 'ARABIC')
+            ? `لم تختر وجهة من القائمة!\nأدخل اسم الفرع العربي لترحيل (${selectedIds.length}) قناة إليه (مثال: قنوات فلسطين، إخبارية...):`
+            : (cur === 'FOREIGN')
+            ? `لم تختر وجهة من القائمة!\nأدخل اسم الفرع الأجنبي لترحيل (${selectedIds.length}) قناة إليه:`
+            : `لم تختر وجهة من القائمة!\nأدخل اسم تصنيف IPTV لترحيل (${selectedIds.length}) قناة إليه:`;
+
         const typed = prompt(askMsg);
         if (!typed || !typed.trim()) return;
-        const cleanTyped = typed.trim();
-        target = isIptv ? ('SUB:' + cleanTyped) : ('AREA:' + cleanTyped);
-    } else if (target === '__NEW_CUSTOM__') {
-        const isIptv = (typeof currentFilter !== 'undefined' && currentFilter === 'IPTV');
-        const userEntered = prompt(isIptv ? 'اكتب اسم تفريع IPTV الجديد:' : 'اكتب اسم القسم الجديد:');
-        if (!userEntered || !userEntered.trim()) return;
-        target = isIptv ? ('SUB:' + userEntered.trim()) : ('AREA:' + userEntered.trim());
-    }
-
-    let destTitle = target;
-    const updates = {};
-
-    if (target.startsWith('SUB:')) {
-        const subName = target.replace('SUB:', '');
-        destTitle = 'تفريع IPTV: [' + subName + ']';
-        if (!confirm(`هل أنت متأكد من ترحيل (${selectedIds.length}) قنوات إلى ${destTitle}؟`)) return;
-
-        try {
-            const snap = await db.ref('streams/_config_iptv_subs').once('value');
-            let subs = snap.val() || [];
-            if (!Array.isArray(subs)) subs = Object.values(subs);
-            if (!subs.includes(subName)) {
-                subs.push(subName);
-                updates['streams/_config_iptv_subs'] = subs;
-            }
-        } catch(e){}
-
-        selectedIds.forEach(id => {
-            updates[`streams/${id}/area`] = 'IPTV';
-            updates[`streams/${id}/subCategory`] = subName;
-            updates[`streams/${id}/category`] = subName;
-            const item = streamsData.find(s => s && s.id === id);
-            if (item) {
-                item.area = 'IPTV';
-                item.subCategory = subName;
-                item.category = subName;
-            }
-        });
+        targetSub = typed.trim();
+        targetFolder = cur;
+    } else if (target.includes(':')) {
+        const parts = target.split(':');
+        targetFolder = parts[0];
+        targetSub = parts.slice(1).join(':').trim();
+    } else if (target.startsWith('SUB:')) {
+        targetFolder = 'IPTV';
+        targetSub = target.replace('SUB:', '').trim();
+    } else if (target.startsWith('AREA:')) {
+        targetFolder = 'LOCAL';
+        targetSub = target.replace('AREA:', '').trim();
     } else {
-        const areaName = target.replace('AREA:', '');
-        destTitle = 'قسم [' + areaName + ']';
-        if (!confirm(`هل أنت متأكد من ترحيل (${selectedIds.length}) قنوات إلى ${destTitle}؟`)) return;
-
-        try {
-            const snap = await db.ref('streams/_config_categories').once('value');
-            let cats = snap.val() || [];
-            if (!Array.isArray(cats)) cats = Object.values(cats);
-            if (!cats.includes(areaName)) {
-                cats.push(areaName);
-                updates['streams/_config_categories'] = cats;
-            }
-        } catch(e){}
-
-        selectedIds.forEach(id => {
-            updates[`streams/${id}/area`] = areaName;
-            const item = streamsData.find(s => s && s.id === id);
-            if (item) item.area = areaName;
-        });
+        targetSub = target.trim();
     }
+
+    const folderTitle = folderNames[targetFolder] || targetFolder;
+    const destTitle = `${folderTitle} > [${targetSub}]`;
+
+    if (!confirm(`هل أنت متأكد من ترحيل (${selectedIds.length}) قنوات إلى ${destTitle}؟`)) return;
+
+    const updates = {};
+    const canonicalArea = folderNames[targetFolder] || targetFolder;
+
+    // حفظ الفرع الجديد في إعدادات الفايربيس إن لم يكن موجوداً
+    try {
+        let configKey = 'streams/_config_local_subs';
+        if (targetFolder === 'LOCAL') configKey = 'streams/_config_local_subs';
+        else if (targetFolder === 'ARABIC') configKey = 'streams/_config_arabic_subs';
+        else if (targetFolder === 'FOREIGN') configKey = 'streams/_config_foreign_subs';
+        else if (targetFolder === 'IPTV') configKey = 'streams/_config_iptv_subs';
+
+        const snap = await db.ref(configKey).once('value');
+        let subs = snap.val() || [];
+        if (!Array.isArray(subs)) subs = Object.values(subs);
+        if (!subs.includes(targetSub)) {
+            subs.push(targetSub);
+            updates[configKey] = subs;
+        }
+
+        if (targetFolder === 'LOCAL') {
+            const cSnap = await db.ref('streams/_config_categories').once('value');
+            let legacyCats = cSnap.val() || [];
+            if (!Array.isArray(legacyCats)) legacyCats = Object.values(legacyCats);
+            if (!legacyCats.includes(targetSub)) {
+                legacyCats.push(targetSub);
+                updates['streams/_config_categories'] = legacyCats;
+            }
+        }
+    } catch(e){}
+
+    // تحديث بيانات كل قناة محددة
+    selectedIds.forEach(id => {
+        updates[`streams/${id}/area`] = canonicalArea;
+        updates[`streams/${id}/subCategory`] = targetSub;
+        updates[`streams/${id}/category`] = targetSub;
+
+        const item = (typeof streamsData !== 'undefined' && Array.isArray(streamsData)) ? streamsData.find(s => s && s.id === id) : null;
+        if (item) {
+            item.area = canonicalArea;
+            item.subCategory = targetSub;
+            item.category = targetSub;
+        }
+    });
 
     try {
         await db.ref().update(updates);
         alert(`✅ تم بنجاح ترحيل ${selectedIds.length} قناة إلى ${destTitle}!`);
         if (typeof selectAllBulk === 'function') selectAllBulk(false);
         if (typeof setupFilters === 'function') setupFilters();
-        if (typeof setupIptvSubTabs === 'function') setupIptvSubTabs();
+        if (typeof populateTargetAreas === 'function') populateTargetAreas();
         if (typeof renderCams === 'function') renderCams();
     } catch(err) {
         alert('خطأ أثناء الترحيل: ' + err.message);
     }
 };
 
-window.executeBulkDelete = async function() {
-    const selectedIds = getActiveSelectedIds();
-    if (selectedIds.length === 0) return alert('⚠️ يرجى تحديد القنوات المراد حذفها أولاً!');
-    if (!confirm(`⚠️ تحذير: هل أنت متأكد من حذف (${selectedIds.length}) قنوات نهائياً من الموقع؟`)) return;
-
-    try {
-        const updates = {};
-        selectedIds.forEach(id => {
-            updates[`streams/${id}`] = null;
-        });
-        await db.ref().update(updates);
-        alert(`🗑️ تم بنجاح حذف ${selectedIds.length} قناة من السيرفر!`);
-        window.selectAllBulk(false);
-    } catch(err) {
-        alert('خطأ أثناء الحذف: ' + err.message);
-    }
-};
-
+// إنشاء فرع جديد ذكي حسب المجلد المفتوح حالياً
 window.addNewCategoryDirect = async function() {
-    const isIptv = (typeof currentFilter !== 'undefined' && currentFilter === 'IPTV');
-    let promptMsg = isIptv 
-        ? '📺 أدخل اسم التصنيف الفرعي الجديد لقنوات IPTV (مثلاً: مسلسلات تركية، أطفال، أفلام 4K):'
-        : '📁 أدخل اسم القسم الرئيسي الجديد (مثلاً: طولكرم، جنين، منوعات):';
-    
+    if (!currentUser) return alert("يرجى تسجيل الدخول كمسؤول أولاً!");
+
+    const cur = (typeof currentFilter !== 'undefined') ? currentFilter : 'LOCAL';
+    let promptMsg = '';
+    let targetFolder = cur;
+
+    if (cur === 'LOCAL') {
+        promptMsg = '📍 أدخل اسم الفرع المحلي الجديد (مثلاً: نابلس، جنين، القدس، رام الله، الخليل، طولكرم):';
+    } else if (cur === 'ARABIC') {
+        promptMsg = '🌍 أدخل اسم الفرع العربي الجديد (مثلاً: قنوات فلسطين، قنوات إخبارية، قنوات مصرية):';
+    } else if (cur === 'FOREIGN') {
+        promptMsg = '🌐 أدخل اسم الفرع الأجنبي الجديد (مثلاً: أخبار دولية، رياضة عالمية، وثائقيات):';
+    } else if (cur === 'IPTV') {
+        promptMsg = '📺 أدخل اسم التصنيف الفرعي الجديد لقنوات IPTV (مثلاً: مسلسلات تركية، أطفال، أفلام 4K):';
+    } else {
+        promptMsg = '📁 أدخل اسم الفرع الجديد:';
+        targetFolder = 'LOCAL';
+    }
+
     const catName = prompt(promptMsg);
     if (!catName || !catName.trim()) return;
     const cleanName = catName.trim();
 
     try {
-        if (isIptv) {
-            const snap = await db.ref('streams/_config_iptv_subs').once('value');
-            let subs = snap.val() || [];
-            if (!Array.isArray(subs)) subs = Object.values(subs);
-            if (subs.includes(cleanName)) return alert('⚠️ هذا التصنيف موجود بالفعل داخل IPTV!');
-            subs.push(cleanName);
-            await db.ref('streams/_config_iptv_subs').set(subs);
-            alert(`✅ تم إنشاء تصنيف IPTV الجديد [${cleanName}] بنجاح وهو متاح الآن بالشريط والفرز!`);
-        } else {
-            // حفظ مباشر بالفايربيس الأصلي streams/_config_categories
-            const snap = await orderRef.once('value');
-            let cats = snap.val() || [];
-            if (!Array.isArray(cats)) cats = Object.values(cats);
-            const streamAreas = (typeof streamsData !== 'undefined' && Array.isArray(streamsData)) ? streamsData.map(s => s.area).filter(Boolean) : [];
-            cats = [...new Set([...cats, ...streamAreas])];
-            if (cats.includes(cleanName)) return alert('⚠️ هذا القسم موجود بالفعل!');
-            cats.push(cleanName);
-            await orderRef.set(cats);
-            customCategoryOrder = cats;
-            alert(`✅ تم إنشاء قسم [${cleanName}] وحفظه في الفايربيس بنجاح!`);
+        let configKey = 'streams/_config_local_subs';
+
+        if (targetFolder === 'LOCAL') {
+            configKey = 'streams/_config_local_subs';
+        } else if (targetFolder === 'ARABIC') {
+            configKey = 'streams/_config_arabic_subs';
+        } else if (targetFolder === 'FOREIGN') {
+            configKey = 'streams/_config_foreign_subs';
+        } else if (targetFolder === 'IPTV') {
+            configKey = 'streams/_config_iptv_subs';
         }
-        setupFilters();
-        populateTargetAreas();
+
+        const snap = await db.ref(configKey).once('value');
+        let subs = snap.val() || [];
+        if (!Array.isArray(subs)) subs = Object.values(subs);
+
+        if (subs.includes(cleanName)) {
+            return alert(`⚠️ هذا الفرع [${cleanName}] موجود بالفعل!`);
+        }
+
+        subs.push(cleanName);
+        await db.ref(configKey).set(subs);
+
+        if (targetFolder === 'LOCAL') {
+            try {
+                const cSnap = await db.ref('streams/_config_categories').once('value');
+                let legacyCats = cSnap.val() || [];
+                if (!Array.isArray(legacyCats)) legacyCats = Object.values(legacyCats);
+                if (!legacyCats.includes(cleanName)) {
+                    legacyCats.push(cleanName);
+                    await db.ref('streams/_config_categories').set(legacyCats);
+                }
+            } catch(e){}
+        }
+
+        alert(`✅ تم إنشاء فرع [${cleanName}] بنجاح وحفظه في الفايربيس!`);
+        if (typeof setupFilters === 'function') setupFilters();
+        if (typeof populateTargetAreas === 'function') populateTargetAreas();
     } catch(e) {
-        alert('حدث خطأ: ' + e.message);
+        alert('حدث خطأ أثناء الإنشاء: ' + e.message);
     }
 };
+
+
+
 
 
 
@@ -1196,15 +1157,35 @@ function getDynamicSubCategories(folderId) {
       const a = s.area.trim();
       return a !== 'IPTV' && a !== 'قنوات عربية' && a !== 'قنوات أجنبية';
     });
-    const cities = [...new Set(localStreams.map(s => (s.subCategory || s.category || s.area || '').trim()))].filter(Boolean);
-    return cities.sort();
+    const customLocal = (window.localCustomSubs && Array.isArray(window.localCustomSubs)) ? window.localCustomSubs : [];
+    const legacyCats = (window.customCategoryOrder && Array.isArray(window.customCategoryOrder)) ? window.customCategoryOrder : [];
+    const streamCities = localStreams.map(s => (s.subCategory || s.category || s.area || '').trim()).filter(Boolean);
+    const all = [...new Set([...customLocal, ...legacyCats, ...streamCities])].filter(s => s && s !== 'all' && s !== 'FAVORITES' && s !== 'LOCAL' && s !== 'قنوات محلية');
+    return all.sort((a, b) => a.localeCompare('ar'));
   }
   
+  if (folderId === 'ARABIC') {
+    const arabStreams = streamsData.filter(s => s && (s.area === 'قنوات عربية' || s.category === 'قنوات عربية'));
+    const customArab = (window.arabicCustomSubs && Array.isArray(window.arabicCustomSubs)) ? window.arabicCustomSubs : [];
+    const streamSubs = arabStreams.map(s => (s.subCategory || s.category || '').trim()).filter(Boolean);
+    const all = [...new Set([...customArab, ...streamSubs])].filter(s => s && s !== 'قنوات عربية' && s !== 'all' && s !== 'ARABIC');
+    return all.sort((a, b) => a.localeCompare('ar'));
+  }
+
+  if (folderId === 'FOREIGN') {
+    const forStreams = streamsData.filter(s => s && (s.area === 'قنوات أجنبية' || s.category === 'قنوات أجنبية'));
+    const customFor = (window.foreignCustomSubs && Array.isArray(window.foreignCustomSubs)) ? window.foreignCustomSubs : [];
+    const streamSubs = forStreams.map(s => (s.subCategory || s.category || '').trim()).filter(Boolean);
+    const all = [...new Set([...customFor, ...streamSubs])].filter(s => s && s !== 'قنوات أجنبية' && s !== 'all' && s !== 'FOREIGN');
+    return all.sort((a, b) => a.localeCompare('ar'));
+  }
+
   if (folderId === 'IPTV') {
     const iptvStreams = streamsData.filter(s => s && s.area === 'IPTV');
     const defaultSubs = ['أفلام ومسلسلات', 'إخبارية', 'رياضة', 'إسلاميات', 'أطفال', 'وثائقي', 'موسيقى', 'مشكّل ومنوعات'];
     const customSubs = (window.iptvCustomSubs && Array.isArray(window.iptvCustomSubs)) ? window.iptvCustomSubs : [];
-    let subs = [...new Set([...defaultSubs, ...customSubs, ...iptvStreams.map(s => (s.category || s.subCategory || 'مشكّل ومنوعات').trim())])].filter(Boolean);
+    const streamSubs = iptvStreams.map(s => (s.category || s.subCategory || 'مشكّل ومنوعات').trim());
+    let subs = [...new Set([...defaultSubs, ...customSubs, ...streamSubs])].filter(Boolean);
     
     try {
       const _rawSub = localStorage.getItem('albasem_subscriber');
@@ -1225,18 +1206,6 @@ function getDynamicSubCategories(folderId) {
       return ia - ib;
     });
     return subs;
-  }
-
-  if (folderId === 'ARABIC') {
-    const arabStreams = streamsData.filter(s => s && (s.area === 'قنوات عربية' || s.category === 'قنوات عربية'));
-    const subs = [...new Set(arabStreams.map(s => (s.subCategory || s.category || '').trim()))].filter(s => s && s !== 'قنوات عربية');
-    return subs.sort();
-  }
-
-  if (folderId === 'FOREIGN') {
-    const forStreams = streamsData.filter(s => s && (s.area === 'قنوات أجنبية' || s.category === 'قنوات أجنبية'));
-    const subs = [...new Set(forStreams.map(s => (s.subCategory || s.category || '').trim()))].filter(s => s && s !== 'قنوات أجنبية');
-    return subs.sort();
   }
 
   return [];
