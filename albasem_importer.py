@@ -657,32 +657,72 @@ class AlbasemImporterGtk(Gtk.Window):
 
     def _sync_firebase_worker(self):
         try:
-            r1 = session.get(f"{DB_BASE}/streams/_config_categories.json", timeout=6)
-            cats = r1.json()
-            if cats and isinstance(cats, list):
-                self.firebase_categories = [c for c in cats if c and c != "all"]
+            res = session.get(f"{DB_BASE}/streams.json", timeout=10)
+            data = res.json()
+            
+            # الأقسام الأربعة الثابتة والرسمية للمنصة
+            official_mains = ["IPTV", "قنوات عربية", "قنوات محلية", "قنوات أجنبية"]
+            self.tree_structure = {m: set() for m in official_mains}
+            
+            if data and isinstance(data, dict):
+                for k, v in data.items():
+                    if not isinstance(v, dict): continue
+                    
+                    # استنتاج القسم الرئيسي الحقيقي
+                    cat = v.get("category") or v.get("area") or "IPTV"
+                    if cat not in official_mains:
+                        if any(w in str(cat) for w in ["محلي", "نابلس", "رام الله", "القدس", "جنين", "الخليل", "فلسطين"]):
+                            main_cat = "قنوات محلية"
+                        elif any(w in str(cat) for w in ["عرب", "مصر", "سوري", "لبنان", "عراق", "سعودي"]):
+                            main_cat = "قنوات عربية"
+                        elif any(w in str(cat) for w in ["أجنب", "غرب", "تركي"]):
+                            main_cat = "قنوات أجنبية"
+                        else:
+                            main_cat = "IPTV"
+                    else:
+                        main_cat = cat
 
-            r2 = session.get(f"{DB_BASE}/streams/_config_iptv_subs.json", timeout=6)
-            subs = r2.json()
-            if subs and isinstance(subs, list):
-                self.firebase_subs = [s for s in subs if s]
+                    # استخراج التفريع التابع لهذا القسم
+                    sub = v.get("subCategory")
+                    if not sub and main_cat == "قنوات محلية":
+                        sub = v.get("area") or "عام"
+                    elif not sub:
+                        sub = "مشكّل ومنوعات"
 
+                    sub_str = str(sub).strip()
+                    if sub_str and sub_str != "all" and sub_str != main_cat:
+                        self.tree_structure[main_cat].add(sub_str)
+
+            self.firebase_categories = official_mains
             GLib.idle_add(self._update_combos_ui)
-        except Exception:
-            pass
+        except Exception as e:
+            print("Sync Error:", e)
+
+    def _on_main_combo_changed(self, combo):
+        selected_main = combo.get_child().get_text().strip() if combo.get_child() else combo.get_active_text()
+        subs = sorted(list(self.tree_structure.get(selected_main, []))) if hasattr(self, 'tree_structure') else []
+        if not subs:
+            subs = ["مشكّل ومنوعات"]
+        self.target_sub_combo.remove_all()
+        for s in subs:
+            self.target_sub_combo.append_text(s)
+        self.target_sub_combo.get_child().set_text(subs[0])
 
     def _update_combos_ui(self):
         self.target_main_combo.remove_all()
         for c in self.firebase_categories:
             self.target_main_combo.append_text(c)
-        self.target_main_combo.get_child().set_text(self.firebase_categories[0] if self.firebase_categories else "IPTV")
-
-        self.target_sub_combo.remove_all()
-        for s in self.firebase_subs:
-            self.target_sub_combo.append_text(s)
-        self.target_sub_combo.get_child().set_text(self.firebase_subs[0] if self.firebase_subs else "أفلام ومسلسلات")
-
-        self.status_lbl.set_text("✅ تم مزامنة أقسام وتفريعات الباسم سات لايف من الفايربيس!")
+        
+        default_main = "IPTV"
+        self.target_main_combo.get_child().set_text(default_main)
+        
+        # ربط التغيير التلقائي للتفريعات
+        if not hasattr(self, '_main_combo_connected'):
+            self.target_main_combo.connect("changed", self._on_main_combo_changed)
+            self._main_combo_connected = True
+            
+        self._on_main_combo_changed(self.target_main_combo)
+        self.status_lbl.set_text("✅ تم مزامنة الأقسام الرئيسية وتفريعاتها لايف من الفايربيس!")
 
 
     def on_clean_duplicates_clicked(self, widget):

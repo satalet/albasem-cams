@@ -139,18 +139,54 @@ async def sniff_and_sync(target_url, area=None, custom_title=None, stream_id=Non
 
     # التحديث في فايربيس
     token = get_auth_token()
-    # موائمة الهيكل الجديد لمنظومة الباسم سات
-    main_cat = final_area if final_area in ["IPTV", "قنوات عربية", "قنوات محلية", "قنوات أجنبية"] else "قنوات محلية"
+    # استنتاج ذكي للقسم والتفريع والترتيب
+    detected_sub = "مشكّل ومنوعات"
+    lower_title = final_title.lower()
+    
+    # 1. فحص هل القناة محلية أو تتبع لمدينة
+    local_cities = ["نابلس", "رام الله", "القدس", "غزة", "جنين", "الخليل", "طولكرم", "بيت لحم", "أريحا", "قلقيلية"]
+    matched_city = next((city for city in local_cities if city in final_title or city in final_area), None)
+    
+    if matched_city or "فلسطين" in final_title or "palestine" in lower_title:
+        main_cat = "قنوات محلية"
+        detected_sub = matched_city if matched_city else "فلسطين"
+    elif any(k in lower_title for k in ["sport", "bein", "كأس", "رياض"]):
+        main_cat = "IPTV"
+        detected_sub = "رياضة"
+    elif any(k in lower_title for k in ["news", "جزيرة", "حدث", "عربية", "إخبار"]):
+        main_cat = "قنوات عربية"
+        detected_sub = "إخبارية"
+    elif final_area in ["IPTV", "قنوات عربية", "قنوات محلية", "قنوات أجنبية"]:
+        main_cat = final_area
+        detected_sub = "عام"
+    else:
+        main_cat = "IPTV"
+        detected_sub = "مشكّل ومنوعات"
+
+    # 2. حساب رقم الترتيب التلقائي لجعل القناة في نهاية القائمة
+    next_order = 1
+    if not stream_id:
+        try:
+            req_check = urllib.request.Request(f"{FIREBASE_URL}.json?shallow=false")
+            with urllib.request.urlopen(req_check, timeout=5) as r:
+                curr_data = json.loads(r.read().decode('utf-8'))
+                if curr_data and isinstance(curr_data, dict):
+                    orders = [v.get("order", 0) for v in curr_data.values() if isinstance(v, dict) and isinstance(v.get("order"), int)]
+                    if orders:
+                        next_order = max(orders) + 1
+        except Exception:
+            pass
+
     payload = {
         "name": final_title,
         "title": final_title,
         "category": main_cat,
-        "subCategory": "مشكّل ومنوعات",
-        "area": final_area,
+        "subCategory": detected_sub,
+        "area": matched_city if matched_city else main_cat,
         "url": valid_url,
         "type": "hls",
         "status": "active",
-        "order": 1,
+        "order": next_order,
         "source_url": target_url
     }
 
