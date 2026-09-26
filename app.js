@@ -1158,9 +1158,8 @@ function getDynamicSubCategories(folderId) {
       return a !== 'IPTV' && a !== 'قنوات عربية' && a !== 'قنوات أجنبية';
     });
     const customLocal = (window.localCustomSubs && Array.isArray(window.localCustomSubs)) ? window.localCustomSubs : [];
-    const legacyCats = (window.customCategoryOrder && Array.isArray(window.customCategoryOrder)) ? window.customCategoryOrder : [];
     const streamCities = localStreams.map(s => (s.subCategory || s.category || s.area || '').trim()).filter(Boolean);
-    const all = [...new Set([...customLocal, ...legacyCats, ...streamCities])].filter(s => s && !['all', 'FAVORITES', 'LOCAL', 'قنوات محلية', 'IPTV', 'قنوات عربية', 'قنوات عربيه', 'قنوات أجنبية'].includes(s));
+    const all = [...new Set([...customLocal, ...streamCities])].filter(s => s && s !== 'all' && s !== 'FAVORITES' && s !== 'LOCAL' && s !== 'قنوات محلية' && !['IPTV', 'قنوات عربية', 'قنوات عربيه', 'قنوات أجنبية'].includes(s));
     return all.sort((a, b) => a.localeCompare('ar'));
   }
   
@@ -1168,7 +1167,7 @@ function getDynamicSubCategories(folderId) {
     const arabStreams = streamsData.filter(s => s && (s.area === 'قنوات عربية' || s.category === 'قنوات عربية'));
     const customArab = (window.arabicCustomSubs && Array.isArray(window.arabicCustomSubs)) ? window.arabicCustomSubs : [];
     const streamSubs = arabStreams.map(s => (s.subCategory || s.category || '').trim()).filter(Boolean);
-    const all = [...new Set([...customArab, ...streamSubs])].filter(s => s && s !== 'قنوات عربية' && s !== 'all' && s !== 'ARABIC');
+    const all = [...new Set([...customArab, ...streamSubs])].filter(s => s && s !== 'قنوات عربية' && s !== 'قنوات عربيه' && s !== 'all' && s !== 'ARABIC');
     return all.sort((a, b) => a.localeCompare('ar'));
   }
 
