@@ -566,7 +566,7 @@ const GLOBAL_MEDIA_DICTIONARY = [
   "تركيا", "إسطنبول", "أمريكا", "بريطانيا", "فرنسا", "ألمانيا", "إسبانيا", "إيطاليا", "روسيا",
   "palestine", "jerusalem", "gaza", "jordan", "egypt", "cairo", "syria", "damascus", "lebanon", "beirut",
   "iraq", "saudi", "riyadh", "uae", "dubai", "qatar", "doha", "kuwait", "turkey", "istanbul",
-  "france", "germany", "spain", "italy", "russia", "england", "london", "america", "usa", "uk",
+  "france", "germany", "spain", "espana", "ispanya", "italy", "russia", "england", "london", "america", "usa", "uk",
 
   // شبكات وقنوات شهيرة وتصنيفات إعلامية
   "الجزيرة", "العربية", "الحدث", "الميادين", "الغد", "الشرق", "المملكة", "رؤيا", "تلفزيون",
@@ -615,7 +615,7 @@ function getSearchSuggestion(query) {
 
     let bestMatch = qw;
     let minDistance = 999;
-    const maxAllowedDist = qw.length >= 6 ? 2 : 1;
+    const maxAllowedDist = qw.length >= 7 ? 3 : (qw.length >= 4 ? 2 : 1);
 
     for (const [normWord, originalWord] of dictionary.entries()) {
       if (Math.abs(normWord.length - qw.length) <= maxAllowedDist) {
