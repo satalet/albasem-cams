@@ -556,6 +556,29 @@ function matchesSmartSearch(stream, query) {
   return true;
 }
 
+// قاموس مرجعي شامل للبث، الدول، والكلمات الشائعة (عربي وإنجليزي)
+const GLOBAL_MEDIA_DICTIONARY = [
+  // دول ومدن عربية وعالمية
+  "فلسطين", "القدس", "غزة", "رام الله", "نابلس", "الخليل", "جنين", "طولكرم", "بيت لحم", "أريحا",
+  "الأردن", "عمان", "مصر", "القاهرة", "سوريا", "دمشق", "لبنان", "بيروت", "العراق", "بغداد",
+  "السعودية", "الرياض", "جدة", "الإمارات", "دبي", "أبوظبي", "قطر", "الدوحة", "الكويت", "البحرين",
+  "عمان", "اليمن", "صنعاء", "ليبيا", "طرابلس", "تونس", "الجزائر", "المغرب", "الرباط", "السودان",
+  "تركيا", "إسطنبول", "أمريكا", "بريطانيا", "فرنسا", "ألمانيا", "إسبانيا", "إيطاليا", "روسيا",
+  "palestine", "jerusalem", "gaza", "jordan", "egypt", "cairo", "syria", "damascus", "lebanon", "beirut",
+  "iraq", "saudi", "riyadh", "uae", "dubai", "qatar", "doha", "kuwait", "turkey", "istanbul",
+  "france", "germany", "spain", "italy", "russia", "england", "london", "america", "usa", "uk",
+
+  // شبكات وقنوات شهيرة وتصنيفات إعلامية
+  "الجزيرة", "العربية", "الحدث", "الميادين", "الغد", "الشرق", "المملكة", "رؤيا", "تلفزيون",
+  "فلسطين اليوم", "فلسطين الغد", "تلفزيون الفجر", "تلفزيون معا", "المنار", "الجديد", "العربي",
+  "بي إن سبورت", "أبوظبي الرياضية", "الكأس", "دبي الرياضية", "السعودية الرياضية", "أون تايم",
+  "إم بي سي", "ناشيونال جيوغرافيك", "الوثائقية", "كارتون", "أطفال", "قرآن", "سنة", "إسلامية",
+  "أخبار", "رياضة", "أفلام", "مسلسلات", "موسيقى", "مباشر", "بث", "كاميرات", "كاميرا", "ستلايت",
+  "aljazeera", "alarabiya", "alhadath", "almayadeen", "mbc", "beinsports", "bein", "sports",
+  "news", "movies", "cinema", "action", "drama", "series", "music", "documentary", "kids",
+  "cartoon", "quran", "islamic", "live", "stream", "channel", "camera", "cams", "satellite"
+];
+
 function getSearchSuggestion(query) {
   if (!query || query.length < 3) return null;
   const qNorm = normalizeArabic(query);
@@ -563,6 +586,8 @@ function getSearchSuggestion(query) {
   if (!qWords.length) return null;
 
   const dictionary = new Map();
+
+  // 1. كلمات القنوات المحلية من المنصة
   const allData = (typeof streamsData !== 'undefined' && Array.isArray(streamsData)) ? streamsData : (Array.isArray(window.streamsData) ? window.streamsData : []);
   if (allData.length > 0) {
     allData.forEach(s => {
@@ -575,6 +600,14 @@ function getSearchSuggestion(query) {
       });
     });
   }
+
+  // 2. إثراء القاموس بالكلمات العامة لو لم تكن موجودة
+  GLOBAL_MEDIA_DICTIONARY.forEach(word => {
+    const norm = normalizeArabic(word);
+    if (norm.length >= 3 && !dictionary.has(norm)) {
+      dictionary.set(norm, word);
+    }
+  });
 
   let hasCorrection = false;
   const correctedWords = qWords.map(qw => {
