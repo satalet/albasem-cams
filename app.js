@@ -681,6 +681,17 @@ function setupSearchBar() {
   });
 }
 
+// كتم جميع شاشات الشبكة بشكل قاطع
+function muteAllGridVideos() {
+  document.querySelectorAll('#cams-grid video, #cams-grid audio').forEach(v => {
+    try {
+      v.muted = true;
+      v.volume = 0;
+      v.setAttribute('muted', '');
+    } catch(e){}
+  });
+}
+
 window.muteAllGridVideos = muteAllGridVideos;
 
 
