@@ -1242,6 +1242,40 @@ function getDynamicSubCategories(folderId) {
   return [];
 }
 
+// دوال درج التفرعات العائم التفاعلي (Floating Bottom Sheet Drawer)
+function closeSubCategoryDrawer() {
+  const drawer = document.getElementById('subcat-floating-drawer');
+  if (drawer) {
+    drawer.classList.add('opacity-0', 'pointer-events-none');
+    const sheet = drawer.querySelector('#subcat-drawer-sheet');
+    if (sheet) sheet.classList.add('translate-y-full');
+    setTimeout(() => { drawer.classList.add('hidden'); }, 280);
+  }
+}
+window.closeSubCategoryDrawer = closeSubCategoryDrawer;
+
+function openSubCategoryDrawer() {
+  const drawer = document.getElementById('subcat-floating-drawer');
+  if (drawer) {
+    drawer.classList.remove('hidden', 'pointer-events-none');
+    void drawer.offsetWidth;
+    drawer.classList.remove('opacity-0');
+    const sheet = drawer.querySelector('#subcat-drawer-sheet');
+    if (sheet) sheet.classList.remove('translate-y-full');
+  }
+}
+window.openSubCategoryDrawer = openSubCategoryDrawer;
+
+function toggleSubCategoryDrawer() {
+  const drawer = document.getElementById('subcat-floating-drawer');
+  if (!drawer || drawer.classList.contains('hidden') || drawer.classList.contains('opacity-0')) {
+    openSubCategoryDrawer();
+  } else {
+    closeSubCategoryDrawer();
+  }
+}
+window.toggleSubCategoryDrawer = toggleSubCategoryDrawer;
+
 function setupFilters() {
   const filterBox = document.getElementById('filter-buttons');
   if (!filterBox) return;
@@ -1260,10 +1294,10 @@ function setupFilters() {
     }
   }
 
-  filterBox.className = "flex flex-col w-full gap-2.5";
+  filterBox.className = "flex flex-col w-full gap-2";
   filterBox.innerHTML = '';
 
-  // 1. الشريط العلوي الرئيسي (صف واحد ملموم بدون سحب شاشة)
+  // 1. الشريط العلوي الرئيسي (صف واحد ملموم ومريح للعين)
   const mainBar = document.createElement('div');
   mainBar.className = "grid grid-cols-5 gap-1 sm:gap-2 w-full bg-slate-900/90 p-1 sm:p-1.5 rounded-2xl border border-slate-800 shadow-xl select-none";
 
@@ -1292,6 +1326,13 @@ function setupFilters() {
         localStorage.setItem('albasem_active_sub', 'all');
         setupFilters();
         renderCams();
+        if (folder.id !== 'FAVORITES') {
+          setTimeout(() => { openSubCategoryDrawer(); }, 60);
+        }
+      } else {
+        if (folder.id !== 'FAVORITES') {
+          toggleSubCategoryDrawer();
+        }
       }
     };
 
@@ -1299,104 +1340,145 @@ function setupFilters() {
   });
   filterBox.appendChild(mainBar);
 
-  // 2. صندوق التفرعات العمودية (ينزل تحت المجلد عمودياً بشبكة عمودين للجوال)
+  // إزالة أي درج قديم من الصفحة لضمان النظافة
+  const oldDrawer = document.getElementById('subcat-floating-drawer');
+  if (oldDrawer) oldDrawer.remove();
+
+  // 2. سطر المسار النحيف (Breadcrumb Strip) والدرج التفاعلي للمجلدات الفرعية
   if (currentFilter !== 'FAVORITES') {
     const subCategories = getDynamicSubCategories(currentFilter);
     const curFolderObj = MAIN_FOLDERS.find(f => f.id === currentFilter);
+    const activeSubTitle = (!currentSubFilter || currentSubFilter === 'all') ? 'عرض الكل' : currentSubFilter;
 
-    const subContainer = document.createElement('div');
-    subContainer.id = 'vertical-sub-folders';
-    subContainer.className = "w-full bg-slate-900/70 border border-slate-800/90 rounded-2xl p-2.5 shadow-md flex flex-col gap-2";
-
-    // ترويسة المجلد
-    const headerTitle = document.createElement('div');
-    headerTitle.className = "flex items-center justify-between px-1 text-xs text-slate-400 border-b border-slate-800/70 pb-1.5";
-    headerTitle.innerHTML = `
-      <span class="flex items-center gap-1.5 font-bold text-slate-200">
-        <i class="fa-solid ${curFolderObj ? curFolderObj.icon : ''}"></i>
-        <span>تفرعات ${curFolderObj ? curFolderObj.title : ''}</span>
-      </span>
-      <span class="text-[10px] text-slate-400 font-mono bg-slate-800/90 px-2 py-0.5 rounded-full border border-slate-700/60">
-        ${subCategories.length + 1} أقسام
-      </span>
+    // شريط مسار مضغوط (سطر واحد لا يشغل مساحة أبداً)
+    const breadcrumb = document.createElement('div');
+    breadcrumb.className = "w-full flex items-center justify-between bg-slate-900/80 border border-slate-800/90 rounded-xl px-3 py-2 text-xs select-none shadow-md cursor-pointer hover:bg-slate-800/70 transition";
+    breadcrumb.onclick = () => openSubCategoryDrawer();
+    breadcrumb.innerHTML = `
+      <div class="flex items-center gap-2 truncate">
+        <span class="text-sky-400 font-bold flex items-center gap-1.5 shrink-0">
+          <i class="fa-solid ${curFolderObj ? curFolderObj.icon : ''} text-[11px]"></i>
+          <span>${curFolderObj ? curFolderObj.title : ''}</span>
+        </span>
+        <span class="text-slate-600 font-mono">/</span>
+        <span class="text-sky-200 font-semibold truncate bg-sky-950/60 text-[11px] px-2.5 py-0.5 rounded-lg border border-sky-800/50">${activeSubTitle}</span>
+      </div>
+      <div class="flex items-center gap-1.5 text-[11px] text-slate-400 shrink-0 font-medium bg-slate-800/80 px-2 py-1 rounded-lg border border-slate-700/60">
+        <span>تغيير القسم</span>
+        <i class="fa-solid fa-chevron-down text-[9px] text-sky-400"></i>
+      </div>
     `;
-    subContainer.appendChild(headerTitle);
+    filterBox.appendChild(breadcrumb);
 
-    // شبكة الفروع العمودية (2 كولوم بعرض شاشة الجوال)
-    const gridSubs = document.createElement('div');
-    gridSubs.className = "grid grid-cols-2 sm:grid-cols-3 gap-2 w-full pt-0.5";
+    // 3. بناء درج التفرعات العائم (Floating Bottom Sheet Drawer)
+    const drawer = document.createElement('div');
+    drawer.id = 'subcat-floating-drawer';
+    drawer.className = "fixed inset-0 z-[100] bg-black/75 backdrop-blur-sm transition-opacity duration-300 hidden opacity-0 flex flex-col justify-end select-none";
+    
+    drawer.onclick = (e) => {
+      if (e.target === drawer) closeSubCategoryDrawer();
+    };
+
+    const sheet = document.createElement('div');
+    sheet.id = 'subcat-drawer-sheet';
+    sheet.className = "w-full max-h-[80vh] bg-slate-900 border-t border-slate-700/80 rounded-t-3xl p-4 flex flex-col gap-3 shadow-2xl transition-transform duration-300 transform translate-y-full";
+
+    sheet.innerHTML = `
+      <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-1"></div>
+      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid ${curFolderObj ? curFolderObj.icon : ''} text-base text-sky-400"></i>
+          <h3 class="font-bold text-sm sm:text-base text-white">تفرعات ${curFolderObj ? curFolderObj.title : ''}</h3>
+          <span class="text-[10px] font-mono bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-slate-700">${subCategories.length + 1} خيارات</span>
+        </div>
+        <button type="button" onclick="closeSubCategoryDrawer()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center border border-slate-700 transition">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+    `;
+
+    const scrollList = document.createElement('div');
+    scrollList.className = "flex flex-col gap-2 overflow-y-auto max-h-[58vh] pr-1 pb-4";
 
     // زر "عرض الكل"
+    const isAllActive = !currentSubFilter || currentSubFilter === 'all';
     const allBtn = document.createElement('button');
     allBtn.type = 'button';
-    const isAllActive = !currentSubFilter || currentSubFilter === 'all';
-    allBtn.className = `py-2.5 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-between ${
-      isAllActive 
-        ? 'bg-sky-600/30 border-sky-500 text-sky-300 shadow-sm' 
-        : 'bg-slate-800/80 border-slate-700/70 text-slate-300 hover:bg-slate-800'
+    allBtn.className = `w-full py-3 px-3.5 rounded-xl border text-sm font-bold transition flex items-center justify-between ${
+      isAllActive
+        ? 'bg-sky-600/30 border-sky-500 text-sky-300 shadow-md ring-1 ring-sky-500/50'
+        : 'bg-slate-800/80 border-slate-700/60 text-slate-200 hover:bg-slate-800'
     }`;
     allBtn.innerHTML = `
-      <span class="truncate">عرض الكل</span>
-      <i class="fa-solid fa-layer-group text-[10px] opacity-70"></i>
+      <div class="flex items-center gap-2.5">
+        <i class="fa-solid fa-layer-group text-sky-400"></i>
+        <span>عرض الكل (${curFolderObj ? curFolderObj.title : ''})</span>
+      </div>
+      <i class="fa-solid ${isAllActive ? 'fa-check text-sky-400' : 'fa-chevron-left text-slate-500'} text-xs"></i>
     `;
     allBtn.onclick = () => {
       currentSubFilter = 'all';
       window.activeUnlockedSub = null;
       window.iptvDisplayLimit = 40;
       localStorage.setItem('albasem_active_sub', 'all');
+      closeSubCategoryDrawer();
       setupFilters();
       renderCams();
     };
-    gridSubs.appendChild(allBtn);
+    scrollList.appendChild(allBtn);
 
-    // الأزرار الفرعية الديناميكية
+    // إضافة التفرعات الفردية
     subCategories.forEach(sub => {
       const isSubActive = currentSubFilter === sub;
       const isSubLocked = (window.iptvLockedSubs || []).includes(sub);
       const sBtn = document.createElement('button');
       sBtn.type = 'button';
-      sBtn.className = `py-2.5 px-3 rounded-xl border text-xs font-semibold transition flex items-center justify-between ${
-        isSubActive 
-          ? 'bg-sky-600/30 border-sky-500 text-sky-300 shadow-sm' 
-          : (isSubLocked ? 'bg-amber-950/40 border-amber-600/40 text-amber-300 hover:bg-amber-900/50' : 'bg-slate-800/80 border-slate-700/70 text-slate-300 hover:bg-slate-800')
+      sBtn.className = `w-full py-3 px-3.5 rounded-xl border text-sm font-semibold transition flex items-center justify-between ${
+        isSubActive
+          ? 'bg-sky-600/30 border-sky-500 text-sky-300 shadow-md ring-1 ring-sky-500/50'
+          : (isSubLocked ? 'bg-amber-950/30 border-amber-600/30 text-amber-200 hover:bg-amber-900/40' : 'bg-slate-800/80 border-slate-700/60 text-slate-200 hover:bg-slate-800')
       }`;
-      
+
       sBtn.innerHTML = `
-        <span class="truncate">${sub}</span>
-        <i class="fa-solid ${isSubLocked ? 'fa-lock text-amber-400' : 'fa-folder'} text-[10px] opacity-60"></i>
+        <div class="flex items-center gap-2.5 truncate">
+          <i class="fa-solid ${isSubLocked ? 'fa-lock text-amber-400' : 'fa-folder text-sky-400'} text-xs"></i>
+          <span class="truncate">${sub}</span>
+        </div>
+        <i class="fa-solid ${isSubActive ? 'fa-check text-sky-400' : 'fa-chevron-left text-slate-500'} text-xs"></i>
       `;
 
       sBtn.onclick = () => {
-        if (currentSubFilter !== sub) {
-          if (isSubLocked && window.activeUnlockedSub !== sub) {
-            showParentalPinModal(() => {
-              window.activeUnlockedSub = sub;
-              currentSubFilter = sub;
-              window.iptvDisplayLimit = 40;
-              localStorage.setItem('albasem_active_sub', sub);
-              setupFilters();
-              renderCams();
-            });
-            return;
-          }
-          window.activeUnlockedSub = null;
-          currentSubFilter = sub;
-          window.iptvDisplayLimit = 40;
-          localStorage.setItem('albasem_active_sub', sub);
-          setupFilters();
-          renderCams();
+        if (isSubLocked && window.activeUnlockedSub !== sub) {
+          showParentalPinModal(() => {
+            window.activeUnlockedSub = sub;
+            currentSubFilter = sub;
+            window.iptvDisplayLimit = 40;
+            localStorage.setItem('albasem_active_sub', sub);
+            closeSubCategoryDrawer();
+            setupFilters();
+            renderCams();
+          });
+          return;
         }
+        window.activeUnlockedSub = null;
+        currentSubFilter = sub;
+        window.iptvDisplayLimit = 40;
+        localStorage.setItem('albasem_active_sub', sub);
+        closeSubCategoryDrawer();
+        setupFilters();
+        renderCams();
       };
 
-      gridSubs.appendChild(sBtn);
+      scrollList.appendChild(sBtn);
     });
 
-    subContainer.appendChild(gridSubs);
-    filterBox.appendChild(subContainer);
+    sheet.appendChild(scrollList);
+    drawer.appendChild(sheet);
+    document.body.appendChild(drawer);
   }
 }
 
-// تثبيت مكان الزبون وتحديث رابط الصفحة لحفظ الفولدر
+
 function filterByArea(area) {
   currentFilter = area; localStorage.setItem('albasem_active_cat', area);
   currentSubFilter = 'all';
