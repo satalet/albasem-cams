@@ -2781,3 +2781,34 @@ document.addEventListener('keydown', (e) => {
     }
   }, { passive: true });
 })();
+
+
+window.localCustomSubs = [];
+window.arabicCustomSubs = [];
+window.foreignCustomSubs = [];
+
+if (typeof db !== 'undefined') {
+  try {
+    db.ref('streams/_config_local_subs').on('value', snap => {
+      let val = snap.val() || [];
+      if (!Array.isArray(val)) val = Object.values(val);
+      window.localCustomSubs = val;
+      if (typeof setupFilters === 'function') setupFilters();
+      if (typeof populateTargetAreas === 'function') populateTargetAreas();
+    });
+    db.ref('streams/_config_arabic_subs').on('value', snap => {
+      let val = snap.val() || [];
+      if (!Array.isArray(val)) val = Object.values(val);
+      window.arabicCustomSubs = val;
+      if (typeof setupFilters === 'function') setupFilters();
+      if (typeof populateTargetAreas === 'function') populateTargetAreas();
+    });
+    db.ref('streams/_config_foreign_subs').on('value', snap => {
+      let val = snap.val() || [];
+      if (!Array.isArray(val)) val = Object.values(val);
+      window.foreignCustomSubs = val;
+      if (typeof setupFilters === 'function') setupFilters();
+      if (typeof populateTargetAreas === 'function') populateTargetAreas();
+    });
+  } catch(e) {}
+}
