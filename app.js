@@ -1579,40 +1579,43 @@ function renderCategoryOrderList() {
   if (!listEl) return;
   listEl.innerHTML = '';
 
+  const cur = (typeof currentFilter !== 'undefined') ? currentFilter : 'LOCAL';
+
   tempCategoryOrder.forEach((cat, idx) => {
     let streamCount = 0;
     if (typeof streamsData !== 'undefined' && Array.isArray(streamsData)) {
-      if (isOrderingIptvMode) {
-        streamCount = streamsData.filter(s => s && s.area === 'IPTV' && (s.subCategory === cat || s.category === cat)).length;
+      if (cur === 'IPTV') {
+        streamCount = streamsData.filter(s => s && s.area === 'IPTV' && ((s.subCategory || '').trim() === cat || (s.category || '').trim() === cat)).length;
+      } else if (cur === 'LOCAL') {
+        streamCount = streamsData.filter(s => {
+          if (!s || !s.area) return false;
+          const a = s.area.trim();
+          if (['IPTV', 'قنوات عربية', 'قنوات أجنبية'].includes(a)) return false;
+          const sub = (s.subCategory || s.category || s.area || '').trim();
+          return sub === cat || a === cat;
+        }).length;
+      } else if (cur === 'ARABIC') {
+        streamCount = streamsData.filter(s => s && (s.area === 'قنوات عربية' || s.category === 'قنوات عربية') && (s.subCategory || s.category || '').trim() === cat).length;
+      } else if (cur === 'FOREIGN') {
+        streamCount = streamsData.filter(s => s && (s.area === 'قنوات أجنبية' || s.category === 'قنوات أجنبية') && (s.subCategory || s.category || '').trim() === cat).length;
       } else {
         streamCount = streamsData.filter(s => s && s.area === cat).length;
       }
     }
 
     const item = document.createElement('div');
-    item.className = 'flex items-center justify-between bg-slate-900 border border-slate-800 px-3 py-2 rounded-lg text-xs gap-2';
+    item.className = 'flex items-center justify-between bg-slate-900 border border-slate-800/80 px-3 py-2 rounded-lg text-xs hover:border-slate-700 transition-colors';
     item.innerHTML = `
-      <div class="flex items-center gap-2 overflow-hidden">
-        <span class="w-5 h-5 rounded-full bg-slate-800 text-emerald-400 flex items-center justify-center text-[10px] shrink-0 font-bold">${idx + 1}</span>
-        <span class="font-bold text-slate-200 truncate">${cat}</span>
-        <span class="text-[10px] text-slate-500 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 shrink-0">(${streamCount} قناة)</span>
+      <div class="flex items-center gap-2">
+        <span class="w-5 h-5 rounded-full bg-slate-800 text-amber-400 font-bold flex items-center justify-center text-[10px] shrink-0">${idx + 1}</span>
+        <span class="font-bold text-slate-200">${cat}</span>
+        <span class="text-[10px] bg-slate-800/60 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700/40">(${streamCount} قناة)</span>
       </div>
-      <div class="flex items-center gap-1 shrink-0">
-        <button type="button" onclick="toggleCategoryLock('${cat.replace(/'/g, "\'")}')" class="w-7 h-7 ${((window.iptvLockedSubs || []).includes(cat)) ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' : 'bg-slate-800 hover:bg-slate-700 text-slate-400'} rounded flex items-center justify-center transition" title="${((window.iptvLockedSubs || []).includes(cat)) ? 'إلغاء قفل هذا القسم' : 'قفل هذا القسم بالكامل برمز 1415'}">
-          <i class="fa-solid ${((window.iptvLockedSubs || []).includes(cat)) ? 'fa-lock text-amber-400' : 'fa-lock-open'} text-[10px]"></i>
-        </button>
-        <button type="button" onclick="renameCategory('${cat.replace(/'/g, "\\'")}')" class="w-7 h-7 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded flex items-center justify-center transition" title="إعادة تسمية">
-          <i class="fa-solid fa-pen text-[10px]"></i>
-        </button>
-        <button type="button" onclick="deleteCategory('${cat.replace(/'/g, "\\'")}')" class="w-7 h-7 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded flex items-center justify-center transition" title="حذف">
-          <i class="fa-solid fa-trash text-[10px]"></i>
-        </button>
-        <button type="button" onclick="moveCategory(${idx}, -1)" class="w-7 h-7 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded flex items-center justify-center transition" ${idx === 0 ? 'disabled style="opacity:0.3"' : ''} title="تقديم">
-          <i class="fa-solid fa-arrow-up text-[10px]"></i>
-        </button>
-        <button type="button" onclick="moveCategory(${idx}, 1)" class="w-7 h-7 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded flex items-center justify-center transition" ${idx === tempCategoryOrder.length - 1 ? 'disabled style="opacity:0.3"' : ''} title="تأخير">
-          <i class="fa-solid fa-arrow-down text-[10px]"></i>
-        </button>
+      <div class="flex items-center gap-1">
+        <button onclick="moveCategory(${idx}, -1)" class="p-1 hover:text-amber-400 text-slate-400 transition-colors" title="تحريك لأعلى"><i class="fa-solid fa-arrow-up text-[10px]"></i></button>
+        <button onclick="moveCategory(${idx}, 1)" class="p-1 hover:text-amber-400 text-slate-400 transition-colors" title="تحريك لأسفل"><i class="fa-solid fa-arrow-down text-[10px]"></i></button>
+        <button onclick="renameCategory('${cat.replace(/'/g, "\\'")}')" class="p-1 hover:text-blue-400 text-slate-400 transition-colors" title="إعادة تسمية"><i class="fa-solid fa-pen text-[10px]"></i></button>
+        <button onclick="deleteCategory('${cat.replace(/'/g, "\\'")}')" class="p-1 hover:text-rose-400 text-slate-400 transition-colors" title="حذف"><i class="fa-solid fa-trash text-[10px]"></i></button>
       </div>
     `;
     listEl.appendChild(item);
@@ -1621,60 +1624,60 @@ function renderCategoryOrderList() {
 
 async function renameCategory(oldName) {
   if (!currentUser) return alert("يرجى تسجيل الدخول كمسؤول أولاً!");
-  const typeTitle = isOrderingIptvMode ? `تفريع IPTV "${oldName}"` : `قسم "${oldName}"`;
-  const newName = prompt(`أدخل الاسم الجديد لـ ${typeTitle}:`, oldName);
+  const newName = prompt(`أدخل الاسم الجديد للفرع بدلاً من "${oldName}":`, oldName);
   if (!newName || !newName.trim() || newName.trim() === oldName) return;
-
   const cleanNewName = newName.trim();
-  if (tempCategoryOrder.includes(cleanNewName)) return alert(`⚠️ الاسم "${cleanNewName}" موجود بالفعل!`);
 
-  try {
-    if (isOrderingIptvMode) {
-      const targets = streamsData.filter(s => s && s.area === 'IPTV' && (s.subCategory === oldName || s.category === oldName));
-      if (!confirm(`هل أنت متأكد من تغيير اسم تفريع [${oldName}] إلى [${cleanNewName}]؟\nسيتم تحديث (${targets.length}) قناة تابعة له.`)) return;
+  const cur = (typeof currentFilter !== 'undefined') ? currentFilter : 'LOCAL';
+  const updates = {};
 
-      const updates = {};
-      targets.forEach(s => {
+  // تحديث القنوات المرتبطة
+  if (typeof streamsData !== 'undefined' && Array.isArray(streamsData)) {
+    streamsData.forEach(s => {
+      if (!s) return;
+      let match = false;
+      if (cur === 'IPTV' && s.area === 'IPTV' && ((s.subCategory || '').trim() === oldName || (s.category || '').trim() === oldName)) match = true;
+      else if (cur === 'LOCAL' && !['IPTV', 'قنوات عربية', 'قنوات أجنبية'].includes((s.area || '').trim())) {
+        if ((s.subCategory || s.category || s.area || '').trim() === oldName) match = true;
+      } else if (cur === 'ARABIC' && (s.area === 'قنوات عربية' || s.category === 'قنوات عربية') && (s.subCategory || s.category || '').trim() === oldName) match = true;
+      else if (cur === 'FOREIGN' && (s.area === 'قنوات أجنبية' || s.category === 'قنوات أجنبية') && (s.subCategory || s.category || '').trim() === oldName) match = true;
+
+      if (match) {
         updates[`streams/${s.id}/subCategory`] = cleanNewName;
         updates[`streams/${s.id}/category`] = cleanNewName;
         s.subCategory = cleanNewName;
         s.category = cleanNewName;
-      });
+      }
+    });
+  }
 
-      const snap = await db.ref('streams/_config_iptv_subs').once('value');
-      let subs = snap.val() || [];
-      if (!Array.isArray(subs)) subs = Object.values(subs);
-      subs = subs.map(s => s === oldName ? cleanNewName : s);
-      if (!subs.includes(cleanNewName)) subs.push(cleanNewName);
-      updates['streams/_config_iptv_subs'] = subs;
+  // تحديث الترتيب والمفاتيح بالفايربيس
+  tempCategoryOrder = tempCategoryOrder.map(c => c === oldName ? cleanNewName : c);
 
-      await db.ref().update(updates);
-      window.iptvCustomSubs = subs;
-      tempCategoryOrder = tempCategoryOrder.map(c => c === oldName ? cleanNewName : c);
-      renderCategoryOrderList();
-      if (typeof setupIptvSubTabs === 'function') setupIptvSubTabs();
-      if (typeof renderCams === 'function') renderCams();
-      alert(`✅ تم تغيير اسم تفريع IPTV إلى [${cleanNewName}] وتحديث قنواته بنجاح!`);
-    } else {
-      const targets = streamsData.filter(s => s && s.area === oldName);
-      if (!confirm(`هل أنت متأكد من تغيير اسم قسم "${oldName}" إلى "${cleanNewName}"؟\nسيتم تحديث (${targets.length}) قناة تابعة له.`)) return;
+  let configKey = 'streams/_config_local_subs';
+  if (cur === 'LOCAL') {
+    configKey = 'streams/_config_local_subs';
+    window.localCustomSubs = [...tempCategoryOrder];
+    updates['streams/_config_categories'] = tempCategoryOrder;
+  } else if (cur === 'ARABIC') {
+    configKey = 'streams/_config_arabic_subs';
+    window.arabicCustomSubs = [...tempCategoryOrder];
+  } else if (cur === 'FOREIGN') {
+    configKey = 'streams/_config_foreign_subs';
+    window.foreignCustomSubs = [...tempCategoryOrder];
+  } else if (cur === 'IPTV') {
+    configKey = 'streams/_config_iptv_subs';
+    window.iptvCustomSubs = [...tempCategoryOrder];
+  }
+  updates[configKey] = tempCategoryOrder;
 
-      const updates = {};
-      targets.forEach(s => {
-        updates[`streams/${s.id}/area`] = cleanNewName;
-        s.area = cleanNewName;
-      });
-
-      tempCategoryOrder = tempCategoryOrder.map(c => c === oldName ? cleanNewName : c);
-      customCategoryOrder = customCategoryOrder.map(c => c === oldName ? cleanNewName : c);
-      updates['streams/_config_categories'] = tempCategoryOrder;
-
-      await db.ref().update(updates);
-      renderCategoryOrderList();
-      if (typeof setupFilters === 'function') setupFilters();
-      if (typeof renderCams === 'function') renderCams();
-      alert(`✅ تم تغيير اسم القسم إلى [${cleanNewName}] وتحديث قنواته بنجاح!`);
-    }
+  try {
+    await db.ref().update(updates);
+    renderCategoryOrderList();
+    if (typeof setupFilters === 'function') setupFilters();
+    if (typeof populateTargetAreas === 'function') populateTargetAreas();
+    if (typeof renderCams === 'function') renderCams();
+    alert(`✅ تم تعديل اسم الفرع إلى "${cleanNewName}" بنجاح!`);
   } catch(e) {
     alert("خطأ أثناء إعادة التسمية: " + e.message);
   }
@@ -1683,58 +1686,65 @@ async function renameCategory(oldName) {
 async function deleteCategory(catName) {
   if (!currentUser) return alert("يرجى تسجيل الدخول كمسؤول أولاً!");
 
-  try {
-    if (isOrderingIptvMode) {
-      const targets = streamsData.filter(s => s && s.area === 'IPTV' && (s.subCategory === catName || s.category === catName));
-      const confirmMsg = targets.length > 0
-        ? `⚠️ تحذير: هل أنت متأكد من حذف تفريع IPTV [${catName}] نهائياً؟\nسيتم حذف (${targets.length}) قناة تابعة له من المنصة!`
-        : `هل أنت متأكد من إزالة تفريع IPTV [${catName}] الفارغ نهائياً؟`;
+  const cur = (typeof currentFilter !== 'undefined') ? currentFilter : 'LOCAL';
+  let targets = [];
 
-      if (!confirm(confirmMsg)) return;
-
-      const updates = {};
-      targets.forEach(s => {
-        updates[`streams/${s.id}`] = null;
+  if (typeof streamsData !== 'undefined' && Array.isArray(streamsData)) {
+    if (cur === 'IPTV') {
+      targets = streamsData.filter(s => s && s.area === 'IPTV' && ((s.subCategory || '').trim() === catName || (s.category || '').trim() === catName));
+    } else if (cur === 'LOCAL') {
+      targets = streamsData.filter(s => {
+        if (!s || !s.area) return false;
+        const a = s.area.trim();
+        if (['IPTV', 'قنوات عربية', 'قنوات أجنبية'].includes(a)) return false;
+        return (s.subCategory || s.category || s.area || '').trim() === catName;
       });
-
-      const snap = await db.ref('streams/_config_iptv_subs').once('value');
-      let subs = snap.val() || [];
-      if (!Array.isArray(subs)) subs = Object.values(subs);
-      subs = subs.filter(s => s !== catName);
-      updates['streams/_config_iptv_subs'] = subs;
-
-      await db.ref().update(updates);
-      window.iptvCustomSubs = subs;
-      tempCategoryOrder = tempCategoryOrder.filter(c => c !== catName);
-      renderCategoryOrderList();
-      if (typeof setupIptvSubTabs === 'function') setupIptvSubTabs();
-      if (typeof renderCams === 'function') renderCams();
-      alert(`✅ تم حذف تفريع IPTV [${catName}] بنجاح!`);
-    } else {
-      const targets = streamsData.filter(s => s && s.area === catName);
-      const confirmMsg = targets.length > 0
-        ? `⚠️ تحذير: هل أنت متأكد من حذف قسم "${catName}"؟\nسيتم حذف (${targets.length}) قناة تابعة له نهائياً!`
-        : `هل تريد إزالة قسم "${catName}" الفارغ من القائمة؟`;
-
-      if (!confirm(confirmMsg)) return;
-
-      const updates = {};
-      targets.forEach(s => {
-        updates[`streams/${s.id}`] = null;
-      });
-
-      tempCategoryOrder = tempCategoryOrder.filter(c => c !== catName);
-      customCategoryOrder = customCategoryOrder.filter(c => c !== catName);
-      updates['streams/_config_categories'] = tempCategoryOrder;
-
-      await db.ref().update(updates);
-      renderCategoryOrderList();
-      if (typeof setupFilters === 'function') setupFilters();
-      if (typeof renderCams === 'function') renderCams();
-      alert(`✅ تم حذف قسم "${catName}" بنجاح!`);
+    } else if (cur === 'ARABIC') {
+      targets = streamsData.filter(s => s && (s.area === 'قنوات عربية' || s.category === 'قنوات عربية') && (s.subCategory || s.category || '').trim() === catName);
+    } else if (cur === 'FOREIGN') {
+      targets = streamsData.filter(s => s && (s.area === 'قنوات أجنبية' || s.category === 'قنوات أجنبية') && (s.subCategory || s.category || '').trim() === catName);
     }
+  }
+
+  const confirmMsg = targets.length > 0
+    ? `⚠️ تحذير: هل أنت متأكد من حذف فرع "${catName}"؟\nسيتم حذف (${targets.length}) قناة تابعة له نهائياً!`
+    : `هل تريد إزالة فرع "${catName}" الفارغ نهائياً من القائمة؟`;
+
+  if (!confirm(confirmMsg)) return;
+
+  const updates = {};
+  targets.forEach(s => {
+    updates[`streams/${s.id}`] = null;
+  });
+
+  tempCategoryOrder = tempCategoryOrder.filter(c => c !== catName);
+
+  // حذف كامل من كل مصادر التخزين بالفايربيس والمصفوفات الحالية
+  if (cur === 'LOCAL') {
+    window.localCustomSubs = (window.localCustomSubs || []).filter(c => c !== catName);
+    window.customCategoryOrder = (window.customCategoryOrder || []).filter(c => c !== catName);
+    updates['streams/_config_local_subs'] = tempCategoryOrder;
+    updates['streams/_config_categories'] = tempCategoryOrder;
+  } else if (cur === 'ARABIC') {
+    window.arabicCustomSubs = (window.arabicCustomSubs || []).filter(c => c !== catName);
+    updates['streams/_config_arabic_subs'] = tempCategoryOrder;
+  } else if (cur === 'FOREIGN') {
+    window.foreignCustomSubs = (window.foreignCustomSubs || []).filter(c => c !== catName);
+    updates['streams/_config_foreign_subs'] = tempCategoryOrder;
+  } else if (cur === 'IPTV') {
+    window.iptvCustomSubs = (window.iptvCustomSubs || []).filter(c => c !== catName);
+    updates['streams/_config_iptv_subs'] = tempCategoryOrder;
+  }
+
+  try {
+    await db.ref().update(updates);
+    renderCategoryOrderList();
+    if (typeof setupFilters === 'function') setupFilters();
+    if (typeof populateTargetAreas === 'function') populateTargetAreas();
+    if (typeof renderCams === 'function') renderCams();
+    alert(`✅ تم حذف فرع "${catName}" نهائياً من الفايربيس!`);
   } catch(e) {
-    alert("خطأ أثناء حذف القسم: " + e.message);
+    alert("خطأ أثناء حذف الفرع: " + e.message);
   }
 }
 
