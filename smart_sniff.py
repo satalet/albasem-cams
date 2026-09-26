@@ -139,12 +139,18 @@ async def sniff_and_sync(target_url, area=None, custom_title=None, stream_id=Non
 
     # التحديث في فايربيس
     token = get_auth_token()
+    # موائمة الهيكل الجديد لمنظومة الباسم سات
+    main_cat = final_area if final_area in ["IPTV", "قنوات عربية", "قنوات محلية", "قنوات أجنبية"] else "قنوات محلية"
     payload = {
+        "name": final_title,
         "title": final_title,
-        "url": valid_url,
+        "category": main_cat,
+        "subCategory": "مشكّل ومنوعات",
         "area": final_area,
+        "url": valid_url,
         "type": "hls",
         "status": "active",
+        "order": 1,
         "source_url": target_url
     }
 
