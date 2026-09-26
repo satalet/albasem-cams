@@ -563,8 +563,9 @@ function getSearchSuggestion(query) {
   if (!qWords.length) return null;
 
   const dictionary = new Map();
-  if (Array.isArray(window.streamsData)) {
-    window.streamsData.forEach(s => {
+  const allData = (typeof streamsData !== 'undefined' && Array.isArray(streamsData)) ? streamsData : (Array.isArray(window.streamsData) ? window.streamsData : []);
+  if (allData.length > 0) {
+    allData.forEach(s => {
       const full = `${s.name || s.title || ''} ${s.area || ''} ${s.subCategory || ''}`;
       full.split(/[\s,._\-\(\)\[\]\/]+/).forEach(rawWord => {
         const norm = normalizeArabic(rawWord);
