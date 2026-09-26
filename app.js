@@ -649,7 +649,7 @@ function setupSearchBar() {
       <span class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
         <i class="fa-solid fa-magnifying-glass text-xs"></i>
       </span>
-      <input type="text" id="global-search-input" placeholder="🔍 ابحث عن أي قناة أو كاميرا بالاسم..." 
+      <input type="text" id="global-search-input" placeholder="🔍 ابحث عن أي قناة أو كاميرا بالاسم..." spellcheck="true" autocomplete="on" autocorrect="on" autocapitalize="none" 
         class="w-full bg-[#0f172a] text-slate-100 text-xs rounded-xl pr-9 pl-9 py-2.5 border border-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none placeholder-slate-500 transition shadow-inner">
       <button id="clear-search-btn" class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 hover:text-rose-400 hidden transition">
         <i class="fa-solid fa-xmark text-sm"></i>
