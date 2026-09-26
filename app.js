@@ -1476,7 +1476,6 @@ let tempCategoryOrder = [];
 
 // ==================== إدارة وتعديل الأقسام وتفريعات IPTV ====================
 function openCategoryOrderModal() {
-  isOrderingIptvMode = (typeof currentFilter !== 'undefined' && currentFilter === 'IPTV');
   const modalEl = document.getElementById('category-order-modal');
   if (!modalEl) return;
 
@@ -1485,30 +1484,68 @@ function openCategoryOrderModal() {
   const pinAdminIn = document.getElementById('admin-default-pin-input');
   if (pinAdminIn) pinAdminIn.value = window.iptvDefaultPin || '1415';
 
-  if (isOrderingIptvMode) {
-    if (titleEl) titleEl.innerHTML = '<i class="fa-solid fa-tv text-emerald-400"></i> إدارة وتعديل تفريعات IPTV';
-    if (descEl) descEl.textContent = 'يمكنك إعادة تسمية أي تفريع، حذفه، أو إعادة ترتيب تفريعات IPTV';
+  const cur = (typeof currentFilter !== 'undefined') ? currentFilter : 'LOCAL';
+  const folderTitles = {
+    'LOCAL': 'فروع القنوات المحلية',
+    'ARABIC': 'فروع القنوات العربية',
+    'FOREIGN': 'فروع القنوات الأجنبية',
+    'IPTV': 'تفريعات IPTV'
+  };
 
-    const defaultSubs = ['أفلام ومسلسلات', 'إخبارية', 'رياضة', 'إسلاميات', 'أطفال', 'وثائقي', 'موسيقى', 'مشكّل ومنوعات'];
-    const customSubs = (window.iptvCustomSubs && Array.isArray(window.iptvCustomSubs)) ? window.iptvCustomSubs : [];
-    const streamSubs = (typeof streamsData !== 'undefined' && Array.isArray(streamsData))
-      ? streamsData.filter(s => s && s.area === 'IPTV').map(s => s.subCategory || s.category).filter(Boolean)
-      : [];
-    tempCategoryOrder = [...new Set([...defaultSubs, ...customSubs, ...streamSubs])];
-  } else {
-    if (titleEl) titleEl.innerHTML = '<i class="fa-solid fa-arrow-down-up-across-line text-emerald-400"></i> ترتيب أولويات الأقسام';
-    if (descEl) descEl.textContent = 'اسحب أو رتّب الأقسام لتظهر أولاً بوجه الزوار عند فتح المنصة';
+  const fTitle = folderTitles[cur] || 'الفروع';
+  if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-folder-tree text-emerald-400"></i> إدارة وترتيب: ${fTitle}`;
+  if (descEl) descEl.textContent = 'يمكنك إعادة تسمية أي فرع، حذفه، أو إعادة ترتيب الفروع لهذا القسم';
 
-    const allAreas = [...new Set(((typeof streamsData !== 'undefined' && Array.isArray(streamsData)) ? streamsData : []).map(s => s.area))].filter(Boolean);
-    const savedOrder = (typeof customCategoryOrder !== 'undefined' && Array.isArray(customCategoryOrder)) ? customCategoryOrder : [];
-    tempCategoryOrder = savedOrder.filter(a => allAreas.includes(a));
-    allAreas.forEach(a => {
-      if (!tempCategoryOrder.includes(a)) tempCategoryOrder.push(a);
-    });
-  }
+  // جلب الفروع الخاصة بالمجلد النشط فقط
+  tempCategoryOrder = (typeof getDynamicSubCategories === 'function') ? [...getDynamicSubCategories(cur)] : [];
 
   renderCategoryOrderList();
   modalEl.classList.remove('hidden');
+}
+
+async function saveCategoryOrder() {
+  const pinAdminIn = document.getElementById('admin-default-pin-input');
+  if (pinAdminIn && pinAdminIn.value.trim() && pinAdminIn.value.trim().length >= 4) {
+    const newDefPin = pinAdminIn.value.trim();
+    try {
+      await db.ref('streams/_config_default_pin').set(newDefPin);
+      window.iptvDefaultPin = newDefPin;
+    } catch(err) { console.error('Error saving default pin:', err); }
+  }
+  if (!currentUser) return alert("يرجى تسجيل الدخول كمسؤول أولاً!");
+
+  const cur = (typeof currentFilter !== 'undefined') ? currentFilter : 'LOCAL';
+  let configKey = 'streams/_config_local_subs';
+  if (cur === 'LOCAL') configKey = 'streams/_config_local_subs';
+  else if (cur === 'ARABIC') configKey = 'streams/_config_arabic_subs';
+  else if (cur === 'FOREIGN') configKey = 'streams/_config_foreign_subs';
+  else if (cur === 'IPTV') configKey = 'streams/_config_iptv_subs';
+
+  try {
+    await db.ref(configKey).set(tempCategoryOrder);
+
+    if (cur === 'LOCAL') {
+      window.localCustomSubs = [...tempCategoryOrder];
+      try {
+        await db.ref('streams/_config_categories').set(tempCategoryOrder);
+        window.customCategoryOrder = [...tempCategoryOrder];
+      } catch(e){}
+    } else if (cur === 'ARABIC') {
+      window.arabicCustomSubs = [...tempCategoryOrder];
+    } else if (cur === 'FOREIGN') {
+      window.foreignCustomSubs = [...tempCategoryOrder];
+    } else if (cur === 'IPTV') {
+      window.iptvCustomSubs = [...tempCategoryOrder];
+      if (typeof setupIptvSubTabs === 'function') setupIptvSubTabs();
+    }
+
+    alert(`✅ تم حفظ ترتيب ${folderTitles[cur] || 'الفروع'} بنجاح!`);
+    if (typeof setupFilters === 'function') setupFilters();
+    if (typeof populateTargetAreas === 'function') populateTargetAreas();
+    closeCategoryOrderModal();
+  } catch(err) {
+    alert("خطأ أثناء الحفظ: " + err.message);
+  }
 }
 
 function closeCategoryOrderModal() {
