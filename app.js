@@ -1176,121 +1176,196 @@ function initRealtimeSync() {
 }
 
 // بناء الفلاتر وترتيبها مع تظليل الفولدر النشط
-function setupFilters() {
-  const filterBox = document.getElementById('filter-buttons');
-  if (!filterBox) return;
+// ==========================================
+// نظام المجلدات الذكي والتفرعات العمودية (Mobile Dynamic Folders)
+// ==========================================
+const MAIN_FOLDERS = [
+  { id: 'FAVORITES', title: 'المفضلة', icon: 'fa-star text-amber-400' },
+  { id: 'LOCAL', title: 'قنوات محلية', icon: 'fa-location-dot text-rose-400' },
+  { id: 'ARABIC', title: 'قنوات عربية', icon: 'fa-earth-africa text-emerald-400' },
+  { id: 'FOREIGN', title: 'قنوات أجنبية', icon: 'fa-globe text-sky-400' },
+  { id: 'IPTV', title: 'IPTV', icon: 'fa-tv text-purple-400' }
+];
 
-  setupSearchBar();
-  autoCategorizeStreams();
-
-  filterBox.className = "flex items-center gap-2 overflow-x-auto no-scrollbar py-1 flex-nowrap w-full";
-
-  const rawAreas = [...new Set([...(customCategoryOrder || []), ...streamsData.map(s => s.area)])].filter(Boolean);
-  rawAreas.sort((a, b) => {
-    let indexA = customCategoryOrder.indexOf(a);
-    let indexB = customCategoryOrder.indexOf(b);
-    if (indexA === -1) indexA = 999;
-    if (indexB === -1) indexB = 999;
-    return indexA - indexB;
-  });
-
-  const savedCat = localStorage.getItem('albasem_active_cat');
-  if (!currentFilter) {
-    if (savedCat && (savedCat === 'FAVORITES' || rawAreas.includes(savedCat))) {
-      currentFilter = savedCat;
-    } else {
-      currentFilter = rawAreas.includes('نابلس') ? 'نابلس' : (rawAreas.find(a => a !== 'IPTV') || rawAreas[0] || '');
-      localStorage.setItem('albasem_active_cat', currentFilter);
-    }
+function getDynamicSubCategories(folderId) {
+  if (!Array.isArray(streamsData)) return [];
+  
+  if (folderId === 'LOCAL') {
+    const localStreams = streamsData.filter(s => {
+      if (!s || !s.area) return false;
+      const a = s.area.trim();
+      return a !== 'IPTV' && a !== 'قنوات عربية' && a !== 'قنوات أجنبية';
+    });
+    const cities = [...new Set(localStreams.map(s => (s.subCategory || s.category || s.area || '').trim()))].filter(Boolean);
+    return cities.sort();
   }
-
-  filterBox.innerHTML = '';
-
-  // زر المفضلة
-  const favBtn = document.createElement('button');
-  const isFavActive = currentFilter === 'FAVORITES';
-  favBtn.className = `filter-chip flex-shrink-0 px-3.5 py-1.5 rounded-full border text-xs font-bold whitespace-nowrap transition shadow-sm flex items-center gap-1.5 ${isFavActive ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-amber-500/30' : 'bg-slate-900/90 text-amber-400 border-amber-500/30 hover:bg-slate-800'}`;
-  favBtn.innerHTML = `<i class="fa-solid fa-star"></i> <span>المفضلة</span>`;
-  favBtn.onclick = () => {
-    currentFilter = 'FAVORITES';
-    currentSubFilter = '';
-        window.activeUnlockedSub = null;
-    window.iptvDisplayLimit = 40;
-    localStorage.setItem('albasem_active_cat', 'FAVORITES');
-    setupFilters();
-    renderCams();
-  };
-  filterBox.appendChild(favBtn);
-
-  // باقي الأقسام
-  rawAreas.forEach(area => {
-    const btn = document.createElement('button');
-    const isActive = area === currentFilter;
-    btn.className = `filter-chip flex-shrink-0 px-3.5 py-1.5 rounded-full border text-xs font-semibold whitespace-nowrap transition shadow-sm ${isActive ? 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-950/50' : 'bg-slate-900/90 text-slate-300 border-slate-800 hover:bg-slate-800'}`;
-    btn.textContent = area === 'IPTV' ? '📺 IPTV - قنوات فضائية' : area;
-    btn.onclick = () => {
-      if (currentFilter !== area) {
-        currentFilter = area;
-        currentSubFilter = '';
-        window.activeUnlockedSub = null;
-        window.iptvDisplayLimit = 40;
-        localStorage.setItem('albasem_active_cat', area);
-        setupFilters();
-        renderCams();
-      }
-    };
-    filterBox.appendChild(btn);
-  });
-
-  // شريط تفريعات IPTV المنظم
-  let subBox = document.getElementById('iptv-sub-filters');
-  if (!subBox) {
-    subBox = document.createElement('div');
-    subBox.id = 'iptv-sub-filters';
-    subBox.className = 'mt-2 flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar flex-nowrap w-full';
-    filterBox.parentElement.appendChild(subBox);
-  }
-
-  if (currentFilter === 'IPTV') {
-    subBox.classList.remove('hidden');
-    const iptvStreams = streamsData.filter(s => s.area === 'IPTV');
+  
+  if (folderId === 'IPTV') {
+    const iptvStreams = streamsData.filter(s => s && s.area === 'IPTV');
     const defaultSubs = ['أفلام ومسلسلات', 'إخبارية', 'رياضة', 'إسلاميات', 'أطفال', 'وثائقي', 'موسيقى', 'مشكّل ومنوعات'];
     const customSubs = (window.iptvCustomSubs && Array.isArray(window.iptvCustomSubs)) ? window.iptvCustomSubs : [];
-    let rawSubCats = [...new Set([...defaultSubs, ...customSubs, ...iptvStreams.map(s => s.category || s.subCategory)])].filter(Boolean);
+    let subs = [...new Set([...defaultSubs, ...customSubs, ...iptvStreams.map(s => (s.category || s.subCategory || 'مشكّل ومنوعات').trim())])].filter(Boolean);
     
-    // فلترة تفريعات IPTV المسموحة للمشترك
     try {
       const _rawSub = localStorage.getItem('albasem_subscriber');
       if (_rawSub && (!window.currentUser)) {
         const _sub = JSON.parse(_rawSub);
         if (_sub && _sub.allowedIptvSubs && !_sub.allowedIptvSubs.includes('all')) {
-          rawSubCats = rawSubCats.filter(subName => _sub.allowedIptvSubs.includes(subName));
+          subs = subs.filter(subName => _sub.allowedIptvSubs.includes(subName));
         }
       }
     } catch(e){}
     
-    // الترتيب الأنيق للتفريعات
     const SUB_ORDER = ['أفلام ومسلسلات', 'إخبارية', 'رياضة', 'إسلاميات', 'أطفال', 'وثائقي', 'موسيقى', 'مشكّل ومنوعات'];
-    rawSubCats.sort((a, b) => {
+    subs.sort((a, b) => {
       let ia = SUB_ORDER.indexOf(a);
       let ib = SUB_ORDER.indexOf(b);
       if (ia === -1) ia = 999;
       if (ib === -1) ib = 999;
       return ia - ib;
     });
+    return subs;
+  }
 
-    if (!currentSubFilter || currentSubFilter === 'all' || !rawSubCats.includes(currentSubFilter)) {
-      currentSubFilter = rawSubCats[0] || 'مشكّل ومنوعات';
+  if (folderId === 'ARABIC') {
+    const arabStreams = streamsData.filter(s => s && (s.area === 'قنوات عربية' || s.category === 'قنوات عربية'));
+    const subs = [...new Set(arabStreams.map(s => (s.subCategory || s.category || '').trim()))].filter(s => s && s !== 'قنوات عربية');
+    return subs.sort();
+  }
+
+  if (folderId === 'FOREIGN') {
+    const forStreams = streamsData.filter(s => s && (s.area === 'قنوات أجنبية' || s.category === 'قنوات أجنبية'));
+    const subs = [...new Set(forStreams.map(s => (s.subCategory || s.category || '').trim()))].filter(s => s && s !== 'قنوات أجنبية');
+    return subs.sort();
+  }
+
+  return [];
+}
+
+function setupFilters() {
+  const filterBox = document.getElementById('filter-buttons');
+  if (!filterBox) return;
+
+  setupSearchBar();
+  if (typeof autoCategorizeStreams === 'function') autoCategorizeStreams();
+
+  const validFolders = ['FAVORITES', 'LOCAL', 'ARABIC', 'FOREIGN', 'IPTV'];
+  const savedCat = localStorage.getItem('albasem_active_cat');
+  if (!currentFilter || !validFolders.includes(currentFilter)) {
+    if (savedCat && validFolders.includes(savedCat)) {
+      currentFilter = savedCat;
+    } else {
+      currentFilter = 'LOCAL';
+      localStorage.setItem('albasem_active_cat', 'LOCAL');
     }
+  }
 
-    subBox.innerHTML = '';
-    rawSubCats.forEach(sub => {
-      const sBtn = document.createElement('button');
-      const isSubActive = sub === currentSubFilter;
+  filterBox.className = "flex flex-col w-full gap-2.5";
+  filterBox.innerHTML = '';
+
+  // 1. الشريط العلوي الرئيسي (صف واحد ملموم بدون سحب شاشة)
+  const mainBar = document.createElement('div');
+  mainBar.className = "grid grid-cols-5 gap-1 sm:gap-2 w-full bg-slate-900/90 p-1 sm:p-1.5 rounded-2xl border border-slate-800 shadow-xl select-none";
+
+  MAIN_FOLDERS.forEach(folder => {
+    const isAct = currentFilter === folder.id;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `flex flex-col items-center justify-center py-2 px-1 rounded-xl transition duration-200 text-center ${
+      isAct 
+        ? 'bg-gradient-to-b from-sky-500 to-sky-600 text-white font-black shadow-lg shadow-sky-500/25 scale-[1.02]' 
+        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 font-semibold'
+    }`;
+    
+    btn.innerHTML = `
+      <i class="fa-solid ${folder.icon} text-base sm:text-lg mb-1"></i>
+      <span class="text-[10px] sm:text-xs leading-tight truncate w-full">${folder.title}</span>
+    `;
+
+    btn.onclick = () => {
+      if (currentFilter !== folder.id) {
+        currentFilter = folder.id;
+        currentSubFilter = 'all';
+        window.activeUnlockedSub = null;
+        window.iptvDisplayLimit = 40;
+        localStorage.setItem('albasem_active_cat', folder.id);
+        localStorage.setItem('albasem_active_sub', 'all');
+        setupFilters();
+        renderCams();
+      }
+    };
+
+    mainBar.appendChild(btn);
+  });
+  filterBox.appendChild(mainBar);
+
+  // 2. صندوق التفرعات العمودية (ينزل تحت المجلد عمودياً بشبكة عمودين للجوال)
+  if (currentFilter !== 'FAVORITES') {
+    const subCategories = getDynamicSubCategories(currentFilter);
+    const curFolderObj = MAIN_FOLDERS.find(f => f.id === currentFilter);
+
+    const subContainer = document.createElement('div');
+    subContainer.id = 'vertical-sub-folders';
+    subContainer.className = "w-full bg-slate-900/70 border border-slate-800/90 rounded-2xl p-2.5 shadow-md flex flex-col gap-2";
+
+    // ترويسة المجلد
+    const headerTitle = document.createElement('div');
+    headerTitle.className = "flex items-center justify-between px-1 text-xs text-slate-400 border-b border-slate-800/70 pb-1.5";
+    headerTitle.innerHTML = `
+      <span class="flex items-center gap-1.5 font-bold text-slate-200">
+        <i class="fa-solid ${curFolderObj ? curFolderObj.icon : ''}"></i>
+        <span>تفرعات ${curFolderObj ? curFolderObj.title : ''}</span>
+      </span>
+      <span class="text-[10px] text-slate-400 font-mono bg-slate-800/90 px-2 py-0.5 rounded-full border border-slate-700/60">
+        ${subCategories.length + 1} أقسام
+      </span>
+    `;
+    subContainer.appendChild(headerTitle);
+
+    // شبكة الفروع العمودية (2 كولوم بعرض شاشة الجوال)
+    const gridSubs = document.createElement('div');
+    gridSubs.className = "grid grid-cols-2 sm:grid-cols-3 gap-2 w-full pt-0.5";
+
+    // زر "عرض الكل"
+    const allBtn = document.createElement('button');
+    allBtn.type = 'button';
+    const isAllActive = !currentSubFilter || currentSubFilter === 'all';
+    allBtn.className = `py-2.5 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-between ${
+      isAllActive 
+        ? 'bg-sky-600/30 border-sky-500 text-sky-300 shadow-sm' 
+        : 'bg-slate-800/80 border-slate-700/70 text-slate-300 hover:bg-slate-800'
+    }`;
+    allBtn.innerHTML = `
+      <span class="truncate">عرض الكل</span>
+      <i class="fa-solid fa-layer-group text-[10px] opacity-70"></i>
+    `;
+    allBtn.onclick = () => {
+      currentSubFilter = 'all';
+      window.activeUnlockedSub = null;
+      window.iptvDisplayLimit = 40;
+      localStorage.setItem('albasem_active_sub', 'all');
+      setupFilters();
+      renderCams();
+    };
+    gridSubs.appendChild(allBtn);
+
+    // الأزرار الفرعية الديناميكية
+    subCategories.forEach(sub => {
+      const isSubActive = currentSubFilter === sub;
       const isSubLocked = (window.iptvLockedSubs || []).includes(sub);
-      sBtn.className = `flex-shrink-0 px-3 py-1 rounded-lg border text-[11px] font-semibold whitespace-nowrap transition flex items-center gap-1.5 ${isSubActive ? 'bg-emerald-600 text-white border-emerald-500 shadow-md' : (isSubLocked ? 'bg-amber-950/40 text-amber-300 border-amber-600/40 hover:bg-amber-900/50' : 'bg-slate-800/80 text-slate-400 border-slate-700/60 hover:bg-slate-700')}`;
-      sBtn.innerHTML = `${isSubLocked ? '<i class="fa-solid fa-lock text-[10px] text-amber-400"></i>' : ''}<span>${sub}</span>`;
+      const sBtn = document.createElement('button');
+      sBtn.type = 'button';
+      sBtn.className = `py-2.5 px-3 rounded-xl border text-xs font-semibold transition flex items-center justify-between ${
+        isSubActive 
+          ? 'bg-sky-600/30 border-sky-500 text-sky-300 shadow-sm' 
+          : (isSubLocked ? 'bg-amber-950/40 border-amber-600/40 text-amber-300 hover:bg-amber-900/50' : 'bg-slate-800/80 border-slate-700/70 text-slate-300 hover:bg-slate-800')
+      }`;
       
+      sBtn.innerHTML = `
+        <span class="truncate">${sub}</span>
+        <i class="fa-solid ${isSubLocked ? 'fa-lock text-amber-400' : 'fa-folder'} text-[10px] opacity-60"></i>
+      `;
+
       sBtn.onclick = () => {
         if (currentSubFilter !== sub) {
           if (isSubLocked && window.activeUnlockedSub !== sub) {
@@ -1299,9 +1374,6 @@ function setupFilters() {
               currentSubFilter = sub;
               window.iptvDisplayLimit = 40;
               localStorage.setItem('albasem_active_sub', sub);
-              if (typeof updateNavigationHistory === 'function') {
-                updateNavigationHistory(currentFilter || 'IPTV', sub);
-              }
               setupFilters();
               renderCams();
             });
@@ -1311,17 +1383,16 @@ function setupFilters() {
           currentSubFilter = sub;
           window.iptvDisplayLimit = 40;
           localStorage.setItem('albasem_active_sub', sub);
-          if (typeof updateNavigationHistory === 'function') {
-            updateNavigationHistory(currentFilter || 'IPTV', sub);
-          }
           setupFilters();
           renderCams();
         }
       };
-      subBox.appendChild(sBtn);
+
+      gridSubs.appendChild(sBtn);
     });
-  } else {
-    subBox.classList.add('hidden');
+
+    subContainer.appendChild(gridSubs);
+    filterBox.appendChild(subContainer);
   }
 }
 
@@ -1918,14 +1989,35 @@ function renderCams() {
         </div>`;
       return;
     }
-  } else if (currentFilter === 'all') {
-    filtered = streamsData.filter(s => s.area !== 'IPTV');
+  } else if (currentFilter === 'LOCAL') {
+    filtered = streamsData.filter(s => {
+      if (!s || !s.area) return false;
+      const a = s.area.trim();
+      return a !== 'IPTV' && a !== 'قنوات عربية' && a !== 'قنوات أجنبية';
+    });
+    if (currentSubFilter && currentSubFilter !== 'all') {
+      filtered = filtered.filter(s => {
+        const sub = (s.subCategory || s.category || s.area || '').trim();
+        return sub === currentSubFilter || s.area === currentSubFilter;
+      });
+    }
+  } else if (currentFilter === 'ARABIC') {
+    filtered = streamsData.filter(s => s && (s.area === 'قنوات عربية' || s.category === 'قنوات عربية'));
+    if (currentSubFilter && currentSubFilter !== 'all') {
+      filtered = filtered.filter(s => (s.subCategory || s.category || '').trim() === currentSubFilter);
+    }
+  } else if (currentFilter === 'FOREIGN') {
+    filtered = streamsData.filter(s => s && (s.area === 'قنوات أجنبية' || s.category === 'قنوات أجنبية'));
+    if (currentSubFilter && currentSubFilter !== 'all') {
+      filtered = filtered.filter(s => (s.subCategory || s.category || '').trim() === currentSubFilter);
+    }
+  } else if (currentFilter === 'IPTV') {
+    filtered = streamsData.filter(s => s && s.area === 'IPTV');
+    if (currentSubFilter && currentSubFilter !== 'all') {
+      filtered = filtered.filter(s => (s.category === currentSubFilter || s.subCategory === currentSubFilter || (currentSubFilter === 'مشكّل ومنوعات' && !s.category && !s.subCategory)));
+    }
   } else {
     filtered = streamsData.filter(s => s.area === currentFilter);
-  }
-
-  if (currentFilter === 'IPTV' && currentSubFilter !== 'all') {
-    filtered = filtered.filter(s => (s.category === currentSubFilter || s.subCategory === currentSubFilter || (currentSubFilter === 'مشكّل ومنوعات' && !s.category && !s.subCategory)));
   }
 
   if (filtered.length === 0) {
