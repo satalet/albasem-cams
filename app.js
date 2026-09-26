@@ -134,18 +134,17 @@ function hideTvOsd() {
 }
 
 function markTvOsdLive() {
-  const statusEl = document.getElementById('osd-status');
+  const statusEl = document.getElementById('osd-channel-status');
   if (statusEl) {
-    statusEl.className = 'text-xs text-emerald-400 flex items-center gap-1.5 mt-0.5 font-bold';
-    statusEl.innerHTML = '<i class="fa-solid fa-circle text-[9px] text-emerald-400 animate-pulse"></i> <span>بث حي ومباشر</span>';
+    statusEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span class="text-emerald-400 font-bold">\u0628\u062b \u062d\u064a \u0648\u0645\u0628\u0627\u0634\u0631</span>';
   }
   if (_osdHideTimer) clearTimeout(_osdHideTimer);
   _osdHideTimer = setTimeout(() => {
-    hideTvOsd();
-  }, 1600);
+    if (typeof hideChannelOSD === 'function') hideChannelOSD();
+  }, 1800);
 }
+window.markTvOsdLive = markTvOsdLive;
 
-// دالة فحص صلاحيات المشترك للبث
 window.isStreamAllowedForSubscriber = function(stream) {
   if (typeof currentUser !== 'undefined' && currentUser) return true;
   try {
@@ -201,6 +200,16 @@ async function toggleStreamLock(streamId, e) {
   if (!stream) return;
   // تشغيل بنر الرسيفر وتحديث رقم واسم القناة فوراً
   window.currentModalStreamId = streamId;
+    let _chNum = 1;
+    let _totalCh = 1;
+    if (window.activeCategoryStreams && window.activeCategoryStreams.length > 0) {
+      const fIdx = window.activeCategoryStreams.findIndex(s => s.id === streamId);
+      if (fIdx !== -1) _chNum = fIdx + 1;
+      _totalCh = window.activeCategoryStreams.length;
+    }
+    if (typeof showChannelOSD === 'function') {
+      showChannelOSD(stream, _chNum, _totalCh);
+    }
   if (!window.activeCategoryStreams || window.activeCategoryStreams.length === 0) {
     window.activeCategoryStreams = streamsData.filter(s => s.area === stream.area);
   }
