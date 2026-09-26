@@ -289,19 +289,46 @@ class AlbasemWindow(Gtk.Window):
         self.type_combo.set_active(0)
         v_type.pack_start(lbl_type, False, False, 0)
         v_type.pack_start(self.type_combo, True, True, 0)
-        row_box.pack_start(v_type, True, True, 0)
+        
+        # القسم الرئيسي
+        v_cat = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        lbl_cat = Gtk.Label(label="القسم الرئيسي:")
+        lbl_cat.set_halign(Gtk.Align.END)
+        self.cat_combo = Gtk.ComboBoxText()
+        for c in ["قنوات محلية", "قنوات عربية", "IPTV", "قنوات أجنبية"]:
+            self.cat_combo.append_text(c)
+        self.cat_combo.set_active(0)
+        v_cat.pack_start(lbl_cat, False, False, 0)
+        v_cat.pack_start(self.cat_combo, True, True, 0)
 
-        # المنطقة
+        # التفريع / المنطقة
         v_area = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
-        lbl_area = Gtk.Label(label="المنطقة / التبويب:")
+        lbl_area = Gtk.Label(label="التفريع / المنطقة:")
         lbl_area.set_halign(Gtk.Align.END)
         self.area_combo = Gtk.ComboBoxText.new_with_entry()
-        for a in ['عام', 'قنوات عربيه', 'رام الله', 'نابلس', 'شباب اف ام نابلس', 'قنوات أخبار']:
-            self.area_combo.append_text(a)
-        self.area_combo.set_active(0)
         v_area.pack_start(lbl_area, False, False, 0)
         v_area.pack_start(self.area_combo, True, True, 0)
+        
+        self.tree_structure = {
+            "قنوات محلية": ["نابلس", "رام الله", "القدس", "جنين", "الخليل", "بيت لحم", "طولكرم", "قلقيلية", "أريحا", "غزة", "عام"],
+            "قنوات عربية": ["إخبارية", "عام", "مصر", "السعودية", "الإمارات", "الأردن", "سوريا", "لبنان"],
+            "IPTV": ["رياضة", "أفلام ومسلسلات", "إخبارية", "وثائقي", "أطفال", "إسلاميات", "موسيقى", "مشكّل ومنوعات"],
+            "قنوات أجنبية": ["أفلام ومسلسلات", "إخبارية", "وثائقي", "عام"]
+        }
+        
+        def on_cat_changed(combo):
+            active_cat = combo.get_active_text() or "قنوات محلية"
+            subs = self.tree_structure.get(active_cat, ["عام"])
+            self.area_combo.remove_all()
+            for s in subs:
+                self.area_combo.append_text(s)
+            self.area_combo.get_child().set_text(subs[0])
+            
+        self.cat_combo.connect("changed", on_cat_changed)
+        on_cat_changed(self.cat_combo)
+        row_box.pack_start(v_cat, True, True, 0)
         row_box.pack_start(v_area, True, True, 0)
+        row_box.pack_start(v_type, True, True, 0)
 
         cam_vbox.pack_start(row_box, False, False, 0)
 
