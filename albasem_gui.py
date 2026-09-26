@@ -595,12 +595,15 @@ class AlbasemWindow(Gtk.Window):
         self.show_dialog("مبروك يا أبو باسم! 🚀⚡", f"تم نشر جميع الـ ({count}) قنوات وسيرفرات دفعة واحدة بنجاح في تبويب: '{area}'!", Gtk.MessageType.INFO)
 
     def push_to_firebase(self, title, url, stream_type, area):
+        selected_cat = self.cat_combo.get_active_text() if hasattr(self, 'cat_combo') and self.cat_combo.get_active_text() else "قنوات محلية"
         payload = {
+            "name": title,
             "title": title,
+            "category": selected_cat,
+            "subCategory": area,
             "area": area,
             "type": stream_type,
             "url": url,
-            "category": "سير",
             "status": "active"
         }
         try:
