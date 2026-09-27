@@ -3096,3 +3096,26 @@ if (document.readyState === 'loading') {
 } else {
   initQRCodeModal();
 }
+
+/* albasem-smart-header */
+
+// إخفاء شريط الترويسة عند النزول وإظهاره عند الصعود
+(function() {
+  let lastScrollY = window.scrollY;
+  const header = document.querySelector('header') || document.querySelector('.site-header') || document.querySelector('nav');
+  if (header) {
+    header.classList.add('site-header');
+    window.addEventListener('scroll', () => {
+      const currentScrollY = window.scrollY;
+      if (currentScrollY > 70 && currentScrollY > lastScrollY + 5) {
+        // نزول لأسفل -> إخفاء الهيدر لتفريغ الشاشة للأقسام والقنوات
+        header.classList.add('header-hidden');
+      } else if (currentScrollY < lastScrollY - 8 || currentScrollY <= 20) {
+        // صعود لأعلى -> إظهار الهيدر
+        header.classList.remove('header-hidden');
+      }
+      lastScrollY = currentScrollY;
+    }, { passive: true });
+  }
+})();
+

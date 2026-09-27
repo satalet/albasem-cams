@@ -1,4 +1,4 @@
-const CACHE_NAME = 'albasem-cams-v2';
+const CACHE_NAME = "albasem-v1790534740";
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();

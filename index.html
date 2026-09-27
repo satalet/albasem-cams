@@ -36,7 +36,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 
-  <link rel="stylesheet" href="style.css?v=26.0922.0135">
+  <link rel="stylesheet" href="style.css?v=1790534740">
 
     <style>
     .bulk-action-bar {
@@ -226,6 +226,30 @@ if ('caches' in window) {
     }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<style id="albasem-smart-header">
+  /* تأثير إخفاء الهيدر عند النزول */
+  .site-header {
+    transition: transform 0.35s ease, opacity 0.3s ease !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 40 !important;
+  }
+  .site-header.header-hidden {
+    transform: translateY(-110%) !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+  /* محو أي أثر لشريط العداد */
+  #osd-channel-counter, .osd-counter, div:has(> #osd-channel-counter) {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+</style>
+
 </head>
 <body class="bg-[#070a12] text-slate-100 min-h-screen flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
 <!-- شريط ترحيب المشترك وتسجيل الخروج -->
@@ -598,7 +622,7 @@ if ('caches' in window) {
     </div>
   </div>
 
-  <script src="./app.js?v=1790533447"></script>
+  <script src="./app.js?v=1790534740"></script>
 
   <!-- نظام إدارة دخول المشتركين وفحص الجلسة -->
   <div id="sub-login-modal" style="display:none; position:fixed; inset:0; background:rgba(11,17,32,0.96); z-index:9999; justify-content:center; align-items:center; padding:15px;">
