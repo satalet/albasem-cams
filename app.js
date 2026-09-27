@@ -1425,7 +1425,7 @@ function setupFilters() {
     }
   }
 
-  filterBox.className = "flex flex-col w-full gap-2";
+  filterBox.className = "flex flex-col w-full gap-2 mb-3 sm:mb-4 pb-1";
   filterBox.innerHTML = '';
 
   // 1. الشريط العلوي الرئيسي (صف واحد ملموم ومريح للعين)
@@ -1483,7 +1483,7 @@ function setupFilters() {
 
     // شريط مسار مضغوط (سطر واحد لا يشغل مساحة أبداً)
     const breadcrumb = document.createElement('div');
-    breadcrumb.className = "w-full flex items-center justify-between bg-slate-900/80 border border-slate-800/90 rounded-xl px-3 py-2 text-xs select-none shadow-md cursor-pointer hover:bg-slate-800/70 transition";
+    breadcrumb.className = "w-full flex items-center justify-between bg-slate-900/95 border border-slate-800/90 rounded-xl px-3 py-2 text-xs select-none shadow-md cursor-pointer hover:bg-slate-800/70 transition mb-2";
     breadcrumb.onclick = () => openSubCategoryDrawer();
     breadcrumb.innerHTML = `
       <div class="flex items-center gap-2 truncate">
