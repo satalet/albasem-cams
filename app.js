@@ -2020,6 +2020,17 @@ function launchHlsStream(container, url, isModal = false, isIptv = false) {
   const PROXY_BASE = "https://albasem-proxy.satalet.workers.dev/?url=";
 
   const showOfflineBox = () => {
+    if (isModal) {
+      // حظر الشاشة السوداء نهائياً عن القناة المكبرة
+      try {
+        if (loadingIndicator) loadingIndicator.remove();
+        if (hlsInstance) {
+          hlsInstance.startLoad();
+          hlsInstance.recoverMediaError();
+        }
+      } catch(e){}
+      return;
+    }
     if (loadingIndicator) loadingIndicator.remove();
     if (hlsInstance) {
       try { hlsInstance.destroy(); } catch(e){}
@@ -2069,7 +2080,7 @@ function launchHlsStream(container, url, isModal = false, isIptv = false) {
     }
   };
 
-  let safetyTimer = setTimeout(() => {
+  let safetyTimer = isModal ? null : setTimeout(() => {
     if (!isPlaying && (video.currentTime === 0 || video.paused || video.readyState < 2)) {
       if (!usedProxy && isIptv) {
         tryFallbackProxy();
