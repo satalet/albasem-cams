@@ -2171,6 +2171,12 @@ function launchHlsStream(container, url, isModal = false, isIptv = false) {
           }
         }, 1000);
 
+        video.addEventListener('pause', () => {
+          if (isModal && !document.getElementById('cam-modal').classList.contains('hidden')) {
+            setTimeout(() => { try { video.play().catch(()=>{}); } catch(e){} }, 500);
+          }
+        });
+
         video.addEventListener('ended', () => {
           // منع انتهاء البث المباشر إطلاقاً وإعادة وصله فوراً
           try {
