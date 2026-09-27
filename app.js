@@ -19,7 +19,7 @@ function showChannelOSD(stream, channelNum, totalCount, isStillLoading = true) {
   if (numEl) numEl.textContent = String(channelNum).padStart(2, '0');
   if (titleEl) titleEl.textContent = stream.title || 'بث مباشر';
   if (areaEl) areaEl.textContent = stream.area || 'IPTV';
-  if (counterEl) counterEl.textContent = '(' + channelNum + ' / ' + totalCount + ')';
+  if (counterEl) { counterEl.textContent = ''; counterEl.style.display = 'none'; }
   
   if (statusEl) {
     if (isStillLoading) {
@@ -166,7 +166,7 @@ document.addEventListener('touchend', (e) => {
     const diffX = e.changedTouches[0].clientX - touchStartX;
     const diffTime = Date.now() - touchStartTime;
 
-    if (diffTime < 600 && Math.abs(diffY) > 35 && Math.abs(diffY) > Math.abs(diffX) * 1.1) {
+    if (diffTime < 600 && Math.abs(diffY) > 60 && Math.abs(diffY) > Math.abs(diffX) * 1.4) {
       if (diffY < 0) {
         navigateStream(1);  // سحب لأعلى -> القناة التالية
       } else {
@@ -2912,7 +2912,12 @@ if (typeof db !== 'undefined') {
 // ==========================================
 // ميزة تقليب القنوات الذكي (Channel Zapping)
 // ==========================================
+let lastNavTime = 0;
 function navigateStream(dir) {
+  const now = Date.now();
+  if (now - lastNavTime < 450) return; // حماية من النقرات المزدوجة السريعة
+  lastNavTime = now;
+
   const list = window.activeCategoryStreams;
   if (!list || list.length <= 1) return;
 
