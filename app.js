@@ -1407,7 +1407,59 @@ function toggleSubCategoryDrawer() {
 }
 window.toggleSubCategoryDrawer = toggleSubCategoryDrawer;
 
+
+// دالة حساب عدد القنوات لكل قسم وفرع بشكل ديناميكي ولحظي
+function getStreamCounts() {
+  const streams = (typeof allStreams !== 'undefined' && Array.isArray(allStreams)) ? allStreams : [];
+  const counts = {
+    FAVORITES: 0,
+    LOCAL: 0,
+    ARABIC: 0,
+    FOREIGN: 0,
+    IPTV: 0,
+    subs: {} // مفتاح فرعي: folderId + ':::' + subName
+  };
+
+  const favList = (typeof favorites !== 'undefined' && Array.isArray(favorites)) ? favorites : [];
+
+  streams.forEach(s => {
+    if (!s) return;
+    if (s.status === 'inactive' || s.status === 'disabled') return;
+
+    // المفضلة
+    if (favList.includes(s.id)) counts.FAVORITES++;
+
+    const cat = (s.category || '').trim();
+    const area = (s.area || '').trim();
+    const subCat = (s.subCategory || '').trim();
+
+    let folderId = null;
+    let effectiveSub = subCat || area || 'عام';
+
+    if (cat === 'IPTV' || area === 'IPTV') {
+      folderId = 'IPTV';
+      effectiveSub = subCat || cat || 'مشكّل ومنوعات';
+    } else if (cat === 'قنوات أجنبية' || area === 'قنوات أجنبية') {
+      folderId = 'FOREIGN';
+    } else if (cat === 'قنوات عربية' || cat === 'قنوات عربيه' || area === 'قنوات عربية') {
+      folderId = 'ARABIC';
+    } else {
+      // الافتراضي قنوات محلية
+      folderId = 'LOCAL';
+    }
+
+    if (folderId && counts[folderId] !== undefined) {
+      counts[folderId]++;
+      const subKey = folderId + ':::' + effectiveSub;
+      counts.subs[subKey] = (counts.subs[subKey] || 0) + 1;
+    }
+  });
+
+  return counts;
+}
+
 function setupFilters() {
+  const counts = getStreamCounts();
   const filterBox = document.getElementById('filter-buttons');
   if (!filterBox) return;
 
@@ -1443,9 +1495,11 @@ function setupFilters() {
     }`;
     
     btn.innerHTML = `
-      <i class="fa-solid ${folder.icon} text-base sm:text-lg mb-1"></i>
-      <span class="text-[10px] sm:text-xs leading-tight truncate w-full">${folder.title}</span>
-    `;
+      <div class="relative flex flex-col items-center">
+        <i class="fa-solid ${folder.icon} text-base sm:text-lg mb-0.5"></i>
+        <span class="text-[11px] sm:text-xs truncate font-bold">${folder.title}</span>
+        <span class="text-[9px] font-mono px-1.5 py-0.2 rounded-full mt-0.5 ${isAct ? 'bg-white/25 text-white' : 'bg-slate-800 text-slate-400 border border-slate-700/60'}">${counts[folder.id] || 0}</span>
+      </div>`;
 
     btn.onclick = () => {
       if (currentFilter !== folder.id) {
@@ -1540,12 +1594,16 @@ function setupFilters() {
         ? 'bg-sky-600/30 border-sky-500 text-sky-300 shadow-md ring-1 ring-sky-500/50'
         : 'bg-slate-800/80 border-slate-700/60 text-slate-200 hover:bg-slate-800'
     }`;
+    const totalInCat = counts[curFolderId] || 0;
     allBtn.innerHTML = `
       <div class="flex items-center gap-2.5">
         <i class="fa-solid fa-layer-group text-sky-400"></i>
         <span>عرض الكل (${curFolderObj ? curFolderObj.title : ''})</span>
       </div>
-      <i class="fa-solid ${isAllActive ? 'fa-check text-sky-400' : 'fa-chevron-left text-slate-500'} text-xs"></i>
+      <div class="flex items-center gap-2">
+        <span class="text-[10px] font-mono bg-sky-950/80 text-sky-300 border border-sky-800 px-2 py-0.5 rounded-full">${totalInCat}</span>
+        <i class="fa-solid ${isAllActive ? 'fa-check text-sky-400' : 'fa-chevron-left text-slate-500'} text-xs"></i>
+      </div>
     `;
     allBtn.onclick = () => {
       currentSubFilter = 'all';
@@ -1570,12 +1628,16 @@ function setupFilters() {
           : (isSubLocked ? 'bg-amber-950/30 border-amber-600/30 text-amber-200 hover:bg-amber-900/40' : 'bg-slate-800/80 border-slate-700/60 text-slate-200 hover:bg-slate-800')
       }`;
 
+      const subCount = counts.subs[curFolderId + ':::' + sub] || 0;
       sBtn.innerHTML = `
         <div class="flex items-center gap-2.5 truncate">
           <i class="fa-solid ${isSubLocked ? 'fa-lock text-amber-400' : 'fa-folder text-sky-400'} text-xs"></i>
           <span class="truncate">${sub}</span>
         </div>
-        <i class="fa-solid ${isSubActive ? 'fa-check text-sky-400' : 'fa-chevron-left text-slate-500'} text-xs"></i>
+        <div class="flex items-center gap-2">
+          <span class="text-[10px] font-mono bg-slate-800 text-slate-300 border border-slate-700 px-2 py-0.5 rounded-full">${subCount}</span>
+          <i class="fa-solid ${isSubActive ? 'fa-check text-sky-400' : 'fa-chevron-left text-slate-500'} text-xs"></i>
+        </div>
       `;
 
       sBtn.onclick = () => {
