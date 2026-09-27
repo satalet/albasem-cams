@@ -2116,18 +2116,18 @@ function launchHlsStream(container, url, isModal = false, isIptv = false) {
       const hls = new Hls({
           enableWorker: true,
           lowLatencyMode: false,
-          liveSyncDuration: 30,            // وسادة أمان صريحة 30 ثانية خلف البث الحي لمنع السقوط
-          liveMaxLatencyDuration: 60,      // أقصى حد للتأخير المسموح
-          liveDurationInfinity: true,      // بث حي لا نهائي ومنع جدار الـ 44 ثانية
-          maxBufferLength: 60,
-          maxMaxBufferLength: 120,
-          backBufferLength: 30,
-          manifestLoadingMaxRetry: 8,
-          levelLoadingMaxRetry: 8,
-          fragLoadingMaxRetry: 12,
-          fragLoadingRetryDelay: 1000,
-          nudgeMaxRetry: 10,              // دفش البث تلقائياً لو علق فريم بدون توقف
-          nudgeOffset: 0.2
+          liveSyncDurationCount: 3,       // التزامن مع آخر 3 أجزاء حية فقط لضمان عدم طلب ملفات منتهية
+          liveMaxLatencyDurationCount: 6, // أقصى حد للتأخير 6 أجزاء لتفادي التجمد
+          liveDurationInfinity: true,     // بث حي مستمر ومفتوح
+          maxBufferLength: 15,            // بافر خفيف وسريع الاستجابة للكاميرات
+          maxMaxBufferLength: 30,
+          backBufferLength: 0,            // تفريغ الأجزاء السابقة فوراً لتوفير الذاكرة ومنع التراكم
+          manifestLoadingMaxRetry: 10,
+          levelLoadingMaxRetry: 10,
+          fragLoadingMaxRetry: 15,
+          fragLoadingRetryDelay: 500,
+          nudgeMaxRetry: 20,              // دفع الفيديو بقوة عند أي تعليق
+          nudgeOffset: 0.3
         });
         hlsInstance = hls;
         video._hls = hls;
@@ -2146,10 +2146,48 @@ function launchHlsStream(container, url, isModal = false, isIptv = false) {
           });
         });
 
-        hls.on(Hls.Events.ERROR, (event, data) => {
-          // التعامل الذكي مع تعليق الكاش المؤقت بدون استسلام
-          if (data.details === Hls.ErrorDetails.BUFFER_STALLED_ERROR) {
+        // مراقبة حية لتخطي أي وقوف فجائي في الكاميرا والقفز المباشر للحظة الحالية
+        let lastTime = -1;
+        let stallCount = 0;
+        const liveStallChecker = setInterval(() => {
+          if (!video || video.paused || video.ended) return;
+          if (video.currentTime === lastTime) {
+            stallCount++;
+            if (stallCount >= 2) {
+              stallCount = 0;
+              try {
+                if (hls.liveSyncPosition) {
+                  video.currentTime = hls.liveSyncPosition;
+                } else if (video.buffered.length > 0) {
+                  video.currentTime = video.buffered.end(video.buffered.length - 1) - 0.2;
+                }
+                video.play().catch(() => {});
+                hls.startLoad();
+              } catch(e){}
+            }
+          } else {
+            stallCount = 0;
+            lastTime = video.currentTime;
+          }
+        }, 1000);
+
+        video.addEventListener('ended', () => {
+          // منع انتهاء البث المباشر إطلاقاً وإعادة وصله فوراً
+          try {
+            if (hls.liveSyncPosition) video.currentTime = hls.liveSyncPosition;
+            video.play().catch(() => {});
             hls.startLoad();
+          } catch(e){}
+        });
+
+        hls.on(Hls.Events.DESTROYING, () => clearInterval(liveStallChecker));
+
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          if (data.details === Hls.ErrorDetails.BUFFER_STALLED_ERROR || data.details === Hls.ErrorDetails.BUFFER_NUDGE_ON_STALL) {
+            try {
+              if (hls.liveSyncPosition) video.currentTime = hls.liveSyncPosition;
+              hls.startLoad();
+            } catch(e){}
             return;
           }
 
