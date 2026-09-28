@@ -3166,34 +3166,16 @@ if (document.readyState === 'loading') {
 
 
 // وظائف القفل والفك الجماعي للشريط العائم
-async function bulkLockStreams(shouldLock) {
-  const selectedIds = Array.from(window.selectedBulkStreams || []);
-  if (selectedIds.length === 0) {
-    alert('يرجى تحديد قناة واحدة على الأقل أولاً!');
-    return;
-  }
-  const actionText = shouldLock ? 'قفل' : 'فك قفل';
-  if (!confirm(`هل أنت متأكد من ${actionText} عدد (${selectedIds.length}) قناة محددة؟`)) return;
+async 
 
-  const updates = {};
-  selectedIds.forEach(id => {
-    updates[`streams/${id}/isLocked`] = shouldLock;
-  });
 
-  try {
-    await db.ref().update(updates);
-    // تحديث الحالة محلياً
-    streamsData.forEach(s => {
-      if (selectedIds.includes(s.id)) s.isLocked = shouldLock;
-    });
-    alert(`✅ تم ${actionText} ${selectedIds.length} قناة بنجاح!`);
-    renderCams();
-  } catch (err) {
-    alert('خطأ أثناء العملية: ' + err.message);
-  }
-}
-window.bulkLockStreams = bulkLockStreams;
 
+
+
+// ==========================================
+// محرك إدارة وتحديد القنوات الجماعي (Bulk Management)
+// ==========================================
+window.selectedBulkStreams = window.selectedBulkStreams || new Set();
 
 function updateBulkSelectedCount() {
   if (!window.selectedBulkStreams) window.selectedBulkStreams = new Set();
@@ -3201,7 +3183,75 @@ function updateBulkSelectedCount() {
   document.querySelectorAll('.bulk-stream-chk:checked').forEach(chk => {
     window.selectedBulkStreams.add(chk.value);
   });
-  const countEl = document.getElementById('bulk-selected-count');
-  if (countEl) countEl.textContent = window.selectedBulkStreams.size;
+  const countEl = document.getElementById('bulkSelectedCount') || document.getElementById('bulk-selected-count');
+  if (countEl) {
+    countEl.textContent = window.selectedBulkStreams.size;
+  }
 }
 window.updateBulkSelectedCount = updateBulkSelectedCount;
+
+function selectAllBulk(selectAll) {
+  const chks = document.querySelectorAll('.bulk-stream-chk');
+  chks.forEach(c => {
+    c.checked = selectAll;
+  });
+  updateBulkSelectedCount();
+}
+window.selectAllBulk = selectAllBulk;
+
+async function bulkLockStreams(shouldLock) {
+  updateBulkSelectedCount();
+  const selectedIds = Array.from(window.selectedBulkStreams || []);
+  if (selectedIds.length === 0) {
+    alert('⚠️ يرجى تحديد قناة واحدة على الأقل أولاً!');
+    return;
+  }
+  const actionText = shouldLock ? 'قفل' : 'فك قفل';
+  if (!confirm(`هل أنت متأكد من ${actionText} (${selectedIds.length}) قناة؟`)) return;
+
+  const updates = {};
+  selectedIds.forEach(id => {
+    updates['streams/' + id + '/isLocked'] = shouldLock;
+  });
+
+  try {
+    await db.ref().update(updates);
+    streamsData.forEach(s => {
+      if (selectedIds.includes(String(s.id))) {
+        s.isLocked = shouldLock;
+      }
+    });
+    alert(`✅ تم ${actionText} القنوات المحددة بنجاح!`);
+    if (typeof renderCams === 'function') renderCams();
+  } catch (err) {
+    alert('خطأ أثناء العملية: ' + err.message);
+  }
+}
+window.bulkLockStreams = bulkLockStreams;
+
+async function bulkDeleteStreams() {
+  updateBulkSelectedCount();
+  const selectedIds = Array.from(window.selectedBulkStreams || []);
+  if (selectedIds.length === 0) {
+    alert('⚠️ يرجى تحديد قناة واحدة على الأقل أولاً!');
+    return;
+  }
+  if (!confirm(`هل أنت متأكد تماماً من حذف (${selectedIds.length}) قناة؟ لا يمكن التراجع!`)) return;
+
+  const updates = {};
+  selectedIds.forEach(id => {
+    updates['streams/' + id] = null;
+  });
+
+  try {
+    await db.ref().update(updates);
+    streamsData = streamsData.filter(s => !selectedIds.includes(String(s.id)));
+    window.selectedBulkStreams.clear();
+    alert('✅ تم حذف القنوات المحددة بنجاح!');
+    if (typeof renderCams === 'function') renderCams();
+    if (typeof setupFilters === 'function') setupFilters();
+  } catch (err) {
+    alert('خطأ أثناء الحذف: ' + err.message);
+  }
+}
+window.bulkDeleteStreams = bulkDeleteStreams;
