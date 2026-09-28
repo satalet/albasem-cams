@@ -3177,27 +3177,23 @@ async
 // ==========================================
 window.selectedBulkStreams = window.selectedBulkStreams || new Set();
 
-function updateBulkSelectedCount() {
-  if (!window.selectedBulkStreams) window.selectedBulkStreams = new Set();
-  window.selectedBulkStreams.clear();
-  document.querySelectorAll('.bulk-stream-chk:checked').forEach(chk => {
-    window.selectedBulkStreams.add(chk.value);
-  });
-  const countEl = document.getElementById('bulkSelectedCount') || document.getElementById('bulk-selected-count');
-  if (countEl) {
-    countEl.textContent = window.selectedBulkStreams.size;
-  }
-}
-window.updateBulkSelectedCount = updateBulkSelectedCount;
 
-function selectAllBulk(selectAll) {
-  const chks = document.querySelectorAll('.bulk-stream-chk');
-  chks.forEach(c => {
-    c.checked = selectAll;
-  });
-  updateBulkSelectedCount();
-}
-window.selectAllBulk = selectAllBulk;
+
+
+
+async 
+
+async 
+
+
+// ==========================================
+// محرك إدارة وتحديد القنوات الجماعي (Bulk Management)
+// ==========================================
+window.selectedBulkStreams = window.selectedBulkStreams || new Set();
+
+
+
+
 
 async function bulkLockStreams(shouldLock) {
   updateBulkSelectedCount();
@@ -3255,3 +3251,90 @@ async function bulkDeleteStreams() {
   }
 }
 window.bulkDeleteStreams = bulkDeleteStreams;
+
+
+// ==========================================
+// محرك الإجراءات المباشر للشريط العائم
+// ==========================================
+function getCurrentlySelectedStreamIds() {
+  const ids = [];
+  document.querySelectorAll('input.bulk-stream-chk:checked').forEach(el => {
+    if (el.value) ids.push(String(el.value));
+  });
+  return ids;
+}
+
+function updateBulkSelectedCount() {
+  const ids = getCurrentlySelectedStreamIds();
+  const countEl = document.getElementById('bulkSelectedCount') || document.getElementById('bulk-selected-count');
+  if (countEl) {
+    countEl.textContent = ids.length;
+  }
+}
+window.updateBulkSelectedCount = updateBulkSelectedCount;
+
+function selectAllBulk(selectAll) {
+  document.querySelectorAll('input.bulk-stream-chk').forEach(c => {
+    c.checked = selectAll;
+  });
+  updateBulkSelectedCount();
+}
+window.selectAllBulk = selectAllBulk;
+
+async function executeBulkLock(shouldLock) {
+  const selectedIds = getCurrentlySelectedStreamIds();
+  if (selectedIds.length === 0) {
+    alert('⚠️ يرجى تحديد قناة واحدة على الأقل بوضع علامة الصح أولاً!');
+    return;
+  }
+  const actionText = shouldLock ? 'قفل' : 'فك قفل';
+  if (!confirm(`هل أنت متأكد من ${actionText} (${selectedIds.length}) قناة؟`)) return;
+
+  const updates = {};
+  selectedIds.forEach(id => {
+    updates['streams/' + id + '/isLocked'] = shouldLock;
+  });
+
+  try {
+    await db.ref().update(updates);
+    streamsData.forEach(s => {
+      if (selectedIds.includes(String(s.id))) {
+        s.isLocked = shouldLock;
+      }
+    });
+    alert(`✅ تم ${actionText} (${selectedIds.length}) قناة بنجاح!`);
+    selectAllBulk(false);
+    if (typeof renderCams === 'function') renderCams();
+  } catch (err) {
+    alert('خطأ أثناء العملية: ' + err.message);
+  }
+}
+window.executeBulkLock = executeBulkLock;
+window.bulkLockStreams = executeBulkLock;
+
+async function executeBulkDelete() {
+  const selectedIds = getCurrentlySelectedStreamIds();
+  if (selectedIds.length === 0) {
+    alert('⚠️ يرجى تحديد قناة واحدة على الأقل بوضع علامة الصح أولاً!');
+    return;
+  }
+  if (!confirm(`هل أنت متأكد تماماً من حذف (${selectedIds.length}) قناة؟ لا يمكن التراجع!`)) return;
+
+  const updates = {};
+  selectedIds.forEach(id => {
+    updates['streams/' + id] = null;
+  });
+
+  try {
+    await db.ref().update(updates);
+    streamsData = streamsData.filter(s => !selectedIds.includes(String(s.id)));
+    alert('✅ تم حذف القنوات المحددة بنجاح!');
+    selectAllBulk(false);
+    if (typeof renderCams === 'function') renderCams();
+    if (typeof setupFilters === 'function') setupFilters();
+  } catch (err) {
+    alert('خطأ أثناء الحذف: ' + err.message);
+  }
+}
+window.executeBulkDelete = executeBulkDelete;
+window.bulkDeleteStreams = executeBulkDelete;
