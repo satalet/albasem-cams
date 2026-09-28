@@ -1410,7 +1410,7 @@ window.toggleSubCategoryDrawer = toggleSubCategoryDrawer;
 
 // دالة حساب عدد القنوات لكل قسم وفرع بشكل ديناميكي ولحظي
 function getStreamCounts() {
-  const streams = (typeof allStreams !== 'undefined' && Array.isArray(allStreams)) ? allStreams : [];
+  const streams = (typeof streamsData !== 'undefined' && Array.isArray(streamsData)) ? streamsData : ((typeof allStreams !== 'undefined' && Array.isArray(allStreams)) ? allStreams : []);
   const counts = {
     FAVORITES: 0,
     LOCAL: 0,
