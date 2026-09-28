@@ -1,3 +1,37 @@
+
+// دوال درج التفرعات العائم (Floating Bottom Sheet Drawer)
+function openSubCategoryDrawer() {
+  const drawer = document.getElementById('subcat-floating-drawer');
+  if (!drawer) return;
+  drawer.classList.remove('hidden');
+  requestAnimationFrame(() => {
+    drawer.classList.remove('opacity-0', 'pointer-events-none');
+    const sheet = drawer.querySelector('#subcat-drawer-sheet');
+    if (sheet) sheet.classList.remove('translate-y-full');
+  });
+}
+window.openSubCategoryDrawer = openSubCategoryDrawer;
+
+function closeSubCategoryDrawer() {
+  const drawer = document.getElementById('subcat-floating-drawer');
+  if (!drawer) return;
+  drawer.classList.add('opacity-0', 'pointer-events-none');
+  const sheet = drawer.querySelector('#subcat-drawer-sheet');
+  if (sheet) sheet.classList.add('translate-y-full');
+  setTimeout(() => { drawer.classList.add('hidden'); }, 300);
+}
+window.closeSubCategoryDrawer = closeSubCategoryDrawer;
+
+function toggleSubCategoryDrawer() {
+  const drawer = document.getElementById('subcat-floating-drawer');
+  if (drawer && !drawer.classList.contains('hidden') && !drawer.classList.contains('opacity-0')) {
+    closeSubCategoryDrawer();
+  } else {
+    openSubCategoryDrawer();
+  }
+}
+window.toggleSubCategoryDrawer = toggleSubCategoryDrawer;
+
 // ==========================================
 // نظام البنر التلفزيوني الذكي وإيماءات السحب (TV OSD & Reels Gestures)
 // ==========================================
@@ -1374,38 +1408,11 @@ function getDynamicSubCategories(folderId) {
 }
 
 // دوال درج التفرعات العائم التفاعلي (Floating Bottom Sheet Drawer)
-function closeSubCategoryDrawer() {
-  const drawer = document.getElementById('subcat-floating-drawer');
-  if (drawer) {
-    drawer.classList.add('opacity-0', 'pointer-events-none');
-    const sheet = drawer.querySelector('#subcat-drawer-sheet');
-    if (sheet) sheet.classList.add('translate-y-full');
-    setTimeout(() => { drawer.classList.add('hidden'); }, 280);
-  }
-}
-window.closeSubCategoryDrawer = closeSubCategoryDrawer;
 
-function openSubCategoryDrawer() {
-  const drawer = document.getElementById('subcat-floating-drawer');
-  if (drawer) {
-    drawer.classList.remove('hidden', 'pointer-events-none');
-    void drawer.offsetWidth;
-    drawer.classList.remove('opacity-0');
-    const sheet = drawer.querySelector('#subcat-drawer-sheet');
-    if (sheet) sheet.classList.remove('translate-y-full');
-  }
-}
-window.openSubCategoryDrawer = openSubCategoryDrawer;
 
-function toggleSubCategoryDrawer() {
-  const drawer = document.getElementById('subcat-floating-drawer');
-  if (!drawer || drawer.classList.contains('hidden') || drawer.classList.contains('opacity-0')) {
-    openSubCategoryDrawer();
-  } else {
-    closeSubCategoryDrawer();
-  }
-}
-window.toggleSubCategoryDrawer = toggleSubCategoryDrawer;
+
+
+
 
 
 // دالة حساب عدد القنوات لكل قسم وفرع بشكل ديناميكي ولحظي
@@ -2505,7 +2512,11 @@ function renderCams() {
           openModal(stream.id);
         };
       } else {
-        launchHlsStream(feedContainer, stream.url, false, false);
+        try {
+          launchHlsStream(feedContainer, stream.url, false, false);
+        } catch(err) {
+          console.warn("Stream launch error:", err);
+        }
       }
     } else if (stream.type === 'image') {
       const img = document.createElement('img');
