@@ -1,4 +1,8 @@
 
+var currentFilter = localStorage.getItem('albasem_active_cat') || 'LOCAL';
+var currentSubFilter = localStorage.getItem('albasem_active_sub') || 'all';
+
+
 // دوال درج التفرعات العائم (Floating Bottom Sheet Drawer)
 function openSubCategoryDrawer() {
   const drawer = document.getElementById('subcat-floating-drawer');
@@ -1601,7 +1605,7 @@ function setupFilters() {
         ? 'bg-sky-600/30 border-sky-500 text-sky-300 shadow-md ring-1 ring-sky-500/50'
         : 'bg-slate-800/80 border-slate-700/60 text-slate-200 hover:bg-slate-800'
     }`;
-    const totalInCat = counts[curFolderId] || 0;
+    const totalInCat = counts[currentFilter] || 0;
     allBtn.innerHTML = `
       <div class="flex items-center gap-2.5">
         <i class="fa-solid fa-layer-group text-sky-400"></i>
@@ -1635,7 +1639,7 @@ function setupFilters() {
           : (isSubLocked ? 'bg-amber-950/30 border-amber-600/30 text-amber-200 hover:bg-amber-900/40' : 'bg-slate-800/80 border-slate-700/60 text-slate-200 hover:bg-slate-800')
       }`;
 
-      const subCount = counts.subs[curFolderId + ':::' + sub] || 0;
+      const subCount = counts.subs[currentFilter + ':::' + sub] || 0;
       sBtn.innerHTML = `
         <div class="flex items-center gap-2.5 truncate">
           <i class="fa-solid ${isSubLocked ? 'fa-lock text-amber-400' : 'fa-folder text-sky-400'} text-xs"></i>
