@@ -1,6 +1,4 @@
 
-var currentFilter = localStorage.getItem('albasem_active_cat') || 'LOCAL';
-var currentSubFilter = localStorage.getItem('albasem_active_sub') || 'all';
 
 
 // دوال درج التفرعات العائم (Floating Bottom Sheet Drawer)
@@ -1230,6 +1228,7 @@ function getSavedCategory() {
 }
 
 let currentFilter = getSavedCategory();
+let currentSubFilter = localStorage.getItem('albasem_active_sub') || 'all';
 let currentCols = 2;
 customCategoryOrder = [];
 
