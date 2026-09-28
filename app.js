@@ -263,48 +263,21 @@ async function toggleStreamLock(streamId, e) {
     alert("⚠️ يجب تسجيل الدخول كمسؤول أولاً!");
     return;
   }
-  const stream = streamsData.find(s => s.id === streamId);
+  const stream = streamsData.find(s => String(s.id) === String(streamId));
   if (!stream) return;
-  // تشغيل بنر الرسيفر وتحديث رقم واسم القناة فوراً
-  window.currentModalStreamId = streamId;
-    let _chNum = 1;
-    let _totalCh = 1;
-    if (window.activeCategoryStreams && window.activeCategoryStreams.length > 0) {
-      const fIdx = window.activeCategoryStreams.findIndex(s => s.id === streamId);
-      if (fIdx !== -1) _chNum = fIdx + 1;
-      _totalCh = window.activeCategoryStreams.length;
-    }
-    if (typeof showChannelOSD === 'function') {
-      showChannelOSD(stream, _chNum, _totalCh);
-    }
-  if (!window.activeCategoryStreams || window.activeCategoryStreams.length === 0) {
-    window.activeCategoryStreams = streamsData.filter(s => s.area === stream.area);
-  }
-  const _cIdx = window.activeCategoryStreams.findIndex(s => s.id === streamId);
-  const _cTot = window.activeCategoryStreams.length;
-  if (typeof showTvOsd === 'function') {
-    showTvOsd(stream, _cIdx, _cTot);
-  }
-  if (typeof resetControlsTimer === 'function') {
-    resetControlsTimer();
-  }
-
 
   const newStatus = !stream.isLocked;
   try {
     await db.ref('streams/' + streamId + '/isLocked').set(newStatus);
     stream.isLocked = newStatus;
-    if (typeof renderStreams === 'function') {
-      renderStreams();
-    } else if (typeof applyFilters === 'function') {
-      applyFilters();
-    } else {
-      location.reload();
+    if (typeof renderCams === 'function') {
+      renderCams();
     }
   } catch(err) {
     alert("خطأ أثناء تحديث حالة القفل: " + err.message);
   }
 }
+window.toggleStreamLock = toggleStreamLock;
 
 
 // --- محرك الرقابة الأبوية الذكي Al-Basem Parental Engine ---
@@ -3220,3 +3193,15 @@ async function bulkLockStreams(shouldLock) {
   }
 }
 window.bulkLockStreams = bulkLockStreams;
+
+
+function updateBulkSelectedCount() {
+  if (!window.selectedBulkStreams) window.selectedBulkStreams = new Set();
+  window.selectedBulkStreams.clear();
+  document.querySelectorAll('.bulk-stream-chk:checked').forEach(chk => {
+    window.selectedBulkStreams.add(chk.value);
+  });
+  const countEl = document.getElementById('bulk-selected-count');
+  if (countEl) countEl.textContent = window.selectedBulkStreams.size;
+}
+window.updateBulkSelectedCount = updateBulkSelectedCount;
