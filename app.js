@@ -2435,21 +2435,16 @@ function renderCams() {
     };
 
     const adminActions = currentUser ? `
-      <div class="flex items-center gap-1.5 ml-2 border-l border-slate-700 pl-2" onclick="event.stopPropagation()">
-        <label class="bulk-chk-label ${window.isBulkSortActive ? 'inline-flex' : 'hidden'} items-center gap-1 text-[11px] text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 px-1.5 py-0.5 rounded cursor-pointer select-none">
+      <div class="flex items-center gap-1 ml-1.5 border-l border-slate-700/80 pl-1.5" onclick="event.stopPropagation()">
+        <label class="bulk-chk-label ${window.isBulkSortActive ? 'inline-flex' : 'hidden'} items-center gap-1 text-[11px] text-emerald-400 bg-emerald-950/80 border border-emerald-500/50 px-1.5 py-0.5 rounded cursor-pointer select-none">
           <input type="checkbox" class="bulk-stream-chk accent-emerald-500 cursor-pointer w-3.5 h-3.5" value="${stream.id}" onchange="updateBulkSelectedCount()" ${(window.selectedBulkStreams && window.selectedBulkStreams.has(stream.id)) ? 'checked' : ''}>
-          <span>تحديد</span>
         </label>
-                  <button onclick="openEditModal('${stream.id}')" class="bg-blue-600/30 hover:bg-blue-600 text-blue-300 hover:text-white px-2 py-0.5 rounded text-[11px] transition" title="تعديل">
-            <i class="fa-solid fa-pen-to-square"></i> تعديل
-          </button>
-          <button onclick="toggleStreamLock('${stream.id}', event)" class="${stream.isLocked ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/20' : 'bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950'} px-2 py-0.5 rounded text-[11px] transition flex items-center gap-1" title="${stream.isLocked ? 'فك قفل الرقابة الأبوية' : 'قفل فوري برمز 1415'}">
-            <i class="fa-solid ${stream.isLocked ? 'fa-lock' : 'fa-lock-open'}"></i>
-            <span>${stream.isLocked ? 'مقفلة' : 'قفل'}</span>
-          </button>
-          <button onclick="deleteStream('${stream.id}', '${stream.title}')" class="bg-red-600/30 hover:bg-red-600 text-red-300 hover:text-white px-2 py-0.5 rounded text-[11px] transition" title="حذف">
-            <i class="fa-solid fa-trash"></i>
-          </button>
+        <button onclick="openEditModal('${stream.id}')" class="p-1 rounded bg-blue-600/20 hover:bg-blue-600 text-blue-300 hover:text-white text-xs transition" title="تعديل">
+          <i class="fa-solid fa-pen-to-square"></i>
+        </button>
+        <button onclick="deleteStream('${stream.id}', '${stream.title}')" class="p-1 rounded bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white text-xs transition" title="حذف">
+          <i class="fa-solid fa-trash"></i>
+        </button>
       </div>
     ` : '';
 
@@ -3195,3 +3190,33 @@ if (document.readyState === 'loading') {
   }
 })();
 
+
+
+// وظائف القفل والفك الجماعي للشريط العائم
+async function bulkLockStreams(shouldLock) {
+  const selectedIds = Array.from(window.selectedBulkStreams || []);
+  if (selectedIds.length === 0) {
+    alert('يرجى تحديد قناة واحدة على الأقل أولاً!');
+    return;
+  }
+  const actionText = shouldLock ? 'قفل' : 'فك قفل';
+  if (!confirm(`هل أنت متأكد من ${actionText} عدد (${selectedIds.length}) قناة محددة؟`)) return;
+
+  const updates = {};
+  selectedIds.forEach(id => {
+    updates[`streams/${id}/isLocked`] = shouldLock;
+  });
+
+  try {
+    await db.ref().update(updates);
+    // تحديث الحالة محلياً
+    streamsData.forEach(s => {
+      if (selectedIds.includes(s.id)) s.isLocked = shouldLock;
+    });
+    alert(`✅ تم ${actionText} ${selectedIds.length} قناة بنجاح!`);
+    renderCams();
+  } catch (err) {
+    alert('خطأ أثناء العملية: ' + err.message);
+  }
+}
+window.bulkLockStreams = bulkLockStreams;
