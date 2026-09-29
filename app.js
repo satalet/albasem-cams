@@ -3625,40 +3625,7 @@ setInterval(() => {
 }, 300);
 
 
-// تفعيل زر الصفر 0 بشكل جذري وعالمي (Capture Mode)
-window.addEventListener('keydown', function(e) {
-  const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
-  if (tag === 'input' || tag === 'textarea') return;
 
-  if (e.key === '0' || e.code === 'Digit0' || e.code === 'Numpad0' || e.keyCode === 48 || e.keyCode === 96) {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // البحث عن الفيديو الفعال حالياً
-    const modal = document.getElementById('modal');
-    const activeVideo = (modal && !modal.classList.contains('hidden')) 
-      ? modal.querySelector('video') 
-      : document.querySelector('video');
-
-    const targetElem = activeVideo || document.getElementById('modal-video-container') || modal;
-
-    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-      if (targetElem && targetElem.requestFullscreen) {
-        targetElem.requestFullscreen();
-      } else if (targetElem && targetElem.webkitRequestFullscreen) {
-        targetElem.webkitRequestFullscreen();
-      } else if (activeVideo && activeVideo.webkitEnterFullscreen) {
-        activeVideo.webkitEnterFullscreen(); // دعم أجهزة الآيفون والأندرويد القديمة
-      }
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-      } else if (document.webkitExitFullscreen) {
-        document.webkitExitFullscreen();
-      }
-    }
-  }
-}, true);
 
 
 // ==========================================
@@ -3724,23 +3691,22 @@ function toggleGlobalMute() {
   applyGlobalMuteState();
 }
 
+
 function initGlobalMuteButton() {
   if (document.getElementById('global-mute-btn')) return;
   const btn = document.createElement('button');
   btn.id = 'global-mute-btn';
   btn.type = 'button';
+  btn.className = 'fixed bottom-4 right-4 z-[99999] w-10 h-10 rounded-full bg-slate-900/90 text-emerald-400 border border-slate-700/80 shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none';
+  btn.innerHTML = '<i class="fa-solid fa-volume-high text-sm"></i>';
   btn.onclick = (e) => {
     e.stopPropagation();
     toggleGlobalMute();
   };
   document.body.appendChild(btn);
   applyGlobalMuteState();
-
-  const observer = new MutationObserver(() => {
-    if (window.isAppGloballyMuted) {
-      document.querySelectorAll('video, audio').forEach(el => {
-        if (!el.muted) el.muted = true;
-      });
+}
+);
     }
   });
   observer.observe(document.body, { childList: true, subtree: true });
@@ -3754,3 +3720,38 @@ if (document.readyState === 'loading') {
 }
 
 window.toggleGlobalMute = toggleGlobalMute;
+
+
+// تفعيل زر الصفر 0 بوضع الـ Capture الشامل
+window.addEventListener('keydown', function(e) {
+  const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+  if (tag === 'input' || tag === 'textarea') return;
+
+  if (e.key === '0' || e.code === 'Digit0' || e.code === 'Numpad0' || e.keyCode === 48 || e.keyCode === 96) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const modal = document.getElementById('modal');
+    const activeVideo = (modal && !modal.classList.contains('hidden')) 
+      ? modal.querySelector('video') 
+      : document.querySelector('video');
+
+    const targetElem = activeVideo || document.getElementById('modal-video-container') || modal;
+
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+      if (targetElem && targetElem.requestFullscreen) {
+        targetElem.requestFullscreen();
+      } else if (targetElem && targetElem.webkitRequestFullscreen) {
+        targetElem.webkitRequestFullscreen();
+      } else if (activeVideo && activeVideo.webkitEnterFullscreen) {
+        activeVideo.webkitEnterFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      }
+    }
+  }
+}, true);
