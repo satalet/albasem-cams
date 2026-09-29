@@ -1,4 +1,3 @@
-
 function clearSearchState() {
   window.searchQuery = '';
   const sInput = document.getElementById('search-input');
@@ -3390,83 +3389,60 @@ function showZeroFullscreenHint() {
 
 // ==========================================
 
+
 // ==========================================
-// نظام الكتم الشامل للتطبيق
+// MUTE & FULLSCREEN (ZERO KEY) CONTROLLER
 // ==========================================
 window.isAppGloballyMuted = localStorage.getItem('albasem_global_mute') === 'true';
 
 window.updateMuteButtonUI = function() {
   const btn = document.getElementById('global-mute-btn');
-  const icon = document.getElementById('global-mute-icon');
   if (!btn) return;
-
   if (window.isAppGloballyMuted) {
-    btn.className = "fixed bottom-6 left-6 z-[999999] w-12 h-12 rounded-full bg-rose-600 text-white border border-rose-400 shadow-2xl flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 backdrop-blur-md cursor-pointer select-none ring-2 ring-rose-500/50";
-    if (icon) icon.className = "fa-solid fa-volume-xmark text-lg";
-    btn.title = "الصوت مكتوم - اضغط للتشغيل";
+    btn.innerHTML = '<i class="fa-solid fa-volume-xmark text-lg"></i>';
+    btn.className = "fixed bottom-6 left-6 z-[9999999] w-12 h-12 rounded-full bg-rose-600 text-white border border-rose-400 shadow-2xl flex items-center justify-center cursor-pointer select-none ring-2 ring-rose-500/50 transition-all";
   } else {
-    btn.className = "fixed bottom-6 left-6 z-[999999] w-12 h-12 rounded-full bg-slate-900/90 text-emerald-400 border border-slate-700 shadow-2xl flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 backdrop-blur-md cursor-pointer select-none";
-    if (icon) icon.className = "fa-solid fa-volume-high text-lg";
-    btn.title = "الصوت شغال - اضغط للكتم";
+    btn.innerHTML = '<i class="fa-solid fa-volume-high text-lg"></i>';
+    btn.className = "fixed bottom-6 left-6 z-[9999999] w-12 h-12 rounded-full bg-slate-900/90 text-emerald-400 border border-slate-700 shadow-2xl flex items-center justify-center cursor-pointer select-none transition-all";
   }
 };
 
-window.applyMuteToAllMedia = function() {
+window.toggleGlobalMute = function(e) {
+  if (e) {
+    e.stopPropagation();
+    e.preventDefault();
+  }
+  window.isAppGloballyMuted = !window.isAppGloballyMuted;
+  localStorage.setItem('albasem_global_mute', window.isAppGloballyMuted);
+
   document.querySelectorAll('video, audio').forEach(el => {
     el.muted = window.isAppGloballyMuted;
   });
 
   document.querySelectorAll('iframe').forEach(ifr => {
     try {
-      const action = window.isAppGloballyMuted ? 'mute' : 'unMute';
-      ifr.contentWindow.postMessage(JSON.stringify({ event: 'command', func: action, args: [] }), '*');
-    } catch(e) {}
+      const act = window.isAppGloballyMuted ? 'mute' : 'unMute';
+      ifr.contentWindow.postMessage(JSON.stringify({ event: 'command', func: act, args: [] }), '*');
+    } catch(err){}
   });
+
   window.updateMuteButtonUI();
 };
 
-window.toggleGlobalMute = function() {
-  window.isAppGloballyMuted = !window.isAppGloballyMuted;
-  localStorage.setItem('albasem_global_mute', window.isAppGloballyMuted);
-  window.applyMuteToAllMedia();
-};
-
-// متابعة أي عناصر وسائط جديدة وكتمها إذا كان الوضع مفعلاً
-setInterval(() => {
-  if (window.isAppGloballyMuted) {
-    document.querySelectorAll('video, audio').forEach(el => {
-      if (!el.muted) el.muted = true;
-    });
-  }
-}, 600);
-
-// ==========================================
-// زر الصفر (0) لتكبير وتصغير ملء الشاشة
-// ==========================================
 window.toggleZeroFullscreen = function() {
-  const modal = document.getElementById('modal') || document.querySelector('.modal:not(.hidden)');
-  const videoTarget = (modal && !modal.classList.contains('hidden'))
-    ? (modal.querySelector('video') || modal.querySelector('iframe') || modal)
-    : document.querySelector('video');
-
-  if (!videoTarget) return;
-
   if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-    const req = videoTarget.requestFullscreen || videoTarget.webkitRequestFullscreen || videoTarget.mozRequestFullScreen || videoTarget.msRequestFullscreen;
-    if (req) {
-      req.call(videoTarget).catch(() => {
-        if (modal && modal.requestFullscreen) modal.requestFullscreen();
-      });
-    }
+    const el = document.getElementById('modal-content') || document.getElementById('modal') || document.documentElement;
+    const rfs = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+    if (rfs) rfs.call(el);
   } else {
-    const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
-    if (exit) exit.call(document);
+    const efs = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+    if (efs) efs.call(document);
   }
 };
 
-window.addEventListener('keydown', (e) => {
-  const tag = (document.activeElement && document.activeElement.tagName) ? document.activeElement.tagName.toLowerCase() : '';
-  if (tag === 'input' || tag === 'textarea') return;
+window.addEventListener('keydown', function(e) {
+  const t = (document.activeElement && document.activeElement.tagName) ? document.activeElement.tagName.toLowerCase() : '';
+  if (t === 'input' || t === 'textarea') return;
 
   if (e.key === '0' || e.code === 'Digit0' || e.code === 'Numpad0' || e.keyCode === 48 || e.keyCode === 96) {
     e.preventDefault();
@@ -3474,9 +3450,14 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
-// تهيئة الزر عند تحميل الصفحة
+// Jalqaba irratti haaromsuu
 setTimeout(() => {
-  if (typeof window.applyMuteToAllMedia === 'function') {
-    window.applyMuteToAllMedia();
+  const btn = document.getElementById('global-mute-btn');
+  if (btn) {
+    btn.onclick = window.toggleGlobalMute;
   }
-}, 400);
+  window.updateMuteButtonUI();
+  document.querySelectorAll('video, audio').forEach(el => {
+    el.muted = window.isAppGloballyMuted;
+  });
+}, 300);
