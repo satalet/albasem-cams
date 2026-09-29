@@ -1,3 +1,16 @@
+
+// تفريغ حالة البحث عند التنقل بين الأقسام
+window.clearSearchState = function() {
+  window.searchQuery = '';
+  const searchInput = document.getElementById('search-input');
+  if (searchInput) {
+    searchInput.value = '';
+  }
+};
+function clearSearchState() {
+  window.clearSearchState();
+}
+
 function openSubCategoryDrawer() {
   const drawer = document.getElementById('subcat-floating-drawer');
   if (!drawer) return;
