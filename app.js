@@ -50,63 +50,42 @@ function sendYouTubeMuteCommand(isMuted) {
 // ==========================================
 // زر الكتم الشامل للتطبيق بدون تشويه الواجهة
 // ==========================================
+
+// ==========================================
+// محرك الصوت الموحد والذكي (Bulletproof Audio Engine)
+// ==========================================
 window.isAppGloballyMuted = localStorage.getItem('albasem_global_mute') === 'true';
 
-
-// دالة موحدة للتخاطب مع إطارات اليوتيوب وكافة مشغلات الوسائط
-function syncAllMediaMuteState(isMuted) {
-  // كتم/تشغيل عناصر الفيديو العادية
-  document.querySelectorAll('video, audio').forEach(el => {
-    try {
-      el.muted = isMuted;
-      if (!isMuted) {
-        el.volume = 1.0;
-        const p = el.play();
-        if (p !== undefined) p.catch(() => {});
-      }
-    } catch(e) {}
-  });
-
-  // التخاطب المباشر مع مشغلات يوتيوب عبر Iframe PostMessage
-  document.querySelectorAll('iframe').forEach(ifr => {
-    try {
-      if (ifr.src && (ifr.src.includes('youtube.com') || ifr.src.includes('youtu.be'))) {
-        const cmd = isMuted ? 'mute' : 'unMute';
-        ifr.contentWindow.postMessage(JSON.stringify({
-          event: 'command',
-          func: cmd,
-          args: []
-        }), '*');
-
-        if (!isMuted) {
-          ifr.contentWindow.postMessage(JSON.stringify({
-            event: 'command',
-            func: 'setVolume',
-            args: [100]
-          }), '*');
-        }
-      }
-    } catch(e) {}
-  });
+function syncVideoElementAudio(video) {
+  if (!video) return;
+  const targetMuted = window.isAppGloballyMuted;
+  
+  if (video.muted !== targetMuted) {
+    video.muted = targetMuted;
+  }
+  if (!targetMuted) {
+    video.volume = 1.0;
+    video.removeAttribute('muted');
+  } else {
+    video.setAttribute('muted', '');
+  }
 }
-
-
 
 function applyGlobalMuteState() {
   const isMuted = window.isAppGloballyMuted;
-  
+
+  // 1. مزامنة فورية لكل عناصر الفيديو والصوت
   document.querySelectorAll('video, audio').forEach(el => {
-    el.muted = isMuted;
+    syncVideoElementAudio(el);
     if (!isMuted) {
-      el.volume = 1.0;
-      el.defaultMuted = false;
       try {
         const p = el.play();
-        if (p !== undefined) p.catch(()=>{});
-      } catch(e){}
+        if (p !== undefined) p.catch(() => {});
+      } catch(e) {}
     }
   });
 
+  // 2. مزامنة مشغلات اليوتيوب Iframe
   document.querySelectorAll('iframe').forEach(ifr => {
     try {
       const func = isMuted ? 'mute' : 'unMute';
@@ -114,9 +93,10 @@ function applyGlobalMuteState() {
       if (!isMuted) {
         ifr.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'setVolume', args: [100] }), '*');
       }
-    } catch(err) {}
+    } catch(e) {}
   });
 
+  // 3. تحديث مظهر زر الكتم
   const btn = document.getElementById('global-mute-btn');
   if (btn) {
     if (isMuted) {
@@ -134,6 +114,29 @@ function toggleGlobalMute() {
   localStorage.setItem('albasem_global_mute', window.isAppGloballyMuted);
   applyGlobalMuteState();
 }
+
+// مراقبة فورية لأي فيديو جديد يضاف في المودال أو يتم تبديله بالقنوات
+const globalAudioObserver = new MutationObserver((mutations) => {
+  mutations.forEach(m => {
+    m.addedNodes.forEach(node => {
+      if (node.nodeType === 1) {
+        if (node.tagName === 'VIDEO' || node.tagName === 'AUDIO') {
+          syncVideoElementAudio(node);
+          node.addEventListener('play', () => syncVideoElementAudio(node));
+          node.addEventListener('loadedmetadata', () => syncVideoElementAudio(node));
+        } else {
+          node.querySelectorAll && node.querySelectorAll('video, audio').forEach(v => {
+            syncVideoElementAudio(v);
+            v.addEventListener('play', () => syncVideoElementAudio(v));
+            v.addEventListener('loadedmetadata', () => syncVideoElementAudio(v));
+          });
+        }
+      }
+    });
+  });
+});
+globalAudioObserver.observe(document.documentElement, { childList: true, subtree: true });
+
 
 
 if (document.readyState === 'loading') {
@@ -3571,146 +3574,42 @@ function showZeroFullscreenHint() {
 // ==========================================
 // MUTE & FULLSCREEN (ZERO KEY) CONTROLLER
 // ==========================================
-window.isAppGloballyMuted = localStorage.getItem('albasem_global_mute') === 'true';
-
-window.updateMuteButtonUI = function() {
-  const btn = document.getElementById('global-mute-btn');
-  if (!btn) return;
-  if (window.isAppGloballyMuted) {
-    btn.innerHTML = '<i class="fa-solid fa-volume-xmark text-lg"></i>';
-    btn.className = "fixed bottom-6 left-6 z-[9999999] w-12 h-12 rounded-full bg-rose-600 text-white border border-rose-400 shadow-2xl flex items-center justify-center cursor-pointer select-none ring-2 ring-rose-500/50 transition-all";
-  } else {
-    btn.innerHTML = '<i class="fa-solid fa-volume-high text-lg"></i>';
-    btn.className = "fixed bottom-6 left-6 z-[9999999] w-12 h-12 rounded-full bg-slate-900/90 text-emerald-400 border border-slate-700 shadow-2xl flex items-center justify-center cursor-pointer select-none transition-all";
-  }
-};
-
-window.toggleGlobalMute = function(e) {
-  if (e) {
-    e.stopPropagation();
-    e.preventDefault();
-  }
-  window.isAppGloballyMuted = !window.isAppGloballyMuted;
-  localStorage.setItem('albasem_global_mute', window.isAppGloballyMuted);
-
-  document.querySelectorAll('video, audio').forEach(el => {
-    el.muted = window.isAppGloballyMuted;
-  });
-
-  document.querySelectorAll('iframe').forEach(ifr => {
-    try {
-      const act = window.isAppGloballyMuted ? 'mute' : 'unMute';
-      ifr.contentWindow.postMessage(JSON.stringify({ event: 'command', func: act, args: [] }), '*');
-    } catch(err){}
-  });
-
-  window.updateMuteButtonUI();
-};
-
-window.toggleZeroFullscreen = function() {
-  if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-    const el = document.getElementById('modal-content') || document.getElementById('modal') || document.documentElement;
-    const rfs = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
-    if (rfs) rfs.call(el);
-  } else {
-    const efs = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
-    if (efs) efs.call(document);
-  }
-};
-
-window.addEventListener('keydown', function(e) {
-  const t = (document.activeElement && document.activeElement.tagName) ? document.activeElement.tagName.toLowerCase() : '';
-  if (t === 'input' || t === 'textarea') return;
-
-  if (e.key === '0' || e.code === 'Digit0' || e.code === 'Numpad0' || e.keyCode === 48 || e.keyCode === 96) {
-    e.preventDefault();
-    window.toggleZeroFullscreen();
-  }
-});
-
-// Jalqaba irratti haaromsuu
-setTimeout(() => {
-  const btn = document.getElementById('global-mute-btn');
-  if (btn) {
-    btn.onclick = window.toggleGlobalMute;
-  }
-  window.updateMuteButtonUI();
-  document.querySelectorAll('video, audio').forEach(el => {
-    el.muted = window.isAppGloballyMuted;
-  });
-}, 300);
-
-
-// مراقبة فورية لفرض الميوت الشامل على كل الفيديوهات بدون استثناء
-setInterval(() => {
-  if (window.isAppGloballyMuted) {
-    document.querySelectorAll('video, audio').forEach(v => {
-      if (!v.muted) v.muted = true;
-    });
-  }
-}, 300);
-
-
-
-
 
 // ==========================================
-// منظومة الكتم الشاملة المتزامنة (Global Mute System)
+// محرك الصوت الموحد والذكي (Bulletproof Audio Engine)
 // ==========================================
 window.isAppGloballyMuted = localStorage.getItem('albasem_global_mute') === 'true';
 
-function syncAllMediaMuteState(isMuted) {
-  document.querySelectorAll('video, audio').forEach(el => {
-    try {
-      el.muted = isMuted;
-      if (!isMuted) {
-        el.volume = 1.0;
-        const p = el.play();
-        if (p !== undefined) p.catch(() => {});
-      }
-    } catch(e) {}
-  });
-
-  document.querySelectorAll('iframe').forEach(ifr => {
-    try {
-      const targetSrc = ifr.src || '';
-      if (targetSrc.includes('youtube.com') || targetSrc.includes('youtu.be')) {
-        const cmd = isMuted ? 'mute' : 'unMute';
-        ifr.contentWindow.postMessage(JSON.stringify({
-          event: 'command',
-          func: cmd,
-          args: []
-        }), '*');
-
-        if (!isMuted) {
-          ifr.contentWindow.postMessage(JSON.stringify({
-            event: 'command',
-            func: 'setVolume',
-            args: [100]
-          }), '*');
-        }
-      }
-    } catch(e) {}
-  });
+function syncVideoElementAudio(video) {
+  if (!video) return;
+  const targetMuted = window.isAppGloballyMuted;
+  
+  if (video.muted !== targetMuted) {
+    video.muted = targetMuted;
+  }
+  if (!targetMuted) {
+    video.volume = 1.0;
+    video.removeAttribute('muted');
+  } else {
+    video.setAttribute('muted', '');
+  }
 }
-
-
 
 function applyGlobalMuteState() {
   const isMuted = window.isAppGloballyMuted;
-  
+
+  // 1. مزامنة فورية لكل عناصر الفيديو والصوت
   document.querySelectorAll('video, audio').forEach(el => {
-    el.muted = isMuted;
+    syncVideoElementAudio(el);
     if (!isMuted) {
-      el.volume = 1.0;
-      el.defaultMuted = false;
       try {
         const p = el.play();
-        if (p !== undefined) p.catch(()=>{});
-      } catch(e){}
+        if (p !== undefined) p.catch(() => {});
+      } catch(e) {}
     }
   });
 
+  // 2. مزامنة مشغلات اليوتيوب Iframe
   document.querySelectorAll('iframe').forEach(ifr => {
     try {
       const func = isMuted ? 'mute' : 'unMute';
@@ -3718,9 +3617,10 @@ function applyGlobalMuteState() {
       if (!isMuted) {
         ifr.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'setVolume', args: [100] }), '*');
       }
-    } catch(err) {}
+    } catch(e) {}
   });
 
+  // 3. تحديث مظهر زر الكتم
   const btn = document.getElementById('global-mute-btn');
   if (btn) {
     if (isMuted) {
@@ -3738,6 +3638,29 @@ function toggleGlobalMute() {
   localStorage.setItem('albasem_global_mute', window.isAppGloballyMuted);
   applyGlobalMuteState();
 }
+
+// مراقبة فورية لأي فيديو جديد يضاف في المودال أو يتم تبديله بالقنوات
+const globalAudioObserver = new MutationObserver((mutations) => {
+  mutations.forEach(m => {
+    m.addedNodes.forEach(node => {
+      if (node.nodeType === 1) {
+        if (node.tagName === 'VIDEO' || node.tagName === 'AUDIO') {
+          syncVideoElementAudio(node);
+          node.addEventListener('play', () => syncVideoElementAudio(node));
+          node.addEventListener('loadedmetadata', () => syncVideoElementAudio(node));
+        } else {
+          node.querySelectorAll && node.querySelectorAll('video, audio').forEach(v => {
+            syncVideoElementAudio(v);
+            v.addEventListener('play', () => syncVideoElementAudio(v));
+            v.addEventListener('loadedmetadata', () => syncVideoElementAudio(v));
+          });
+        }
+      }
+    });
+  });
+});
+globalAudioObserver.observe(document.documentElement, { childList: true, subtree: true });
+
 
 
 function initGlobalMuteButton() {
