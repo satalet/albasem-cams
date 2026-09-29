@@ -130,10 +130,6 @@ function applyGlobalMuteState() {
   }
 }
 
-}
-
-}
-
 function toggleGlobalMute() {
   window.isAppGloballyMuted = !window.isAppGloballyMuted;
   localStorage.setItem('albasem_global_mute', window.isAppGloballyMuted);
@@ -3727,10 +3723,6 @@ function applyGlobalMuteState() {
       btn.innerHTML = '<i class="fa-solid fa-volume-high text-sm"></i>';
     }
   }
-}
-
-}
-
 }
 
 function toggleGlobalMute() {
