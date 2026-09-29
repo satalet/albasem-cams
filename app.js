@@ -1,4 +1,3 @@
-
 function openSubCategoryDrawer() {
   const drawer = document.getElementById('subcat-floating-drawer');
   if (!drawer) return;
@@ -116,26 +115,7 @@ function toggleGlobalMute() {
 }
 
 // مراقبة فورية لأي فيديو جديد يضاف في المودال أو يتم تبديله بالقنوات
-const globalAudioObserver = new MutationObserver((mutations) => {
-  mutations.forEach(m => {
-    m.addedNodes.forEach(node => {
-      if (node.nodeType === 1) {
-        if (node.tagName === 'VIDEO' || node.tagName === 'AUDIO') {
-          syncVideoElementAudio(node);
-          node.addEventListener('play', () => syncVideoElementAudio(node));
-          node.addEventListener('loadedmetadata', () => syncVideoElementAudio(node));
-        } else {
-          node.querySelectorAll && node.querySelectorAll('video, audio').forEach(v => {
-            syncVideoElementAudio(v);
-            v.addEventListener('play', () => syncVideoElementAudio(v));
-            v.addEventListener('loadedmetadata', () => syncVideoElementAudio(v));
-          });
-        }
-      }
-    });
-  });
-});
-globalAudioObserver.observe(document.documentElement, { childList: true, subtree: true });
+
 
 
 
@@ -3640,26 +3620,7 @@ function toggleGlobalMute() {
 }
 
 // مراقبة فورية لأي فيديو جديد يضاف في المودال أو يتم تبديله بالقنوات
-const globalAudioObserver = new MutationObserver((mutations) => {
-  mutations.forEach(m => {
-    m.addedNodes.forEach(node => {
-      if (node.nodeType === 1) {
-        if (node.tagName === 'VIDEO' || node.tagName === 'AUDIO') {
-          syncVideoElementAudio(node);
-          node.addEventListener('play', () => syncVideoElementAudio(node));
-          node.addEventListener('loadedmetadata', () => syncVideoElementAudio(node));
-        } else {
-          node.querySelectorAll && node.querySelectorAll('video, audio').forEach(v => {
-            syncVideoElementAudio(v);
-            v.addEventListener('play', () => syncVideoElementAudio(v));
-            v.addEventListener('loadedmetadata', () => syncVideoElementAudio(v));
-          });
-        }
-      }
-    });
-  });
-});
-globalAudioObserver.observe(document.documentElement, { childList: true, subtree: true });
+
 
 
 
@@ -3721,3 +3682,23 @@ window.addEventListener('keydown', function(e) {
     }
   }
 }, true);
+
+if (!window._albasemAudioObserverInitialized) {
+  window._albasemAudioObserverInitialized = true;
+  const audioObs = new MutationObserver((mutations) => {
+    mutations.forEach(m => {
+      m.addedNodes.forEach(node => {
+        if (node.nodeType === 1) {
+          if (node.tagName === 'VIDEO' || node.tagName === 'AUDIO') {
+            if (typeof syncVideoElementAudio === 'function') syncVideoElementAudio(node);
+          } else if (node.querySelectorAll) {
+            node.querySelectorAll('video, audio').forEach(v => {
+              if (typeof syncVideoElementAudio === 'function') syncVideoElementAudio(v);
+            });
+          }
+        }
+      });
+    });
+  });
+  audioObs.observe(document.documentElement, { childList: true, subtree: true });
+}
