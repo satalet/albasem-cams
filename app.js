@@ -117,7 +117,7 @@ function toggleGlobalMute() {
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initGlobalMuteButton);
 } else {
-  initGlobalMuteButton();
+  
 }
 
 
@@ -3660,3 +3660,96 @@ window.addEventListener('keydown', function(e) {
     }
   }
 }, true);
+
+
+// ==========================================
+// منظومة الكتم الشاملة المتزامنة (Global Mute System)
+// ==========================================
+window.isAppGloballyMuted = localStorage.getItem('albasem_global_mute') === 'true';
+
+function syncAllMediaMuteState(isMuted) {
+  document.querySelectorAll('video, audio').forEach(el => {
+    try {
+      el.muted = isMuted;
+      if (!isMuted) {
+        el.volume = 1.0;
+        const p = el.play();
+        if (p !== undefined) p.catch(() => {});
+      }
+    } catch(e) {}
+  });
+
+  document.querySelectorAll('iframe').forEach(ifr => {
+    try {
+      const targetSrc = ifr.src || '';
+      if (targetSrc.includes('youtube.com') || targetSrc.includes('youtu.be')) {
+        const cmd = isMuted ? 'mute' : 'unMute';
+        ifr.contentWindow.postMessage(JSON.stringify({
+          event: 'command',
+          func: cmd,
+          args: []
+        }), '*');
+
+        if (!isMuted) {
+          ifr.contentWindow.postMessage(JSON.stringify({
+            event: 'command',
+            func: 'setVolume',
+            args: [100]
+          }), '*');
+        }
+      }
+    } catch(e) {}
+  });
+}
+
+function applyGlobalMuteState() {
+  syncAllMediaMuteState(window.isAppGloballyMuted);
+
+  const btn = document.getElementById('global-mute-btn');
+  if (btn) {
+    if (window.isAppGloballyMuted) {
+      btn.className = 'fixed bottom-4 right-4 z-[9999] w-10 h-10 rounded-full bg-rose-600/90 text-white border border-rose-400/40 shadow-xl flex items-center justify-center transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer';
+      btn.innerHTML = '<i class="fa-solid fa-volume-xmark text-sm"></i>';
+      btn.title = 'الصوت مكتوم - اضغط للتشغيل';
+    } else {
+      btn.className = 'fixed bottom-4 right-4 z-[9999] w-10 h-10 rounded-full bg-slate-900/90 text-emerald-400 border border-slate-700/80 shadow-xl flex items-center justify-center transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer';
+      btn.innerHTML = '<i class="fa-solid fa-volume-high text-sm"></i>';
+      btn.title = 'الصوت شغال - اضغط للكتم';
+    }
+  }
+}
+
+function toggleGlobalMute() {
+  window.isAppGloballyMuted = !window.isAppGloballyMuted;
+  localStorage.setItem('albasem_global_mute', window.isAppGloballyMuted);
+  applyGlobalMuteState();
+}
+
+function initGlobalMuteButton() {
+  if (document.getElementById('global-mute-btn')) return;
+  const btn = document.createElement('button');
+  btn.id = 'global-mute-btn';
+  btn.type = 'button';
+  btn.onclick = (e) => {
+    e.stopPropagation();
+    toggleGlobalMute();
+  };
+  document.body.appendChild(btn);
+  applyGlobalMuteState();
+
+  const observer = new MutationObserver(() => {
+    if (window.isAppGloballyMuted) {
+      document.querySelectorAll('video, audio').forEach(el => {
+        if (!el.muted) el.muted = true;
+      });
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+}
+
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initGlobalMuteButton);
+} else {
+  initGlobalMuteButton();
+}
