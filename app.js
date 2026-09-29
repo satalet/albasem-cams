@@ -90,21 +90,48 @@ function syncAllMediaMuteState(isMuted) {
   });
 }
 
+
+
 function applyGlobalMuteState() {
-  syncAllMediaMuteState(window.isAppGloballyMuted);
+  document.querySelectorAll('video, audio').forEach(el => {
+    el.muted = window.isAppGloballyMuted;
+    if (!window.isAppGloballyMuted) {
+      el.volume = 1.0;
+    }
+  });
+
+  document.querySelectorAll('iframe').forEach(ifr => {
+    try {
+      const func = window.isAppGloballyMuted ? 'mute' : 'unMute';
+      ifr.contentWindow.postMessage(JSON.stringify({
+        event: 'command',
+        func: func,
+        args: []
+      }), '*');
+      if (!window.isAppGloballyMuted) {
+        ifr.contentWindow.postMessage(JSON.stringify({
+          event: 'command',
+          func: 'setVolume',
+          args: [100]
+        }), '*');
+      }
+    } catch(err) {}
+  });
 
   const btn = document.getElementById('global-mute-btn');
   if (btn) {
     if (window.isAppGloballyMuted) {
-      btn.className = 'fixed bottom-4 right-4 z-[9999] w-10 h-10 rounded-full bg-rose-600/90 text-white border border-rose-400/40 shadow-xl flex items-center justify-center transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer';
+      btn.className = 'fixed bottom-4 right-4 z-[99999] w-10 h-10 rounded-full bg-rose-600/90 text-white border border-rose-400/40 shadow-2xl flex items-center justify-center transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none';
       btn.innerHTML = '<i class="fa-solid fa-volume-xmark text-sm"></i>';
-      btn.title = 'الصوت مكتوم - اضغط للتشغيل';
     } else {
-      btn.className = 'fixed bottom-4 right-4 z-[9999] w-10 h-10 rounded-full bg-slate-900/90 text-emerald-400 border border-slate-700/80 shadow-xl flex items-center justify-center transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer';
+      btn.className = 'fixed bottom-4 right-4 z-[99999] w-10 h-10 rounded-full bg-slate-900/90 text-emerald-400 border border-slate-700/80 shadow-2xl flex items-center justify-center transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none';
       btn.innerHTML = '<i class="fa-solid fa-volume-high text-sm"></i>';
-      btn.title = 'الصوت شغال - اضغط للكتم';
     }
   }
+}
+
+}
+
 }
 
 function toggleGlobalMute() {
@@ -2849,7 +2876,10 @@ function openModal(streamId) {
     let ytUrl = stream.url;
     if (!ytUrl.includes('/embed/')) {
       const idMatch = ytUrl.match(/(?:v=|\/embed\/|youtu\.be\/)([\w-]{11})/);
-      if (idMatch) ytUrl = `https://www.youtube-nocookie.com/embed/${idMatch[1]}`;
+      if (idMatch) {
+        const isMutedParam = window.isAppGloballyMuted ? 1 : 0;
+        ytUrl = `https://www.youtube.com/embed/${idMatch[1]}?autoplay=1&enablejsapi=1&mute=${isMutedParam}&origin=${encodeURIComponent(window.location.origin)}`;
+      }
     }
     const originParam = encodeURIComponent(window.location.origin);
     const initialMute = window.isAppGloballyMuted ? '1' : '0';
@@ -3345,15 +3375,6 @@ if (document.readyState === 'loading') {
 // ==========================================
 window.selectedBulkStreams = window.selectedBulkStreams || new Set();
 
-
-
-
-
-async 
-
-async 
-
-
 // ==========================================
 // محرك إدارة وتحديد القنوات الجماعي (Bulk Management)
 // ==========================================
@@ -3668,21 +3689,48 @@ function syncAllMediaMuteState(isMuted) {
   });
 }
 
+
+
 function applyGlobalMuteState() {
-  syncAllMediaMuteState(window.isAppGloballyMuted);
+  document.querySelectorAll('video, audio').forEach(el => {
+    el.muted = window.isAppGloballyMuted;
+    if (!window.isAppGloballyMuted) {
+      el.volume = 1.0;
+    }
+  });
+
+  document.querySelectorAll('iframe').forEach(ifr => {
+    try {
+      const func = window.isAppGloballyMuted ? 'mute' : 'unMute';
+      ifr.contentWindow.postMessage(JSON.stringify({
+        event: 'command',
+        func: func,
+        args: []
+      }), '*');
+      if (!window.isAppGloballyMuted) {
+        ifr.contentWindow.postMessage(JSON.stringify({
+          event: 'command',
+          func: 'setVolume',
+          args: [100]
+        }), '*');
+      }
+    } catch(err) {}
+  });
 
   const btn = document.getElementById('global-mute-btn');
   if (btn) {
     if (window.isAppGloballyMuted) {
-      btn.className = 'fixed bottom-4 right-4 z-[9999] w-10 h-10 rounded-full bg-rose-600/90 text-white border border-rose-400/40 shadow-xl flex items-center justify-center transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer';
+      btn.className = 'fixed bottom-4 right-4 z-[99999] w-10 h-10 rounded-full bg-rose-600/90 text-white border border-rose-400/40 shadow-2xl flex items-center justify-center transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none';
       btn.innerHTML = '<i class="fa-solid fa-volume-xmark text-sm"></i>';
-      btn.title = 'الصوت مكتوم - اضغط للتشغيل';
     } else {
-      btn.className = 'fixed bottom-4 right-4 z-[9999] w-10 h-10 rounded-full bg-slate-900/90 text-emerald-400 border border-slate-700/80 shadow-xl flex items-center justify-center transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer';
+      btn.className = 'fixed bottom-4 right-4 z-[99999] w-10 h-10 rounded-full bg-slate-900/90 text-emerald-400 border border-slate-700/80 shadow-2xl flex items-center justify-center transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none';
       btn.innerHTML = '<i class="fa-solid fa-volume-high text-sm"></i>';
-      btn.title = 'الصوت شغال - اضغط للكتم';
     }
   }
+}
+
+}
+
 }
 
 function toggleGlobalMute() {
