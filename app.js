@@ -3334,8 +3334,7 @@ if (document.readyState === 'loading') {
 
 
 
-// وظائف القفل والفك الجماعي للشريط العائم
-async 
+// وظائف القفل والفك الجماعي للشريط العائم 
 
 
 
@@ -3753,3 +3752,5 @@ if (document.readyState === 'loading') {
 } else {
   initGlobalMuteButton();
 }
+
+window.toggleGlobalMute = toggleGlobalMute;
