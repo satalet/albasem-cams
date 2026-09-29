@@ -97,6 +97,11 @@ function applyGlobalMuteState() {
     el.muted = window.isAppGloballyMuted;
     if (!window.isAppGloballyMuted) {
       el.volume = 1.0;
+      // محاولة فك تقييد الصوت بالمتصفح
+      try {
+        const p = el.play();
+        if (p !== undefined) p.catch(()=>{});
+      } catch(e){}
     }
   });
 
@@ -2896,8 +2901,17 @@ function openModal(streamId) {
       activeModalHlsInstance = vid._hls;
     }
     if (vid) {
-      vid.addEventListener('playing', () => { if (typeof markTvOsdLive === 'function') markTvOsdLive(); }, { once: true });
-      vid.addEventListener('canplay', () => { if (typeof markTvOsdLive === 'function') markTvOsdLive(); }, { once: true });
+      const enforceAudioState = () => {
+        vid.muted = window.isAppGloballyMuted;
+        if (!window.isAppGloballyMuted) {
+          vid.volume = 1.0;
+        }
+        if (typeof markTvOsdLive === 'function') markTvOsdLive();
+      };
+      vid.addEventListener('playing', enforceAudioState);
+      vid.addEventListener('canplay', enforceAudioState);
+      // محاولة فورية أولية
+      enforceAudioState();
     }
   } else if (stream.type === 'image') {
     modalBox.innerHTML = `<img src="${stream.url}?t=${Date.now()}" class="w-full h-full object-contain">`;
@@ -3692,6 +3706,11 @@ function applyGlobalMuteState() {
     el.muted = window.isAppGloballyMuted;
     if (!window.isAppGloballyMuted) {
       el.volume = 1.0;
+      // محاولة فك تقييد الصوت بالمتصفح
+      try {
+        const p = el.play();
+        if (p !== undefined) p.catch(()=>{});
+      } catch(e){}
     }
   });
 
