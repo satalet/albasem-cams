@@ -390,20 +390,24 @@ function checkParentalAccess(streamId, onAllowed) {
     return;
   }
 
-  // 1. فحص الجلسة المؤقتة للقسم
-  const streamSub = stream.subCategory || stream.category;
-  if (window.activeUnlockedSub && (streamSub === window.activeUnlockedSub || currentSubFilter === window.activeUnlockedSub)) {
+  const streamSub = (stream.subCategory || stream.category || '').toLowerCase().trim();
+  const isVipLocked = streamSub === 'vip-1' || stream.area === 'vip-1' || stream.isLocked;
+
+  // فحص الجلسة المفكوكة حالياً
+  if (window.activeUnlockedSub && (streamSub === window.activeUnlockedSub.toLowerCase().trim() || currentSubFilter === window.activeUnlockedSub)) {
     if (typeof onAllowed === 'function') onAllowed();
     return;
   }
 
-  // 2. فحص قفل المحطة الفردية
-  if (!stream.isLocked) {
+  // إذا لم تكن القناة مقفلة ولا تنتمي لـ vip-1
+  if (!isVipLocked) {
     if (typeof onAllowed === 'function') onAllowed();
     return;
   }
 
+  // طلب الرمز
   showParentalPinModal(() => {
+    window.activeUnlockedSub = streamSub;
     if (typeof onAllowed === 'function') onAllowed();
   });
 }
@@ -3093,7 +3097,7 @@ if (typeof db !== 'undefined') {
 let lastNavTime = 0;
 function navigateStream(dir) {
   const now = Date.now();
-  if (now - lastNavTime < 450) return; // حماية من النقرات المزدوجة السريعة
+  if (now - lastNavTime < 450) return;
   lastNavTime = now;
 
   const list = window.activeCategoryStreams;
@@ -3102,9 +3106,24 @@ function navigateStream(dir) {
   let curIdx = list.findIndex(s => s.id === window.currentModalStreamId);
   if (curIdx === -1) curIdx = 0;
 
-  let nextIdx = curIdx + dir;
-  if (nextIdx >= list.length) nextIdx = 0;       // دوران تلقائي للبداية
-  if (nextIdx < 0) nextIdx = list.length - 1;   // دوران تلقائي للنهاية
+  let nextIdx = curIdx;
+  let attempts = 0;
+  
+  // البحث عن القناة التالية وتخطي المحطات المقفلة إذا لم يتم فك القفل مسبقاً
+  do {
+    nextIdx = nextIdx + dir;
+    if (nextIdx >= list.length) nextIdx = 0;
+    if (nextIdx < 0) nextIdx = list.length - 1;
+    attempts++;
+
+    const candidate = list[nextIdx];
+    const candSub = (candidate.subCategory || candidate.category || '').toLowerCase().trim();
+    const isCandLocked = candSub === 'vip-1' || candidate.area === 'vip-1' || candidate.isLocked;
+
+    if (!isCandLocked || (window.activeUnlockedSub && candSub === window.activeUnlockedSub.toLowerCase().trim())) {
+      break;
+    }
+  } while (attempts < list.length);
 
   const nextStream = list[nextIdx];
   if (nextStream) {
