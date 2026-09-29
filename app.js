@@ -93,11 +93,13 @@ function syncAllMediaMuteState(isMuted) {
 
 
 function applyGlobalMuteState() {
+  const isMuted = window.isAppGloballyMuted;
+  
   document.querySelectorAll('video, audio').forEach(el => {
-    el.muted = window.isAppGloballyMuted;
-    if (!window.isAppGloballyMuted) {
+    el.muted = isMuted;
+    if (!isMuted) {
       el.volume = 1.0;
-      // محاولة فك تقييد الصوت بالمتصفح
+      el.defaultMuted = false;
       try {
         const p = el.play();
         if (p !== undefined) p.catch(()=>{});
@@ -107,25 +109,17 @@ function applyGlobalMuteState() {
 
   document.querySelectorAll('iframe').forEach(ifr => {
     try {
-      const func = window.isAppGloballyMuted ? 'mute' : 'unMute';
-      ifr.contentWindow.postMessage(JSON.stringify({
-        event: 'command',
-        func: func,
-        args: []
-      }), '*');
-      if (!window.isAppGloballyMuted) {
-        ifr.contentWindow.postMessage(JSON.stringify({
-          event: 'command',
-          func: 'setVolume',
-          args: [100]
-        }), '*');
+      const func = isMuted ? 'mute' : 'unMute';
+      ifr.contentWindow.postMessage(JSON.stringify({ event: 'command', func: func, args: [] }), '*');
+      if (!isMuted) {
+        ifr.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'setVolume', args: [100] }), '*');
       }
     } catch(err) {}
   });
 
   const btn = document.getElementById('global-mute-btn');
   if (btn) {
-    if (window.isAppGloballyMuted) {
+    if (isMuted) {
       btn.className = 'fixed bottom-4 right-4 z-[99999] w-10 h-10 rounded-full bg-rose-600/90 text-white border border-rose-400/40 shadow-2xl flex items-center justify-center transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none';
       btn.innerHTML = '<i class="fa-solid fa-volume-xmark text-sm"></i>';
     } else {
@@ -133,6 +127,7 @@ function applyGlobalMuteState() {
       btn.innerHTML = '<i class="fa-solid fa-volume-high text-sm"></i>';
     }
   }
+}
 }
 
 function toggleGlobalMute() {
@@ -2462,7 +2457,8 @@ function launchHlsStream(container, url, isModal = false, isIptv = false) {
       video.src = streamUrl;
       video.addEventListener('loadedmetadata', () => {
         video.play().catch(() => {
-          video.muted = true;
+          video.muted = window.isAppGloballyMuted;
+          if (!window.isAppGloballyMuted) video.volume = 1.0;
           video.play().catch(()=>{});
         });
       });
@@ -3702,11 +3698,13 @@ function syncAllMediaMuteState(isMuted) {
 
 
 function applyGlobalMuteState() {
+  const isMuted = window.isAppGloballyMuted;
+  
   document.querySelectorAll('video, audio').forEach(el => {
-    el.muted = window.isAppGloballyMuted;
-    if (!window.isAppGloballyMuted) {
+    el.muted = isMuted;
+    if (!isMuted) {
       el.volume = 1.0;
-      // محاولة فك تقييد الصوت بالمتصفح
+      el.defaultMuted = false;
       try {
         const p = el.play();
         if (p !== undefined) p.catch(()=>{});
@@ -3716,25 +3714,17 @@ function applyGlobalMuteState() {
 
   document.querySelectorAll('iframe').forEach(ifr => {
     try {
-      const func = window.isAppGloballyMuted ? 'mute' : 'unMute';
-      ifr.contentWindow.postMessage(JSON.stringify({
-        event: 'command',
-        func: func,
-        args: []
-      }), '*');
-      if (!window.isAppGloballyMuted) {
-        ifr.contentWindow.postMessage(JSON.stringify({
-          event: 'command',
-          func: 'setVolume',
-          args: [100]
-        }), '*');
+      const func = isMuted ? 'mute' : 'unMute';
+      ifr.contentWindow.postMessage(JSON.stringify({ event: 'command', func: func, args: [] }), '*');
+      if (!isMuted) {
+        ifr.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'setVolume', args: [100] }), '*');
       }
     } catch(err) {}
   });
 
   const btn = document.getElementById('global-mute-btn');
   if (btn) {
-    if (window.isAppGloballyMuted) {
+    if (isMuted) {
       btn.className = 'fixed bottom-4 right-4 z-[99999] w-10 h-10 rounded-full bg-rose-600/90 text-white border border-rose-400/40 shadow-2xl flex items-center justify-center transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none';
       btn.innerHTML = '<i class="fa-solid fa-volume-xmark text-sm"></i>';
     } else {
@@ -3742,6 +3732,7 @@ function applyGlobalMuteState() {
       btn.innerHTML = '<i class="fa-solid fa-volume-high text-sm"></i>';
     }
   }
+}
 }
 
 function toggleGlobalMute() {
