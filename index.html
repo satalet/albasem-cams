@@ -622,7 +622,7 @@ if ('caches' in window) {
     </div>
   </div>
 
-  <script src="./app.js?v=1790701757"></script>
+  <script src="./app.js?v=1790702194"></script>
 
   <!-- نظام إدارة دخول المشتركين وفحص الجلسة -->
   <div id="sub-login-modal" style="display:none; position:fixed; inset:0; background:rgba(11,17,32,0.96); z-index:9999; justify-content:center; align-items:center; padding:15px;">
@@ -898,5 +898,13 @@ if ('caches' in window) {
     </div>
   </div>
 </div>
+
+
+  <!-- زر الكتم العائم الشامل -->
+  <button id="global-mute-btn" type="button" onclick="toggleGlobalMute()" 
+    class="fixed bottom-6 left-6 z-[999999] w-12 h-12 rounded-full bg-slate-900/90 text-emerald-400 border border-slate-700/80 shadow-2xl flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 backdrop-blur-md cursor-pointer select-none"
+    title="الصوت شغال - اضغط للكتم">
+    <i id="global-mute-icon" class="fa-solid fa-volume-high text-lg"></i>
+  </button>
 
 </body>

@@ -3382,102 +3382,99 @@ function showZeroFullscreenHint() {
   }, 3000);
 }
 
-function toggleZeroFullscreen() {
-  const modal = document.getElementById('modal');
-  if (!modal || modal.classList.contains('hidden')) return;
 
-  const targetElem = document.getElementById('modal-video-container') || modal;
+
+
+
+}
+
+
+// ==========================================
+// نظام الكتم الشامل للتطبيق
+// ==========================================
+window.isAppGloballyMuted = localStorage.getItem('albasem_global_mute') === 'true';
+
+function updateMuteButtonUI() {
+  const btn = document.getElementById('global-mute-btn');
+  const icon = document.getElementById('global-mute-icon');
+  if (!btn || !icon) return;
+
+  if (window.isAppGloballyMuted) {
+    btn.className = "fixed bottom-6 left-6 z-[999999] w-12 h-12 rounded-full bg-rose-600 text-white border border-rose-400 shadow-2xl flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 backdrop-blur-md cursor-pointer select-none ring-2 ring-rose-500/50";
+    icon.className = "fa-solid fa-volume-xmark text-lg";
+    btn.title = "الصوت مكتوم - اضغط للتشغيل";
+  } else {
+    btn.className = "fixed bottom-6 left-6 z-[999999] w-12 h-12 rounded-full bg-slate-900/90 text-emerald-400 border border-slate-700 shadow-2xl flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 backdrop-blur-md cursor-pointer select-none";
+    icon.className = "fa-solid fa-volume-high text-lg";
+    btn.title = "الصوت شغال - اضغط للكتم";
+  }
+}
+
+function applyMuteToAllMedia() {
+  document.querySelectorAll('video, audio').forEach(el => {
+    el.muted = window.isAppGloballyMuted;
+  });
+
+  document.querySelectorAll('iframe').forEach(ifr => {
+    try {
+      const action = window.isAppGloballyMuted ? 'mute' : 'unMute';
+      ifr.contentWindow.postMessage(JSON.stringify({ event: 'command', func: action, args: [] }), '*');
+    } catch(e){}
+  });
+  updateMuteButtonUI();
+}
+
+window.toggleGlobalMute = function() {
+  window.isAppGloballyMuted = !window.isAppGloballyMuted;
+  localStorage.setItem('albasem_global_mute', window.isAppGloballyMuted);
+  applyMuteToAllMedia();
+};
+
+// مراقبة أي فيديو جديد يفتح بالصفحة وتطبيق حالة الكتم عليه فوراً
+setInterval(() => {
+  if (window.isAppGloballyMuted) {
+    document.querySelectorAll('video, audio').forEach(el => {
+      if (!el.muted) el.muted = true;
+    });
+  }
+}, 500);
+
+// ==========================================
+// زر الصفر (0) لتكبير ملء الشاشة وتصغيرها
+// ==========================================
+function toggleZeroFullscreen() {
+  // تحديد العنصر المفتوح: المودال أو حاوية الفيديو أو أول فيديو ظاهر
+  const modal = document.getElementById('modal') || document.querySelector('.modal:not(.hidden)');
+  const videoTarget = (modal && !modal.classList.contains('hidden'))
+    ? (modal.querySelector('video') || modal.querySelector('iframe') || modal)
+    : document.querySelector('video');
+
+  if (!videoTarget) return;
 
   if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-    if (targetElem.requestFullscreen) {
-      targetElem.requestFullscreen();
-    } else if (targetElem.webkitRequestFullscreen) {
-      targetElem.webkitRequestFullscreen();
+    const req = videoTarget.requestFullscreen || videoTarget.webkitRequestFullscreen || videoTarget.mozRequestFullScreen || videoTarget.msRequestFullscreen;
+    if (req) {
+      req.call(videoTarget).catch(() => {
+        // إن فشل على الفيديو نطبقه على المودال ككل
+        if (modal && modal.requestFullscreen) modal.requestFullscreen();
+      });
     }
   } else {
-    if (document.exitFullscreen) {
-      document.exitFullscreen();
-    } else if (document.webkitExitFullscreen) {
-      document.webkitExitFullscreen();
-    }
+    const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+    if (exit) exit.call(document);
   }
 }
 
 window.addEventListener('keydown', (e) => {
-  const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
-  if (tag === 'input' || tag === 'textarea') return;
+  const activeTag = (document.activeElement && document.activeElement.tagName) ? document.activeElement.tagName.toLowerCase() : '';
+  if (activeTag === 'input' || activeTag === 'textarea') return;
 
+  // التحقق من رقم 0 بكل أشكاله (الكيبورد العلوي أو لوحة الأرقام Numpad)
   if (e.key === '0' || e.code === 'Digit0' || e.code === 'Numpad0' || e.keyCode === 48 || e.keyCode === 96) {
     e.preventDefault();
     toggleZeroFullscreen();
   }
 });
 
-
-// ==========================================
-// زر الكتم الشامل للتطبيق (Global Mute Toggle)
-// ==========================================
-window.isAppGloballyMuted = localStorage.getItem('albasem_global_mute') === 'true';
-
-function applyGlobalMuteState() {
-  // كتم أو إلغاء كتم جميع عناصر الفيديو والصوت في كل الصفحة
-  document.querySelectorAll('video, audio').forEach(el => {
-    el.muted = window.isAppGloballyMuted;
-  });
-
-  // التحكم بإطارات اليوتيوب iframes
-  document.querySelectorAll('iframe').forEach(ifr => {
-    try {
-      const action = window.isAppGloballyMuted ? 'mute' : 'unMute';
-      ifr.contentWindow.postMessage(JSON.stringify({ event: 'command', func: action, args: [] }), '*');
-    } catch(e) {}
-  });
-
-  const btn = document.getElementById('global-mute-btn');
-  if (btn) {
-    if (window.isAppGloballyMuted) {
-      btn.className = 'fixed bottom-5 left-5 z-[9999] w-11 h-11 rounded-full bg-rose-600/90 text-white border border-rose-400/50 shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 backdrop-blur-md cursor-pointer select-none';
-      btn.innerHTML = '<i class="fa-solid fa-volume-xmark text-lg"></i>';
-      btn.title = 'الصوت مكتوم - اضغط للتشغيل';
-    } else {
-      btn.className = 'fixed bottom-5 left-5 z-[9999] w-11 h-11 rounded-full bg-slate-900/85 text-emerald-400 border border-slate-700/80 shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 backdrop-blur-md cursor-pointer select-none';
-      btn.innerHTML = '<i class="fa-solid fa-volume-high text-lg"></i>';
-      btn.title = 'الصوت شغال - اضغط للكتم';
-    }
-  }
-}
-
-function toggleGlobalMute() {
-  window.isAppGloballyMuted = !window.isAppGloballyMuted;
-  localStorage.setItem('albasem_global_mute', window.isAppGloballyMuted);
-  applyGlobalMuteState();
-}
-
-function initGlobalMuteButton() {
-  if (document.getElementById('global-mute-btn')) return;
-  const btn = document.createElement('button');
-  btn.id = 'global-mute-btn';
-  btn.type = 'button';
-  btn.onclick = (e) => {
-    e.stopPropagation();
-    toggleGlobalMute();
-  };
-  document.body.appendChild(btn);
-  applyGlobalMuteState();
-
-  // مراقبة العناصر الجديدة المشغلة للبث لكتمها تلقائياً
-  const observer = new MutationObserver(() => {
-    if (window.isAppGloballyMuted) {
-      document.querySelectorAll('video, audio').forEach(el => {
-        if (!el.muted) el.muted = true;
-      });
-    }
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
-}
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initGlobalMuteButton);
-} else {
-  initGlobalMuteButton();
-}
+// تشغيل فوري لحالة الكتم عند فتح الصفحة
+setTimeout(applyMuteToAllMedia, 500);
