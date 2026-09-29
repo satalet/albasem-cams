@@ -1,4 +1,15 @@
 
+function clearSearchState() {
+  window.searchQuery = '';
+  const sInput = document.getElementById('search-input');
+  if (sInput) sInput.value = '';
+  const cBtn = document.getElementById('clear-search-btn');
+  if (cBtn) cBtn.classList.add('hidden');
+  const suggBox = document.getElementById('search-suggestions-box');
+  if (suggBox) suggBox.classList.add('hidden');
+}
+
+
 
 
 // دوال درج التفرعات العائم (Floating Bottom Sheet Drawer)
@@ -1486,8 +1497,10 @@ function setupFilters() {
 
     btn.onclick = () => {
       if (currentFilter !== folder.id) {
+        clearSearchState();
         currentFilter = folder.id;
-        currentSubFilter = 'all';
+        clearSearchState();
+      currentSubFilter = 'all';
         window.activeUnlockedSub = null;
         window.iptvDisplayLimit = 40;
         localStorage.setItem('albasem_active_cat', folder.id);
@@ -1589,6 +1602,7 @@ function setupFilters() {
       </div>
     `;
     allBtn.onclick = () => {
+      clearSearchState();
       currentSubFilter = 'all';
       window.activeUnlockedSub = null;
       window.iptvDisplayLimit = 40;
@@ -1627,6 +1641,7 @@ function setupFilters() {
         if (isSubLocked && window.activeUnlockedSub !== sub) {
           showParentalPinModal(() => {
             window.activeUnlockedSub = sub;
+            clearSearchState();
             currentSubFilter = sub;
             window.iptvDisplayLimit = 40;
             localStorage.setItem('albasem_active_sub', sub);
@@ -1637,7 +1652,8 @@ function setupFilters() {
           return;
         }
         window.activeUnlockedSub = null;
-        currentSubFilter = sub;
+        clearSearchState();
+            currentSubFilter = sub;
         window.iptvDisplayLimit = 40;
         localStorage.setItem('albasem_active_sub', sub);
         closeSubCategoryDrawer();
@@ -1657,7 +1673,8 @@ function setupFilters() {
 
 function filterByArea(area) {
   currentFilter = area; localStorage.setItem('albasem_active_cat', area);
-  currentSubFilter = 'all';
+  clearSearchState();
+      currentSubFilter = 'all';
   window.activeUnlockedSub = null;
   sessionStorage.setItem('albasem_active_cat', area);
   if (area === 'all') {
@@ -3338,3 +3355,129 @@ async function executeBulkDelete() {
 }
 window.executeBulkDelete = executeBulkDelete;
 window.bulkDeleteStreams = executeBulkDelete;
+
+
+// ميزة زر الصفر (0) للتحكم بملء الشاشة وإشعار التنبيه
+function showZeroFullscreenHint() {
+  let hint = document.getElementById('zero-fs-hint');
+  if (!hint) {
+    hint = document.createElement('div');
+    hint.id = 'zero-fs-hint';
+    hint.className = 'fixed bottom-12 left-1/2 -translate-x-1/2 bg-slate-900/90 text-sky-300 border border-sky-500/40 px-4 py-2 rounded-full text-xs font-bold shadow-2xl flex items-center gap-2 pointer-events-none transition-all duration-500 z-[999999] opacity-0 translate-y-3';
+    hint.innerHTML = '<span class="w-5 h-5 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center font-mono border border-sky-400/40 text-[11px]">0</span> <span>اضغط ( 0 ) بالريموت لتكبير/تصغير الشاشة بالكامل</span>';
+    document.body.appendChild(hint);
+  }
+  
+  requestAnimationFrame(() => {
+    hint.classList.remove('opacity-0', 'translate-y-3');
+    hint.classList.add('opacity-100', 'translate-y-0');
+  });
+
+  clearTimeout(window._zeroHintTimer);
+  window._zeroHintTimer = setTimeout(() => {
+    if (hint) {
+      hint.classList.remove('opacity-100', 'translate-y-0');
+      hint.classList.add('opacity-0', 'translate-y-3');
+    }
+  }, 3000);
+}
+
+function toggleZeroFullscreen() {
+  const modal = document.getElementById('modal');
+  if (!modal || modal.classList.contains('hidden')) return;
+
+  const targetElem = document.getElementById('modal-video-container') || modal;
+
+  if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+    if (targetElem.requestFullscreen) {
+      targetElem.requestFullscreen();
+    } else if (targetElem.webkitRequestFullscreen) {
+      targetElem.webkitRequestFullscreen();
+    }
+  } else {
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    } else if (document.webkitExitFullscreen) {
+      document.webkitExitFullscreen();
+    }
+  }
+}
+
+window.addEventListener('keydown', (e) => {
+  const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+  if (tag === 'input' || tag === 'textarea') return;
+
+  if (e.key === '0' || e.code === 'Digit0' || e.code === 'Numpad0' || e.keyCode === 48 || e.keyCode === 96) {
+    e.preventDefault();
+    toggleZeroFullscreen();
+  }
+});
+
+
+// ==========================================
+// زر الكتم الشامل للتطبيق (Global Mute Toggle)
+// ==========================================
+window.isAppGloballyMuted = localStorage.getItem('albasem_global_mute') === 'true';
+
+function applyGlobalMuteState() {
+  // كتم أو إلغاء كتم جميع عناصر الفيديو والصوت في كل الصفحة
+  document.querySelectorAll('video, audio').forEach(el => {
+    el.muted = window.isAppGloballyMuted;
+  });
+
+  // التحكم بإطارات اليوتيوب iframes
+  document.querySelectorAll('iframe').forEach(ifr => {
+    try {
+      const action = window.isAppGloballyMuted ? 'mute' : 'unMute';
+      ifr.contentWindow.postMessage(JSON.stringify({ event: 'command', func: action, args: [] }), '*');
+    } catch(e) {}
+  });
+
+  const btn = document.getElementById('global-mute-btn');
+  if (btn) {
+    if (window.isAppGloballyMuted) {
+      btn.className = 'fixed bottom-5 left-5 z-[9999] w-11 h-11 rounded-full bg-rose-600/90 text-white border border-rose-400/50 shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 backdrop-blur-md cursor-pointer select-none';
+      btn.innerHTML = '<i class="fa-solid fa-volume-xmark text-lg"></i>';
+      btn.title = 'الصوت مكتوم - اضغط للتشغيل';
+    } else {
+      btn.className = 'fixed bottom-5 left-5 z-[9999] w-11 h-11 rounded-full bg-slate-900/85 text-emerald-400 border border-slate-700/80 shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 backdrop-blur-md cursor-pointer select-none';
+      btn.innerHTML = '<i class="fa-solid fa-volume-high text-lg"></i>';
+      btn.title = 'الصوت شغال - اضغط للكتم';
+    }
+  }
+}
+
+function toggleGlobalMute() {
+  window.isAppGloballyMuted = !window.isAppGloballyMuted;
+  localStorage.setItem('albasem_global_mute', window.isAppGloballyMuted);
+  applyGlobalMuteState();
+}
+
+function initGlobalMuteButton() {
+  if (document.getElementById('global-mute-btn')) return;
+  const btn = document.createElement('button');
+  btn.id = 'global-mute-btn';
+  btn.type = 'button';
+  btn.onclick = (e) => {
+    e.stopPropagation();
+    toggleGlobalMute();
+  };
+  document.body.appendChild(btn);
+  applyGlobalMuteState();
+
+  // مراقبة العناصر الجديدة المشغلة للبث لكتمها تلقائياً
+  const observer = new MutationObserver(() => {
+    if (window.isAppGloballyMuted) {
+      document.querySelectorAll('video, audio').forEach(el => {
+        if (!el.muted) el.muted = true;
+      });
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initGlobalMuteButton);
+} else {
+  initGlobalMuteButton();
+}
