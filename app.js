@@ -1,3 +1,95 @@
+
+// ==========================================
+// زر الكتم الشامل للتطبيق بدون تشويه الواجهة
+// ==========================================
+window.isAppGloballyMuted = localStorage.getItem('albasem_global_mute') === 'true';
+
+function applyGlobalMuteState() {
+  const videos = document.querySelectorAll('video, audio');
+  videos.forEach(v => {
+    v.muted = window.isAppGloballyMuted;
+    if (!window.isAppGloballyMuted) {
+      v.volume = 1.0;
+    }
+  });
+
+  const btn = document.getElementById('global-mute-btn');
+  if (btn) {
+    if (window.isAppGloballyMuted) {
+      btn.className = 'fixed top-20 left-4 z-[99999] w-10 h-10 rounded-full bg-rose-600/90 text-white border border-rose-400/50 shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 backdrop-blur-md cursor-pointer select-none';
+      btn.innerHTML = '<i class="fa-solid fa-volume-xmark text-sm"></i>';
+      btn.title = 'الصوت مكتوم - اضغط للتشغيل';
+    } else {
+      btn.className = 'fixed top-20 left-4 z-[99999] w-10 h-10 rounded-full bg-slate-900/85 text-emerald-400 border border-slate-700/80 shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 backdrop-blur-md cursor-pointer select-none';
+      btn.innerHTML = '<i class="fa-solid fa-volume-high text-sm"></i>';
+      btn.title = 'الصوت شغال - اضغط للكتم';
+    }
+  }
+}
+
+function toggleGlobalMute() {
+  window.isAppGloballyMuted = !window.isAppGloballyMuted;
+  localStorage.setItem('albasem_global_mute', window.isAppGloballyMuted);
+  applyGlobalMuteState();
+}
+
+function initGlobalMuteButton() {
+  let btn = document.getElementById('global-mute-btn');
+  if (!btn) {
+    btn = document.createElement('button');
+    btn.id = 'global-mute-btn';
+    btn.type = 'button';
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      toggleGlobalMute();
+    };
+    document.body.appendChild(btn);
+  }
+  applyGlobalMuteState();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initGlobalMuteButton);
+} else {
+  initGlobalMuteButton();
+}
+
+
+// ==========================================
+// ميزة زر الصفر (0) وتكبير الشاشة الذكي
+// ==========================================
+function toggleZeroFullscreen() {
+  const modal = document.getElementById('cam-modal');
+  if (!modal || modal.classList.contains('hidden')) return;
+
+  const targetElem = document.fullscreenElement || document.webkitFullscreenElement ? null : (modal.querySelector('video') || modal);
+
+  if (targetElem) {
+    if (targetElem.requestFullscreen) {
+      targetElem.requestFullscreen().catch(() => modal.requestFullscreen());
+    } else if (targetElem.webkitRequestFullscreen) {
+      targetElem.webkitRequestFullscreen();
+    }
+  } else {
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    } else if (document.webkitExitFullscreen) {
+      document.webkitExitFullscreen();
+    }
+  }
+}
+
+// الاستماع لرقم 0 في جميع الحالات (ريموت وكيبورد)
+window.addEventListener('keydown', (e) => {
+  const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+  if (tag === 'input' || tag === 'textarea') return;
+
+  if (e.key === '0' || e.code === 'Digit0' || e.code === 'Numpad0' || e.keyCode === 48 || e.keyCode === 96) {
+    e.preventDefault();
+    toggleZeroFullscreen();
+  }
+}, true);
+
 function clearSearchState() {
   window.searchQuery = '';
   const sInput = document.getElementById('search-input');
