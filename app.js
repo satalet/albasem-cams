@@ -1,4 +1,37 @@
 
+function openSubCategoryDrawer() {
+  const drawer = document.getElementById('subcat-floating-drawer');
+  if (!drawer) return;
+  drawer.classList.remove('hidden');
+  requestAnimationFrame(() => {
+    drawer.classList.remove('opacity-0', 'pointer-events-none');
+    const sheet = drawer.querySelector('#subcat-drawer-sheet');
+    if (sheet) sheet.classList.remove('translate-y-full');
+  });
+}
+window.openSubCategoryDrawer = openSubCategoryDrawer;
+
+function closeSubCategoryDrawer() {
+  const drawer = document.getElementById('subcat-floating-drawer');
+  if (!drawer) return;
+  drawer.classList.add('opacity-0', 'pointer-events-none');
+  const sheet = drawer.querySelector('#subcat-drawer-sheet');
+  if (sheet) sheet.classList.add('translate-y-full');
+  setTimeout(() => { drawer.classList.add('hidden'); }, 300);
+}
+window.closeSubCategoryDrawer = closeSubCategoryDrawer;
+
+function toggleSubCategoryDrawer() {
+  const drawer = document.getElementById('subcat-floating-drawer');
+  if (drawer && !drawer.classList.contains('hidden') && !drawer.classList.contains('opacity-0')) {
+    closeSubCategoryDrawer();
+  } else {
+    openSubCategoryDrawer();
+  }
+}
+window.toggleSubCategoryDrawer = toggleSubCategoryDrawer;
+
+
 function sendYouTubeMuteCommand(isMuted) {
   const iframes = document.querySelectorAll('iframe');
   iframes.forEach(ifr => {
@@ -118,7 +151,6 @@ function toggleZeroFullscreen() {
 }
 
 // الاستماع لرقم 0 في جميع الحالات (ريموت وكيبورد)
-window.openSubCategoryDrawer = openSubCategoryDrawer;
 
 function closeSubCategoryDrawer() {
   const drawer = document.getElementById('subcat-floating-drawer');
