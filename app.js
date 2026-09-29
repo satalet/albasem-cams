@@ -2816,10 +2816,19 @@ function openModal(streamId) {
       const idMatch = ytUrl.match(/(?:v=|\/embed\/|youtu\.be\/)([\w-]{11})/);
       if (idMatch) ytUrl = `https://www.youtube-nocookie.com/embed/${idMatch[1]}`;
     }
-    modalBox.innerHTML = `<iframe class="w-full h-full border-0" src="${ytUrl}?autoplay=1&mute=0&controls=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+    modalBox.innerHTML = `<iframe class="w-full h-full border-0" src="${ytUrl}?autoplay=1&mute=" + (window.isAppGloballyMuted ? "1" : "0") + "&controls=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
   } else if (stream.type === 'hls') {
     const isIptvModal = stream.area === 'IPTV' || (stream.url && stream.url.startsWith('http://'));
-    const vid = launchHlsStream(modalBox, stream.url, true, isIptvModal);
+    const shouldMute = window.isAppGloballyMuted;
+    // تجميد أي بثوث صغيرة في الخلفية لتفريغ جلسة السيرفر للكاميرا المكبرة فوراً
+    document.querySelectorAll('#cams-grid video').forEach(gv => {
+      try { gv.pause(); } catch(e){}
+    });
+    const vid = launchHlsStream(modalBox, stream.url, !shouldMute, isIptvModal);
+    if (vid) {
+      vid.muted = shouldMute;
+      if (!shouldMute) vid.volume = 1.0;
+    }
     if (window.Hls && Hls.isSupported() && vid && vid._hls) {
       activeModalHlsInstance = vid._hls;
     }
@@ -3552,4 +3561,14 @@ setTimeout(() => {
   document.querySelectorAll('video, audio').forEach(el => {
     el.muted = window.isAppGloballyMuted;
   });
+}, 300);
+
+
+// مراقبة فورية لفرض الميوت الشامل على كل الفيديوهات بدون استثناء
+setInterval(() => {
+  if (window.isAppGloballyMuted) {
+    document.querySelectorAll('video, audio').forEach(v => {
+      if (!v.muted) v.muted = true;
+    });
+  }
 }, 300);
