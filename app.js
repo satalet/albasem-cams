@@ -52,72 +52,67 @@ function sendYouTubeMuteCommand(isMuted) {
 // ==========================================
 window.isAppGloballyMuted = localStorage.getItem('albasem_global_mute') === 'true';
 
-function applyGlobalMuteState() {
-  sendYouTubeMuteCommand(window.isAppGloballyMuted);
-  const videos = document.querySelectorAll('video, audio');
-  videos.forEach(v => {
-    v.muted = window.isAppGloballyMuted;
-    if (!window.isAppGloballyMuted) {
-      v.volume = 1.0;
-    }
+
+// دالة موحدة للتخاطب مع إطارات اليوتيوب وكافة مشغلات الوسائط
+function syncAllMediaMuteState(isMuted) {
+  // كتم/تشغيل عناصر الفيديو العادية
+  document.querySelectorAll('video, audio').forEach(el => {
+    try {
+      el.muted = isMuted;
+      if (!isMuted) {
+        el.volume = 1.0;
+        const p = el.play();
+        if (p !== undefined) p.catch(() => {});
+      }
+    } catch(e) {}
   });
 
-  const btn = document.getElementById('global-mute-btn');
-  if (btn) {
-    if (window.isAppGloballyMuted) {
-      btn.className = 'fixed top-20 left-4 z-[99999] w-10 h-10 rounded-full bg-rose-600/90 text-white border border-rose-400/50 shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 backdrop-blur-md cursor-pointer select-none';
-      btn.innerHTML = '<i class="fa-solid fa-volume-xmark text-sm"></i>';
-      btn.title = 'الصوت مكتوم - اضغط للتشغيل';
-    } else {
-      btn.className = 'fixed top-20 left-4 z-[99999] w-10 h-10 rounded-full bg-slate-900/85 text-emerald-400 border border-slate-700/80 shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 backdrop-blur-md cursor-pointer select-none';
-      btn.innerHTML = '<i class="fa-solid fa-volume-high text-sm"></i>';
-      btn.title = 'الصوت شغال - اضغط للكتم';
-    }
-  }
+  // التخاطب المباشر مع مشغلات يوتيوب عبر Iframe PostMessage
+  document.querySelectorAll('iframe').forEach(ifr => {
+    try {
+      if (ifr.src && (ifr.src.includes('youtube.com') || ifr.src.includes('youtu.be'))) {
+        const cmd = isMuted ? 'mute' : 'unMute';
+        ifr.contentWindow.postMessage(JSON.stringify({
+          event: 'command',
+          func: cmd,
+          args: []
+        }), '*');
+
+        if (!isMuted) {
+          ifr.contentWindow.postMessage(JSON.stringify({
+            event: 'command',
+            func: 'setVolume',
+            args: [100]
+          }), '*');
+        }
+      }
+    } catch(e) {}
+  });
 }
 
-
-function toggleGlobalMute() {
-  window.isAppGloballyMuted = !window.isAppGloballyMuted;
-  localStorage.setItem('albasem_global_mute', window.isAppGloballyMuted);
-  
-  document.querySelectorAll('video, audio').forEach(el => {
-    el.muted = window.isAppGloballyMuted;
-    if (!window.isAppGloballyMuted) {
-      el.volume = 1.0;
-      // محاولة تشغيل الصوت إن كان متوقفاً
-      const playPromise = el.play();
-      if (playPromise !== undefined) playPromise.catch(()=>{});
-    }
-  });
+function applyGlobalMuteState() {
+  syncAllMediaMuteState(window.isAppGloballyMuted);
 
   const btn = document.getElementById('global-mute-btn');
   if (btn) {
     if (window.isAppGloballyMuted) {
       btn.className = 'fixed bottom-4 right-4 z-[9999] w-10 h-10 rounded-full bg-rose-600/90 text-white border border-rose-400/40 shadow-xl flex items-center justify-center transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer';
       btn.innerHTML = '<i class="fa-solid fa-volume-xmark text-sm"></i>';
+      btn.title = 'الصوت مكتوم - اضغط للتشغيل';
     } else {
       btn.className = 'fixed bottom-4 right-4 z-[9999] w-10 h-10 rounded-full bg-slate-900/90 text-emerald-400 border border-slate-700/80 shadow-xl flex items-center justify-center transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer';
       btn.innerHTML = '<i class="fa-solid fa-volume-high text-sm"></i>';
+      btn.title = 'الصوت شغال - اضغط للكتم';
     }
   }
 }
 
-
-function initGlobalMuteButton() {
-  let btn = document.getElementById('global-mute-btn');
-  if (!btn) {
-    btn = document.createElement('button');
-    btn.id = 'global-mute-btn';
-    btn.type = 'button';
-    btn.onclick = (e) => {
-      e.stopPropagation();
-      toggleGlobalMute();
-    };
-    document.body.appendChild(btn);
-  }
+function toggleGlobalMute() {
+  window.isAppGloballyMuted = !window.isAppGloballyMuted;
+  localStorage.setItem('albasem_global_mute', window.isAppGloballyMuted);
   applyGlobalMuteState();
 }
+
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initGlobalMuteButton);
