@@ -128,7 +128,6 @@ function applyGlobalMuteState() {
     }
   }
 }
-}
 
 function toggleGlobalMute() {
   window.isAppGloballyMuted = !window.isAppGloballyMuted;
@@ -3732,7 +3731,6 @@ function applyGlobalMuteState() {
       btn.innerHTML = '<i class="fa-solid fa-volume-high text-sm"></i>';
     }
   }
-}
 }
 
 function toggleGlobalMute() {
