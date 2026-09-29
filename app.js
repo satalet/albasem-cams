@@ -118,8 +118,6 @@ function toggleZeroFullscreen() {
 }
 
 // الاستماع لرقم 0 في جميع الحالات (ريموت وكيبورد)
-
-}
 window.openSubCategoryDrawer = openSubCategoryDrawer;
 
 function closeSubCategoryDrawer() {
