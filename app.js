@@ -43,11 +43,33 @@ function applyGlobalMuteState() {
   }
 }
 
+
 function toggleGlobalMute() {
   window.isAppGloballyMuted = !window.isAppGloballyMuted;
   localStorage.setItem('albasem_global_mute', window.isAppGloballyMuted);
-  applyGlobalMuteState();
+  
+  document.querySelectorAll('video, audio').forEach(el => {
+    el.muted = window.isAppGloballyMuted;
+    if (!window.isAppGloballyMuted) {
+      el.volume = 1.0;
+      // محاولة تشغيل الصوت إن كان متوقفاً
+      const playPromise = el.play();
+      if (playPromise !== undefined) playPromise.catch(()=>{});
+    }
+  });
+
+  const btn = document.getElementById('global-mute-btn');
+  if (btn) {
+    if (window.isAppGloballyMuted) {
+      btn.className = 'fixed bottom-4 right-4 z-[9999] w-10 h-10 rounded-full bg-rose-600/90 text-white border border-rose-400/40 shadow-xl flex items-center justify-center transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer';
+      btn.innerHTML = '<i class="fa-solid fa-volume-xmark text-sm"></i>';
+    } else {
+      btn.className = 'fixed bottom-4 right-4 z-[9999] w-10 h-10 rounded-full bg-slate-900/90 text-emerald-400 border border-slate-700/80 shadow-xl flex items-center justify-center transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer';
+      btn.innerHTML = '<i class="fa-solid fa-volume-high text-sm"></i>';
+    }
+  }
 }
+
 
 function initGlobalMuteButton() {
   let btn = document.getElementById('global-mute-btn');
@@ -96,39 +118,7 @@ function toggleZeroFullscreen() {
 }
 
 // الاستماع لرقم 0 في جميع الحالات (ريموت وكيبورد)
-window.addEventListener('keydown', (e) => {
-  const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
-  if (tag === 'input' || tag === 'textarea') return;
 
-  if (e.key === '0' || e.code === 'Digit0' || e.code === 'Numpad0' || e.keyCode === 48 || e.keyCode === 96) {
-    e.preventDefault();
-    toggleZeroFullscreen();
-  }
-}, true);
-
-function clearSearchState() {
-  window.searchQuery = '';
-  const sInput = document.getElementById('search-input');
-  if (sInput) sInput.value = '';
-  const cBtn = document.getElementById('clear-search-btn');
-  if (cBtn) cBtn.classList.add('hidden');
-  const suggBox = document.getElementById('search-suggestions-box');
-  if (suggBox) suggBox.classList.add('hidden');
-}
-
-
-
-
-// دوال درج التفرعات العائم (Floating Bottom Sheet Drawer)
-function openSubCategoryDrawer() {
-  const drawer = document.getElementById('subcat-floating-drawer');
-  if (!drawer) return;
-  drawer.classList.remove('hidden');
-  requestAnimationFrame(() => {
-    drawer.classList.remove('opacity-0', 'pointer-events-none');
-    const sheet = drawer.querySelector('#subcat-drawer-sheet');
-    if (sheet) sheet.classList.remove('translate-y-full');
-  });
 }
 window.openSubCategoryDrawer = openSubCategoryDrawer;
 
@@ -3609,3 +3599,39 @@ setInterval(() => {
     });
   }
 }, 300);
+
+
+// تفعيل زر الصفر 0 بشكل جذري وعالمي (Capture Mode)
+window.addEventListener('keydown', function(e) {
+  const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+  if (tag === 'input' || tag === 'textarea') return;
+
+  if (e.key === '0' || e.code === 'Digit0' || e.code === 'Numpad0' || e.keyCode === 48 || e.keyCode === 96) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // البحث عن الفيديو الفعال حالياً
+    const modal = document.getElementById('modal');
+    const activeVideo = (modal && !modal.classList.contains('hidden')) 
+      ? modal.querySelector('video') 
+      : document.querySelector('video');
+
+    const targetElem = activeVideo || document.getElementById('modal-video-container') || modal;
+
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+      if (targetElem && targetElem.requestFullscreen) {
+        targetElem.requestFullscreen();
+      } else if (targetElem && targetElem.webkitRequestFullscreen) {
+        targetElem.webkitRequestFullscreen();
+      } else if (activeVideo && activeVideo.webkitEnterFullscreen) {
+        activeVideo.webkitEnterFullscreen(); // دعم أجهزة الآيفون والأندرويد القديمة
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      }
+    }
+  }
+}, true);
