@@ -3706,11 +3706,6 @@ function initGlobalMuteButton() {
   document.body.appendChild(btn);
   applyGlobalMuteState();
 }
-);
-    }
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
-}
 
 
 if (document.readyState === 'loading') {
