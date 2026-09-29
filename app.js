@@ -1,10 +1,26 @@
 
+function sendYouTubeMuteCommand(isMuted) {
+  const iframes = document.querySelectorAll('iframe');
+  iframes.forEach(ifr => {
+    try {
+      const command = isMuted ? 'mute' : 'unMute';
+      ifr.contentWindow.postMessage(JSON.stringify({
+        event: 'command',
+        func: command,
+        args: []
+      }), '*');
+    } catch(e) {}
+  });
+}
+
+
 // ==========================================
 // زر الكتم الشامل للتطبيق بدون تشويه الواجهة
 // ==========================================
 window.isAppGloballyMuted = localStorage.getItem('albasem_global_mute') === 'true';
 
 function applyGlobalMuteState() {
+  sendYouTubeMuteCommand(window.isAppGloballyMuted);
   const videos = document.querySelectorAll('video, audio');
   videos.forEach(v => {
     v.muted = window.isAppGloballyMuted;
@@ -2820,7 +2836,9 @@ function openModal(streamId) {
       const idMatch = ytUrl.match(/(?:v=|\/embed\/|youtu\.be\/)([\w-]{11})/);
       if (idMatch) ytUrl = `https://www.youtube-nocookie.com/embed/${idMatch[1]}`;
     }
-    modalBox.innerHTML = `<iframe class="w-full h-full border-0" src="${ytUrl}?autoplay=1&mute=" + (window.isAppGloballyMuted ? "1" : "0") + "&controls=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+    const originParam = encodeURIComponent(window.location.origin);
+    const initialMute = window.isAppGloballyMuted ? '1' : '0';
+    modalBox.innerHTML = `<iframe id="modal-yt-iframe" class="w-full h-full border-0" src="${ytUrl}?autoplay=1&mute=${initialMute}&enablejsapi=1&origin=${originParam}&controls=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
   } else if (stream.type === 'hls') {
     const isIptvModal = stream.area === 'IPTV' || (stream.url && stream.url.startsWith('http://'));
     const shouldMute = window.isAppGloballyMuted;
