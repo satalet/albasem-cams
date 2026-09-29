@@ -99,10 +99,10 @@ function applyGlobalMuteState() {
   const btn = document.getElementById('global-mute-btn');
   if (btn) {
     if (isMuted) {
-      btn.className = 'fixed bottom-4 right-4 z-[99999] w-10 h-10 rounded-full bg-rose-600/90 text-white border border-rose-400/40 shadow-2xl flex items-center justify-center transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none';
+      btn.className = 'fixed bottom-4 left-4 z-[99999] w-10 h-10 rounded-full bg-rose-600/90 text-white border border-rose-400/40 shadow-2xl flex items-center justify-center transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none';
       btn.innerHTML = '<i class="fa-solid fa-volume-xmark text-sm"></i>';
     } else {
-      btn.className = 'fixed bottom-4 right-4 z-[99999] w-10 h-10 rounded-full bg-slate-900/90 text-emerald-400 border border-slate-700/80 shadow-2xl flex items-center justify-center transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none';
+      btn.className = 'fixed bottom-4 left-4 z-[99999] w-10 h-10 rounded-full bg-slate-900/90 text-emerald-400 border border-slate-700/80 shadow-2xl flex items-center justify-center transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none';
       btn.innerHTML = '<i class="fa-solid fa-volume-high text-sm"></i>';
     }
   }
@@ -3604,10 +3604,10 @@ function applyGlobalMuteState() {
   const btn = document.getElementById('global-mute-btn');
   if (btn) {
     if (isMuted) {
-      btn.className = 'fixed bottom-4 right-4 z-[99999] w-10 h-10 rounded-full bg-rose-600/90 text-white border border-rose-400/40 shadow-2xl flex items-center justify-center transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none';
+      btn.className = 'fixed bottom-4 left-4 z-[99999] w-10 h-10 rounded-full bg-rose-600/90 text-white border border-rose-400/40 shadow-2xl flex items-center justify-center transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none';
       btn.innerHTML = '<i class="fa-solid fa-volume-xmark text-sm"></i>';
     } else {
-      btn.className = 'fixed bottom-4 right-4 z-[99999] w-10 h-10 rounded-full bg-slate-900/90 text-emerald-400 border border-slate-700/80 shadow-2xl flex items-center justify-center transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none';
+      btn.className = 'fixed bottom-4 left-4 z-[99999] w-10 h-10 rounded-full bg-slate-900/90 text-emerald-400 border border-slate-700/80 shadow-2xl flex items-center justify-center transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none';
       btn.innerHTML = '<i class="fa-solid fa-volume-high text-sm"></i>';
     }
   }
@@ -3629,7 +3629,7 @@ function initGlobalMuteButton() {
   const btn = document.createElement('button');
   btn.id = 'global-mute-btn';
   btn.type = 'button';
-  btn.className = 'fixed bottom-4 right-4 z-[99999] w-10 h-10 rounded-full bg-slate-900/90 text-emerald-400 border border-slate-700/80 shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none';
+  btn.className = 'fixed bottom-4 left-4 z-[99999] w-10 h-10 rounded-full bg-slate-900/90 text-emerald-400 border border-slate-700/80 shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none';
   btn.innerHTML = '<i class="fa-solid fa-volume-high text-sm"></i>';
   btn.onclick = (e) => {
     e.stopPropagation();
