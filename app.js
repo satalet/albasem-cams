@@ -3642,7 +3642,7 @@ function initGlobalMuteButton() {
   const btn = document.createElement('button');
   btn.id = 'global-mute-btn';
   btn.type = 'button';
-  btn.className = 'fixed bottom-4 left-4 z-[99999] w-10 h-10 rounded-full bg-slate-900/90 text-emerald-400 border border-slate-700/80 shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none';
+  btn.className = 'fixed top-3 left-28 md:left-32 z-[99999] h-8 px-2.5 rounded-lg bg-slate-900/90 text-emerald-400 border border-slate-700/80 shadow-lg flex items-center gap-1.5 transition-all duration-300 hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none text-xs font-bold';
   btn.innerHTML = '<i class="fa-solid fa-volume-high text-sm"></i><span class="hidden sm:inline">صوت</span>';
   btn.onclick = (e) => {
     e.stopPropagation();
