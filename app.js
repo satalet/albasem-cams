@@ -3076,22 +3076,31 @@ let tempStreamOrderList = [];
 function openStreamOrderModal() {
   const targetTitle = document.getElementById('stream-order-target-name');
   
-  // تحويل المسمى الكودي إلى اسم معرب ومفهوم
   let displayFilterName = currentFilter;
   if (currentFilter === 'LOCAL') displayFilterName = 'قنوات محلية';
   else if (currentFilter === 'ARAB') displayFilterName = 'قنوات عربية';
   else if (currentFilter === 'WEST') displayFilterName = 'قنوات أجنبية';
 
+  const subName = (typeof currentSubFilter !== 'undefined' && currentSubFilter && currentSubFilter !== 'all') ? currentSubFilter : '';
+
   if (targetTitle) {
-    targetTitle.textContent = displayFilterName + (currentFilter === 'IPTV' && currentSubFilter !== 'all' ? ` (${currentSubFilter})` : '');
+    targetTitle.textContent = displayFilterName + (subName ? ` - ${subName}` : '');
   }
 
-  // فلترة مرنة وشاملة تطابق القنوات بدقة حسب القسم النشط
+  // فلترة دقيقة جداً: تطابق القنوات المعروضة حالياً في الفرع النشط
   let list = streamsData.filter(s => {
     if (!s) return false;
     const sArea = (s.area || '').trim();
     const sCat = (s.category || '').trim();
+    const sSub = (s.subCategory || '').trim();
 
+    // 1. إذا كان داخل تفريع/مدينة معينة (مثل نابلس أو رام الله أو رياضة)
+    if (subName) {
+      const matchSub = (sArea === subName || sCat === subName || sSub === subName);
+      if (!matchSub) return false;
+    }
+
+    // 2. مطابقة القسم الرئيسي
     if (currentFilter === 'LOCAL' || currentFilter === 'قنوات محلية') {
       return sArea === 'قنوات محلية' || sArea === 'LOCAL' || sCat === 'قنوات محلية' || sCat === 'LOCAL' ||
              ['نابلس', 'رام الله', 'القدس', 'جنين', 'الخليل', 'فلسطين'].some(city => sArea.includes(city) || sCat.includes(city));
@@ -3103,13 +3112,7 @@ function openStreamOrderModal() {
       return sArea === 'قنوات أجنبية' || sArea === 'WEST' || sCat === 'قنوات أجنبية' || sCat === 'WEST';
     }
     if (currentFilter === 'IPTV') {
-      const isIptv = sArea === 'IPTV' || sCat === 'IPTV' || (!sArea && !sCat);
-      if (!isIptv) return false;
-      if (currentSubFilter && currentSubFilter !== 'all') {
-        const sub = (s.subCategory || s.category || '').trim();
-        return sub === currentSubFilter;
-      }
-      return true;
+      return sArea === 'IPTV' || sCat === 'IPTV' || (!sArea && !sCat);
     }
 
     return sArea === currentFilter || sCat === currentFilter;
@@ -3145,7 +3148,7 @@ function renderStreamOrderList() {
     item.innerHTML = `
       <div class="flex items-center gap-2 overflow-hidden">
         <span class="w-5 h-5 rounded-full bg-slate-800 text-amber-400 font-bold flex items-center justify-center text-[10px] shrink-0">${idx + 1}</span>
-        <span class="font-bold text-slate-200 truncate">${stream.name || 'بدون اسم'}</span>
+        <span class="font-bold text-slate-200 truncate">${stream.title || stream.name || "قناة بدون اسم"}</span>
         ${stream.category ? `<span class="text-[9px] text-slate-400 bg-slate-900 border border-slate-800 px-1 rounded shrink-0">${stream.category}</span>` : ''}
       </div>
       <div class="flex items-center gap-1 shrink-0">
