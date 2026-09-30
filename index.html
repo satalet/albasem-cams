@@ -587,7 +587,7 @@ if ('caches' in window) {
     </div>
   </div>
 
-  <script src="./app.js?v=1790791680"></script>
+  <script src="./app.js?v=1790791911"></script>
 
   <!-- نظام إدارة دخول المشتركين وفحص الجلسة -->
   <div id="sub-login-modal" style="display:none; position:fixed; inset:0; background:rgba(11,17,32,0.96); z-index:9999; justify-content:center; align-items:center; padding:15px;">
@@ -866,10 +866,9 @@ if ('caches' in window) {
 
 
   <!-- زر الكتم العائم الشامل -->
-  <button id="global-mute-btn" type="button" onclick="toggleGlobalMute()" 
-    class="fixed bottom-6 left-6 z-[999999] w-12 h-12 rounded-full bg-slate-900/90 text-emerald-400 border border-slate-700/80 shadow-2xl flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 backdrop-blur-md cursor-pointer select-none"
-    title="الصوت شغال - اضغط للكتم">
-    <i id="global-mute-icon" class="fa-solid fa-volume-high text-lg"></i>
+  <button id="global-mute-btn" type="button" onclick="toggleGlobalMute()" class="fixed top-3 left-28 md:left-32 z-[99999] h-8 px-2.5 rounded-lg bg-slate-900/90 text-emerald-400 border border-slate-700/80 shadow-lg flex items-center gap-1.5 transition-all duration-300 hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none text-xs font-bold" title="كتم / تشغيل الصوت العام">
+    <i class="fa-solid fa-volume-high text-sm"></i>
+    <span class="hidden sm:inline">صوت</span>
   </button>
 
 </body>
