@@ -2875,7 +2875,45 @@ function openModal(streamId) {
     }
     const originParam = encodeURIComponent(window.location.origin);
     const initialMute = window.isAppGloballyMuted ? '1' : '0';
-    modalBox.innerHTML = `<iframe id="modal-yt-iframe" class="w-full h-full border-0" src="${ytUrl}?autoplay=1&mute=${initialMute}&enablejsapi=1&origin=${originParam}&controls=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+    modalBox.innerHTML = `
+      <div id="yt-touch-wrapper" class="relative w-full h-full select-none">
+        <iframe id="modal-yt-iframe" class="w-full h-full border-0" src="${ytUrl}?autoplay=1&mute=${initialMute}&enablejsapi=1&origin=${originParam}&controls=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        <!-- طبقات حواف جانبية شفافة لالتقاط السحب باللمس على الجوال بدون حجب عناصر التحكم بالمنتصف -->
+        <div id="yt-swipe-left" class="absolute top-16 bottom-16 left-0 w-16 z-30 touch-none"></div>
+        <div id="yt-swipe-right" class="absolute top-16 bottom-16 right-0 w-16 z-30 touch-none"></div>
+      </div>
+    `;
+
+    // ربط مستشعرات السحب على الحواف للتنقل بين القنوات على الجوال
+    const bindEdgeSwipe = (edgeEl) => {
+      if (!edgeEl) return;
+      let startX = 0, startY = 0;
+      edgeEl.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+      }, { passive: true });
+
+      edgeEl.addEventListener('touchend', (e) => {
+        const diffX = e.changedTouches[0].clientX - startX;
+        const diffY = e.changedTouches[0].clientY - startY;
+        if (Math.abs(diffX) > 40 && Math.abs(diffX) > Math.abs(diffY)) {
+          if (diffX < 0) {
+            // سحب لليسار -> القناة التالية
+            if (typeof nextModalStream === 'function') nextModalStream();
+            else if (typeof navigateModal === 'function') navigateModal(1);
+          } else {
+            // سحب لليمين -> القناة السابقة
+            if (typeof prevModalStream === 'function') prevModalStream();
+            else if (typeof navigateModal === 'function') navigateModal(-1);
+          }
+        }
+      }, { passive: true });
+    };
+
+    setTimeout(() => {
+      bindEdgeSwipe(document.getElementById('yt-swipe-left'));
+      bindEdgeSwipe(document.getElementById('yt-swipe-right'));
+    }, 50);
   } else if (stream.type === 'hls') {
     const isIptvModal = stream.area === 'IPTV' || (stream.url && stream.url.startsWith('http://'));
     const shouldMute = window.isAppGloballyMuted;
