@@ -112,10 +112,10 @@ function applyGlobalMuteState() {
   const btn = document.getElementById('global-mute-btn');
   if (btn) {
     if (isMuted) {
-      btn.className = 'fixed top-3 left-28 md:left-32 z-[99999] h-8 px-2.5 rounded-lg bg-rose-600/90 text-white border border-rose-400/40 shadow-lg flex items-center gap-1.5 transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none text-xs font-bold';
+      btn.className = 'fixed top-14 left-4 z-[99999] h-8 px-2.5 rounded-lg bg-rose-600/90 text-white border border-rose-400/40 shadow-lg flex items-center gap-1.5 transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none text-xs font-bold';
       btn.innerHTML = '<i class="fa-solid fa-volume-xmark text-sm"></i><span class="hidden sm:inline">مكتوم</span>';
     } else {
-      btn.className = 'fixed top-3 left-28 md:left-32 z-[99999] h-8 px-2.5 rounded-lg bg-slate-900/90 text-emerald-400 border border-slate-700/80 shadow-lg flex items-center gap-1.5 transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none text-xs font-bold';
+      btn.className = 'fixed top-14 left-4 z-[99999] h-8 px-2.5 rounded-lg bg-slate-900/90 text-emerald-400 border border-slate-700/80 shadow-lg flex items-center gap-1.5 transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none text-xs font-bold';
       btn.innerHTML = '<i class="fa-solid fa-volume-high text-sm"></i><span class="hidden sm:inline">صوت</span>';
     }
   }
@@ -3617,10 +3617,10 @@ function applyGlobalMuteState() {
   const btn = document.getElementById('global-mute-btn');
   if (btn) {
     if (isMuted) {
-      btn.className = 'fixed top-3 left-28 md:left-32 z-[99999] h-8 px-2.5 rounded-lg bg-rose-600/90 text-white border border-rose-400/40 shadow-lg flex items-center gap-1.5 transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none text-xs font-bold';
+      btn.className = 'fixed top-14 left-4 z-[99999] h-8 px-2.5 rounded-lg bg-rose-600/90 text-white border border-rose-400/40 shadow-lg flex items-center gap-1.5 transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none text-xs font-bold';
       btn.innerHTML = '<i class="fa-solid fa-volume-xmark text-sm"></i><span class="hidden sm:inline">مكتوم</span>';
     } else {
-      btn.className = 'fixed top-3 left-28 md:left-32 z-[99999] h-8 px-2.5 rounded-lg bg-slate-900/90 text-emerald-400 border border-slate-700/80 shadow-lg flex items-center gap-1.5 transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none text-xs font-bold';
+      btn.className = 'fixed top-14 left-4 z-[99999] h-8 px-2.5 rounded-lg bg-slate-900/90 text-emerald-400 border border-slate-700/80 shadow-lg flex items-center gap-1.5 transition hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none text-xs font-bold';
       btn.innerHTML = '<i class="fa-solid fa-volume-high text-sm"></i><span class="hidden sm:inline">صوت</span>';
     }
   }
@@ -3642,7 +3642,7 @@ function initGlobalMuteButton() {
   const btn = document.createElement('button');
   btn.id = 'global-mute-btn';
   btn.type = 'button';
-  btn.className = 'fixed top-3 left-28 md:left-32 z-[99999] h-8 px-2.5 rounded-lg bg-slate-900/90 text-emerald-400 border border-slate-700/80 shadow-lg flex items-center gap-1.5 transition-all duration-300 hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none text-xs font-bold';
+  btn.className = 'fixed top-14 left-4 z-[99999] h-8 px-2.5 rounded-lg bg-slate-900/90 text-emerald-400 border border-slate-700/80 shadow-lg flex items-center gap-1.5 transition-all duration-300 hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer select-none text-xs font-bold';
   btn.innerHTML = '<i class="fa-solid fa-volume-high text-sm"></i><span class="hidden sm:inline">صوت</span>';
   btn.onclick = (e) => {
     e.stopPropagation();
