@@ -3075,14 +3075,45 @@ let tempStreamOrderList = [];
 
 function openStreamOrderModal() {
   const targetTitle = document.getElementById('stream-order-target-name');
+  
+  // تحويل المسمى الكودي إلى اسم معرب ومفهوم
+  let displayFilterName = currentFilter;
+  if (currentFilter === 'LOCAL') displayFilterName = 'قنوات محلية';
+  else if (currentFilter === 'ARAB') displayFilterName = 'قنوات عربية';
+  else if (currentFilter === 'WEST') displayFilterName = 'قنوات أجنبية';
+
   if (targetTitle) {
-    targetTitle.textContent = currentFilter + (currentFilter === 'IPTV' && currentSubFilter !== 'all' ? ` (${currentSubFilter})` : '');
+    targetTitle.textContent = displayFilterName + (currentFilter === 'IPTV' && currentSubFilter !== 'all' ? ` (${currentSubFilter})` : '');
   }
 
-  let list = streamsData.filter(s => s.area === currentFilter);
-  if (currentFilter === 'IPTV' && currentSubFilter !== 'all') {
-    list = list.filter(s => (s.category === currentSubFilter || s.subCategory === currentSubFilter));
-  }
+  // فلترة مرنة وشاملة تطابق القنوات بدقة حسب القسم النشط
+  let list = streamsData.filter(s => {
+    if (!s) return false;
+    const sArea = (s.area || '').trim();
+    const sCat = (s.category || '').trim();
+
+    if (currentFilter === 'LOCAL' || currentFilter === 'قنوات محلية') {
+      return sArea === 'قنوات محلية' || sArea === 'LOCAL' || sCat === 'قنوات محلية' || sCat === 'LOCAL' ||
+             ['نابلس', 'رام الله', 'القدس', 'جنين', 'الخليل', 'فلسطين'].some(city => sArea.includes(city) || sCat.includes(city));
+    }
+    if (currentFilter === 'ARAB' || currentFilter === 'قنوات عربية') {
+      return sArea === 'قنوات عربية' || sArea === 'ARAB' || sCat === 'قنوات عربية' || sCat === 'ARAB';
+    }
+    if (currentFilter === 'WEST' || currentFilter === 'قنوات أجنبية') {
+      return sArea === 'قنوات أجنبية' || sArea === 'WEST' || sCat === 'قنوات أجنبية' || sCat === 'WEST';
+    }
+    if (currentFilter === 'IPTV') {
+      const isIptv = sArea === 'IPTV' || sCat === 'IPTV' || (!sArea && !sCat);
+      if (!isIptv) return false;
+      if (currentSubFilter && currentSubFilter !== 'all') {
+        const sub = (s.subCategory || s.category || '').trim();
+        return sub === currentSubFilter;
+      }
+      return true;
+    }
+
+    return sArea === currentFilter || sCat === currentFilter;
+  });
 
   tempStreamOrderList = [...list].sort((a, b) => {
     const oA = a.order !== undefined ? Number(a.order) : 9999;
