@@ -14,6 +14,10 @@ from concurrent.futures import ThreadPoolExecutor
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+import urllib3
+
+# تعطيل تحذيرات SSL لتجنب إزعاج التيرمنال
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 import gi
 gi.require_version('Gtk', '3.0')
@@ -292,7 +296,6 @@ class AlbasemImporterGtk(Gtk.Window):
         scrolled.set_vexpand(True)
         scrolled.set_hexpand(True)
 
-        # types: bool(selected), str(name), str(area), str(subCategory), str(status), str(url), int(orig_index)
         self.store = Gtk.ListStore(bool, str, str, str, str, str, int)
         self.treeview = Gtk.TreeView(model=self.store)
         self.treeview.set_rules_hint(True)
@@ -409,7 +412,6 @@ class AlbasemImporterGtk(Gtk.Window):
         if active_text in PRESET_SOURCES:
             self.url_entry.set_text(PRESET_SOURCES[active_text])
 
-    # فتح مستعرض ملفات كالي لينكس الرسمي
     def on_load_file_clicked(self, widget):
         chooser = Gtk.FileChooserDialog(
             title="اختر ملف قنوات البث (M3U / M3U8)",
@@ -458,15 +460,32 @@ class AlbasemImporterGtk(Gtk.Window):
             self.show_message("تنبيه", "يرجى إدخال رابط صالح أولاً!", Gtk.MessageType.WARNING)
             return
 
-        self.status_lbl.set_text("جاري جلب الباقة من الرابط بالإنترنت...")
+        self.status_lbl.set_text("جاري جلب الباقة وتخطي الحظر بالإنترنت...")
         threading.Thread(target=self._load_url_worker, args=(url,), daemon=True).start()
 
     def _load_url_worker(self, url):
+        # ترويسات تطبيق معتمد لتجاوز حظر 403 وحماية WAF
+        headers = {
+            "User-Agent": "IPTVSmartersPro",
+            "Accept": "*/*",
+            "Accept-Encoding": "gzip, deflate",
+            "Connection": "keep-alive"
+        }
         try:
-            r = requests.get(url, timeout=15)
-            r.raise_for_status()
-            GLib.idle_add(self._parse_m3u, r.text)
-            GLib.idle_add(lambda: self.status_lbl.set_text(f"تم جلب {len(self.channels_data)} قناة بنجاح!"))
+            r = requests.get(url, headers=headers, timeout=45, verify=False)
+            if r.status_code == 200:
+                r.encoding = 'utf-8'
+                GLib.idle_add(self._parse_m3u, r.text)
+                GLib.idle_add(lambda: self.status_lbl.set_text(f"تم جلب {len(self.channels_data)} قناة بنجاح!"))
+            elif r.status_code == 403:
+                GLib.idle_add(self.show_message, "خطأ بالتحميل", "خطأ 403 Forbidden: تم حظر الوصول من السيرفر. تأكد من صحة بيانات الحساب.", Gtk.MessageType.ERROR)
+                GLib.idle_add(lambda: self.status_lbl.set_text("فشل الجلب: خطأ 403 Forbidden"))
+            else:
+                GLib.idle_add(self.show_message, "خطأ بالتحميل", f"فشل السيرفر برمز HTTP: {r.status_code}", Gtk.MessageType.ERROR)
+                GLib.idle_add(lambda: self.status_lbl.set_text(f"فشل الجلب: رمز {r.status_code}"))
+        except requests.exceptions.Timeout:
+            GLib.idle_add(self.show_message, "مهلة الاتصال", "انتهت مهلة الانتظار (Timeout): حجم الملف ضخم أو استجابة السيرفر بطيئة.", Gtk.MessageType.ERROR)
+            GLib.idle_add(lambda: self.status_lbl.set_text("انتهت مهلة الاتصال بالرابط."))
         except Exception as e:
             GLib.idle_add(self.show_message, "خطأ بالتحميل", f"فشل جلب الرابط: {e}", Gtk.MessageType.ERROR)
             GLib.idle_add(lambda: self.status_lbl.set_text("فشل جلب الرابط."))
@@ -512,7 +531,6 @@ class AlbasemImporterGtk(Gtk.Window):
                     idx += 1
                     current_meta = None
 
-        # تحديث قائمة تصفية التفريعات
         self.filter_sub_combo.remove_all()
         self.filter_sub_combo.append_text("الكل")
         subs = sorted(list(set(c["subCategory"] for c in self.channels_data)))
@@ -593,7 +611,6 @@ class AlbasemImporterGtk(Gtk.Window):
         self.refresh_table()
         self.status_lbl.set_text(f"تم تحديد {working_count} قناة شغالة فقط بنجاح!")
 
-    # تطبيق القسم والتفريع على القنوات المحددة بنقرة زر
     def on_apply_destination_clicked(self, widget):
         new_area = self.target_main_combo.get_child().get_text().strip() or "IPTV"
         new_sub = self.target_sub_combo.get_child().get_text().strip() or "أفلام ومسلسلات"
@@ -628,11 +645,11 @@ class AlbasemImporterGtk(Gtk.Window):
         threading.Thread(target=self._fast_check_worker, args=(selected,), daemon=True).start()
 
     def _fast_check_worker(self, channels):
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        headers = {"User-Agent": "IPTVSmartersPro", "Accept": "*/*"}
 
         def _check_one(item):
             try:
-                res = requests.head(item["url"], headers=headers, timeout=3.5, allow_redirects=True)
+                res = requests.head(item["url"], headers=headers, timeout=3.5, allow_redirects=True, verify=False)
                 if res.status_code in [200, 206, 302]:
                     item["status"] = "شغال ✅"
                     item["selected"] = True
@@ -660,7 +677,6 @@ class AlbasemImporterGtk(Gtk.Window):
             res = session.get(f"{DB_BASE}/streams.json", timeout=10)
             data = res.json()
             
-            # الأقسام الأربعة الثابتة والرسمية للمنصة
             official_mains = ["IPTV", "قنوات عربية", "قنوات محلية", "قنوات أجنبية"]
             self.tree_structure = {m: set() for m in official_mains}
             
@@ -668,7 +684,6 @@ class AlbasemImporterGtk(Gtk.Window):
                 for k, v in data.items():
                     if not isinstance(v, dict): continue
                     
-                    # استنتاج القسم الرئيسي الحقيقي
                     cat = v.get("category") or v.get("area") or "IPTV"
                     if cat not in official_mains:
                         if any(w in str(cat) for w in ["محلي", "نابلس", "رام الله", "القدس", "جنين", "الخليل", "فلسطين"]):
@@ -682,7 +697,6 @@ class AlbasemImporterGtk(Gtk.Window):
                     else:
                         main_cat = cat
 
-                    # استخراج التفريع التابع لهذا القسم
                     sub = v.get("subCategory")
                     if not sub and main_cat == "قنوات محلية":
                         sub = v.get("area") or "عام"
@@ -716,14 +730,12 @@ class AlbasemImporterGtk(Gtk.Window):
         default_main = "IPTV"
         self.target_main_combo.get_child().set_text(default_main)
         
-        # ربط التغيير التلقائي للتفريعات
         if not hasattr(self, '_main_combo_connected'):
             self.target_main_combo.connect("changed", self._on_main_combo_changed)
             self._main_combo_connected = True
             
         self._on_main_combo_changed(self.target_main_combo)
         self.status_lbl.set_text("✅ تم مزامنة الأقسام الرئيسية وتفريعاتها لايف من الفايربيس!")
-
 
     def on_clean_duplicates_clicked(self, widget):
         target_area = ""
