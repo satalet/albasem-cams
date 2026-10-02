@@ -587,7 +587,7 @@ if ('caches' in window) {
     </div>
   </div>
 
-  <script src="./app.js?v=1790968872"></script>
+  <script src="./app.js?v=1790969249"></script>
 
   <!-- نظام إدارة دخول المشتركين وفحص الجلسة -->
   <div id="sub-login-modal" style="display:none; position:fixed; inset:0; background:rgba(11,17,32,0.96); z-index:9999; justify-content:center; align-items:center; padding:15px;">
@@ -627,6 +627,23 @@ if ('caches' in window) {
     }
 
     window.addEventListener("DOMContentLoaded", () => {
+            // فحص الدخول التلقائي عبر رابط التجربة السريع (?demo=1 أو ?u=test1977&p=1977)
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('demo') === '1' || (urlParams.get('u') === 'test1977' && urlParams.get('p') === '1977')) {
+        const demoSub = {
+          username: "test1977",
+          name: "حساب تجريبي عام (مفتوح)",
+          status: "active",
+          expireDate: "2099-12-31",
+          allowedSections: "all",
+          isMultiDeviceDemo: true
+        };
+        localStorage.setItem("albasem_subscriber", JSON.stringify(demoSub));
+        currentSubscriber = demoSub;
+        // تنظيف الرابط في المتصفح ليبقى نظيفاً
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+
       let adminToken = localStorage.getItem("albasem_admin_token");
       if (adminToken) {
         return; // الأدمن مسجل وموثق مسبقاً

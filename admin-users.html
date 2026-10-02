@@ -646,6 +646,22 @@
 
   function shareSubscriber(sub) {
     const mainUrl = "https://satalet.github.io/albasem-cams/";
+    if (sub.username === "test1977") {
+      const demoUrl = `${mainUrl}?demo=1`;
+      const msg = `🎁 مرحباً بكم في منصة الباسم سات للبث المباشر 📡✨\n\n` +
+                  `رابط تجربة مجاني ومفتوح للمنصة:\n` +
+                  `🔗 ${demoUrl}\n\n` +
+                  `💡 اضغط على الرابط أعلاه للدخول الفوري والمشاهدة مباشرة بدون الحاجة لكتابة اسم مستخدم أو كلمة مرور!\n` +
+                  `مشاهدة ممتعة من إدارة الباسم سات.`;
+      if (navigator.share) {
+        navigator.share({ title: 'رابط تجربة الباسم سات', text: msg, url: demoUrl }).catch(()=>{});
+      } else {
+        navigator.clipboard.writeText(msg).then(() => {
+          alert("تم نسخ رابط ورسالة التجربة المباشرة بنجاح!");
+        });
+      }
+      return;
+    }
     const msg = `مرحباً بك في منصة الباسم سات للبث المباشر 📡✨\n\n` +
                 `بيانات حسابك الخاص:\n` +
                 `👤 اسم المستخدم: ${sub.username}\n` +
