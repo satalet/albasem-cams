@@ -467,9 +467,13 @@
 
   async function loadSubscribers() {
     try {
+      let adminAuthToken = "";
+      try { adminAuthToken = await getValidToken(); } catch(e){}
+      const authParam = adminAuthToken ? `?auth=${adminAuthToken}` : "";
+
       const [subsResp, presResp] = await Promise.all([
-        fetch(`${FIREBASE_DB}/subscribers.json`),
-        fetch(`${FIREBASE_DB}/presence.json`)
+        fetch(`${FIREBASE_DB}/subscribers.json${authParam}`),
+        fetch(`${FIREBASE_DB}/presence.json${authParam}`)
       ]);
       const data = await subsResp.json() || {};
       const presenceData = await presResp.json() || {};
@@ -486,15 +490,18 @@
         let badgeClass = sub.status === "blocked" ? "badge-blocked" : (isExpired ? "badge-expired" : "badge-active");
         let statusText = sub.status === "blocked" ? "محظور" : (isExpired ? "منتهي" : "نشط");
         let iptvInfo = "";
-        let iptvSubs = sub.allowedIptvSubs || ["all"];
-        if (sub.allowedAreas.includes('all') || sub.allowedAreas.includes('IPTV')) {
+        let areasList = Array.isArray(sub.allowedAreas) ? sub.allowedAreas : (sub.allowedAreas ? [sub.allowedAreas] : ['all']);
+        let iptvSubs = Array.isArray(sub.allowedIptvSubs) ? sub.allowedIptvSubs : ['all'];
+
+        if (areasList.includes('all') || areasList.includes('IPTV')) {
           if (iptvSubs.includes('all')) {
             iptvInfo = '<div style="font-size:0.73rem; color:#10b981; margin-top:2px;">📺 IPTV: كل التفريعات</div>';
           } else {
             iptvInfo = `<div style="font-size:0.73rem; color:#38bdf8; margin-top:2px;">📺 IPTV: ${iptvSubs.join('، ')}</div>`;
           }
         }
-        let areasBadge = (sub.allowedAreas.includes('all') ? '<span class="badge badge-active">جميع الأقسام</span>' : sub.allowedAreas.join(', ')) + iptvInfo;
+        let isDemoTag = sub.username === 'test1977' ? '<span style="background:#f59e0b; color:#000; font-size:0.7rem; font-weight:bold; padding:2px 6px; border-radius:4px; margin-left:4px;">100 جهاز</span>' : '';
+        let areasBadge = (areasList.includes('all') ? '<span class="badge badge-active">جميع الأقسام</span>' : areasList.join(', ')) + isDemoTag + iptvInfo;
 
         let pInfo = presenceData[key] || {};
         let now = Date.now();
