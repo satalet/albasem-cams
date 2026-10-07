@@ -2208,8 +2208,9 @@ function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
   }
 
   const url = prepareUniversalStreamUrl(rawUrl);
-  // فحص مباشر: إذا كان الرابط ملف فيديو عادي mp4
-  const isDirectMp4 = url.toLowerCase().includes('.mp4') || (!url.toLowerCase().includes('.m3u8') && !url.includes('manifest'));
+  // فحص مباشر: ملفات الفيديو الثابتة فقط (mp4/mkv/webm) مع استثناء البث الحي (IPTV/Falcon/TS)
+  const isLiveStream = url.includes("falcon-") || /\/\d+($|\?)/.test(url) || url.includes(".ts") || isIptv;
+  const isDirectMp4 = !isLiveStream && (url.toLowerCase().includes(".mp4") || url.toLowerCase().includes(".mkv") || url.toLowerCase().includes(".webm"));
   if (isDirectMp4 && !url.includes('youtube') && !url.includes('youtu.be')) {
     container.innerHTML = '';
     const video = document.createElement('video');
