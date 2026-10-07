@@ -2161,7 +2161,13 @@ function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
     if (!inputUrl || typeof inputUrl !== 'string') return inputUrl;
     let u = inputUrl.trim();
 
-    // 1. تصحيح روابط Xtream التي تنتهي برقم وبدون لاحقة لتصبح HLS
+    // فك التكرار إذا كان الرابط مسبوقاً ببروكسي
+    if (u.includes('corsproxy.io/?')) {
+      const parts = u.split('corsproxy.io/?');
+      u = decodeURIComponent(parts[parts.length - 1]);
+    }
+
+    // 1. تصحيح روابط Xtream المباشرة التي تنتهي برقم وبدون لاحقة لتصبح HLS
     if (!u.includes('.m3u8') && !u.includes('.mpd') && !u.includes('.mp4')) {
       const cleanPath = u.split('?')[0];
       const parts = cleanPath.split('/');
@@ -2172,7 +2178,7 @@ function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
       }
     }
 
-    // 2. فك حظر المتصفحات (HTTP داخل HTTPS أو قيود CORS للسيرفرات الخارجية)
+    // 2. توجيه الروابط التي تواجه قيود HTTP أو CORS عبر البروكسي بشكل نظيف ولمرة واحدة
     const isHttp = u.startsWith('http://');
     const isCorsRestricted = /falcon-|amagi\.tv|xtream|iptv|stream/i.test(u);
     const isPageHttps = window.location.protocol === 'https:';
@@ -2407,7 +2413,7 @@ function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
               // إذا فشل الاتصال الأولي وكان الرابط لا يدعم CORS
               if (!usedCorsProxy && (data.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR || data.details === Hls.ErrorDetails.MANIFEST_LOAD_TIMEOUT)) {
                 usedCorsProxy = true;
-                const proxyUrl = "https://corsproxy.io/?" + encodeURIComponent(streamUrl);
+                const proxyUrl = streamUrl;
                 console.warn("[IPTV Fallback] Retrying stream with CORS proxy:", proxyUrl);
                 hls.loadSource(proxyUrl);
                 return;
