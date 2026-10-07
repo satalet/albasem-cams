@@ -840,10 +840,11 @@ if ('caches' in window) {
 
     function filterStreamsForSubscriber(sub) {
       showSubscriberBar(sub);
-      if (!sub || sub.allowedAreas.includes("all")) return;
+      const areas = (sub && Array.isArray(sub.allowedAreas)) ? sub.allowedAreas : ["all"];
+      if (areas.includes("all")) return;
       document.querySelectorAll("[data-area]").forEach(el => {
         let area = el.getAttribute("data-area");
-        if (area && !sub.allowedAreas.includes(area)) {
+        if (area && !areas.includes(area)) {
           el.style.display = "none";
         }
       });
