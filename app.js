@@ -2349,7 +2349,7 @@ function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
   };
 
   let safetyTimer = isModal ? null : setTimeout(() => {
-    if (!isPlaying && (video.currentTime === 0 || video.paused || video.readyState < 2)) {
+    if (!isPlaying && !video._mpegtsPlayer && (video.currentTime === 0 || video.paused || video.readyState < 2)) {
       if (!usedProxy && isIptv) {
         tryFallbackProxy();
       } else {
@@ -2407,7 +2407,14 @@ function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
             }, {
                 enableWorker: true,
                 lazyLoad: false,
-                stashInitialSize: 128
+                stashInitialSize: 64,
+                enableStashBuffer: false,
+                autoCleanupSourceBuffer: true,
+                autoCleanupMaxBackwardDuration: 15,
+                autoCleanupMinBackwardDuration: 10,
+                liveBufferLatencyChasing: true,
+                liveBufferLatencyMaxLatency: 2.5,
+                liveBufferLatencyMinRemain: 0.8
             });
             player.attachMediaElement(video);
             player.load();
