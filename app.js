@@ -2155,7 +2155,35 @@ async function saveCategoryOrder() {
 
 
 
-function launchHlsStream(container, url, isModal = false, isIptv = false) {
+function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
+  // === معالج الروابط الشامل عند نقطة الدخول الأولى ===
+  function prepareUniversalStreamUrl(inputUrl) {
+    if (!inputUrl || typeof inputUrl !== 'string') return inputUrl;
+    let u = inputUrl.trim();
+
+    // 1. تصحيح روابط Xtream التي تنتهي برقم وبدون لاحقة لتصبح HLS
+    if (!u.includes('.m3u8') && !u.includes('.mpd') && !u.includes('.mp4')) {
+      const cleanPath = u.split('?')[0];
+      const parts = cleanPath.split('/');
+      const lastPart = parts[parts.length - 1];
+      if (/^[0-9]+$/.test(lastPart)) {
+        const query = u.includes('?') ? '?' + u.split('?')[1] : '';
+        u = cleanPath + '.m3u8' + query;
+      }
+    }
+
+    // 2. فك حظر المتصفحات (HTTP داخل HTTPS أو قيود CORS للسيرفرات الخارجية)
+    const isHttp = u.startsWith('http://');
+    const isCorsRestricted = /falcon-|amagi\.tv|xtream|iptv|stream/i.test(u);
+    const isPageHttps = window.location.protocol === 'https:';
+
+    if ((isHttp && isPageHttps) || isCorsRestricted) {
+      return 'https://corsproxy.io/?' + encodeURIComponent(u);
+    }
+    return u;
+  }
+
+  const url = prepareUniversalStreamUrl(rawUrl);
   // فحص مباشر: إذا كان الرابط ملف فيديو عادي mp4
   const isDirectMp4 = url.toLowerCase().includes('.mp4') || (!url.toLowerCase().includes('.m3u8') && !url.includes('manifest'));
   if (isDirectMp4 && !url.includes('youtube') && !url.includes('youtu.be')) {
