@@ -2357,11 +2357,16 @@ function launchHlsStream(container, url, isModal = false, isIptv = false) {
         // فحص وتوجيه الروابط التي تتطلب وسيط (IPTV / HTTP / Non-CORS)
         function getPlayableUrl(rawUrl) {
           if (!rawUrl) return rawUrl;
-          // إذا كان الرابط http أو من سيرفرات البث الخارجية مثل falcon أو amagi
-          if (rawUrl.startsWith('http://') || rawUrl.includes('falcon-') || rawUrl.includes('amagi.tv')) {
-            return 'https://corsproxy.io/?' + encodeURIComponent(rawUrl);
+          let target = rawUrl;
+          // 1. إذا كان رابط سيرفر Xtream ينتهي برقم، أضف له .m3u8 لتحويله إلى HLS
+          if (!target.includes('.m3u8') && (target.includes('falcon-') || /\/\d+$/.test(target))) {
+            target = target + '.m3u8';
           }
-          return rawUrl;
+          // 2. توجيه الروابط التي لا تدعم CORS أو تعمل بـ http عبر البروكسي المشفر
+          if (target.startsWith('http://') || target.includes('falcon-') || target.includes('amagi.tv')) {
+            return 'https://corsproxy.io/?' + encodeURIComponent(target);
+          }
+          return target;
         }
 
         const initialTargetUrl = getPlayableUrl(streamUrl);
