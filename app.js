@@ -2417,6 +2417,21 @@ function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
                 liveBufferLatencyMinRemain: 0.8
             });
             player.attachMediaElement(video);
+            
+            // إعادة وصل البث فورا إذا قطع السيرفر أو البروكسي الاتصال
+            player.on(mpegts.Events.ERROR, (type, detail, info) => {
+                console.warn("[mpegts Error Reconnecting...]", type, detail);
+                setTimeout(() => {
+                    try { player.unload(); player.load(); player.play(); } catch(e){}
+                }, 500);
+            });
+
+            video.addEventListener("ended", () => {
+                console.log("[Live Stream Ended, Reconnecting...]");
+                setTimeout(() => {
+                    try { player.unload(); player.load(); player.play(); } catch(e){}
+                }, 300);
+            });
             player.load();
             player.play().catch(() => { video.muted = true; player.play().catch(()=>{}); });
             video._mpegtsPlayer = player;
