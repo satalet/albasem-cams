@@ -2333,18 +2333,18 @@ function launchHlsStream(container, url, isModal = false, isIptv = false) {
       const hls = new Hls({
           enableWorker: true,
           lowLatencyMode: false,
-          liveSyncDurationCount: 3,       // التزامن مع آخر 3 أجزاء حية فقط لضمان عدم طلب ملفات منتهية
-          liveMaxLatencyDurationCount: 6, // أقصى حد للتأخير 6 أجزاء لتفادي التجمد
-          liveDurationInfinity: true,     // بث حي مستمر ومفتوح
-          maxBufferLength: 15,            // بافر خفيف وسريع الاستجابة للكاميرات
-          maxMaxBufferLength: 30,
-          backBufferLength: 0,            // تفريغ الأجزاء السابقة فوراً لتوفير الذاكرة ومنع التراكم
-          manifestLoadingMaxRetry: 10,
-          levelLoadingMaxRetry: 10,
-          fragLoadingMaxRetry: 15,
-          fragLoadingRetryDelay: 500,
-          nudgeMaxRetry: 20,              // دفع الفيديو بقوة عند أي تعليق
-          nudgeOffset: 0.3
+          backBufferLength: 30,
+          maxBufferLength: 30,
+          maxMaxBufferLength: 60,
+          manifestLoadingMaxRetry: 6,
+          levelLoadingMaxRetry: 6,
+          fragLoadingMaxRetry: 8,
+          fragLoadingRetryDelay: 1000,
+          nudgeMaxRetry: 10,
+          nudgeOffset: 0.2,
+          xhrSetup: function(xhr, url) {
+            xhr.withCredentials = false;
+          }
         });
         hlsInstance = hls;
         video._hls = hls;
