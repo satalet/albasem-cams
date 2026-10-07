@@ -2208,9 +2208,9 @@ function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
   }
 
   const url = prepareUniversalStreamUrl(rawUrl);
-  // فحص مباشر: ملفات الفيديو الثابتة فقط (mp4/mkv/webm) مع استثناء البث الحي (IPTV/Falcon/TS)
-  const isLiveStream = url.includes("falcon-") || /\/\d+($|\?)/.test(url) || url.includes(".ts") || isIptv;
-  const isDirectMp4 = !isLiveStream && (url.toLowerCase().includes(".mp4") || url.toLowerCase().includes(".mkv") || url.toLowerCase().includes(".webm"));
+  // فحص مباشر: إذا كان الرابط فيلم أو حلقة (VOD) بامتداد فيديو واضح
+  const isVodFile = /\.(mp4|mkv|avi|mov|webm)($|\?)/i.test(url) || /\.(mp4|mkv|avi|mov|webm)($|\?)/i.test(rawUrl);
+  const isDirectMp4 = isVodFile;
   if (isDirectMp4 && !url.includes('youtube') && !url.includes('youtu.be')) {
     container.innerHTML = '';
     const video = document.createElement('video');
@@ -2396,11 +2396,14 @@ function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
     if (isTsStream && window.mpegts && mpegts.getFeatureList().mseLivePlayback) {
         try {
             if (video._mpegtsPlayer) { video._mpegtsPlayer.destroy(); }
-            const proxiedUrl = "https://albasem-proxy.satalet.workers.dev/?url=" + encodeURIComponent(streamUrl);
+            let finalStreamUrl = streamUrl;
+            if (!finalStreamUrl.includes("albasem-proxy.satalet.workers.dev")) {
+                finalStreamUrl = "https://albasem-proxy.satalet.workers.dev/?url=" + encodeURIComponent(finalStreamUrl);
+            }
             const player = mpegts.createPlayer({
                 type: "mse",
                 isLive: true,
-                url: proxiedUrl
+                url: finalStreamUrl
             }, {
                 enableWorker: true,
                 lazyLoad: false,
