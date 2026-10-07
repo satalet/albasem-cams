@@ -2352,9 +2352,40 @@ function launchHlsStream(container, url, isModal = false, isIptv = false) {
 
         let networkRecoveryAttempts = 0;
         let mediaRecoveryAttempts = 0;
+        let usedCorsProxy = false;
 
         hls.loadSource(streamUrl);
         hls.attachMedia(video);
+
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          if (data.fatal) {
+            if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+              // إذا فشل الاتصال الأولي وكان الرابط لا يدعم CORS
+              if (!usedCorsProxy && (data.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR || data.details === Hls.ErrorDetails.MANIFEST_LOAD_TIMEOUT)) {
+                usedCorsProxy = true;
+                const proxyUrl = "https://corsproxy.io/?" + encodeURIComponent(streamUrl);
+                console.warn("[IPTV Fallback] Retrying stream with CORS proxy:", proxyUrl);
+                hls.loadSource(proxyUrl);
+                return;
+              }
+              if (networkRecoveryAttempts < 3) {
+                networkRecoveryAttempts++;
+                hls.startLoad();
+              } else {
+                hls.destroy();
+              }
+            } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+              if (mediaRecoveryAttempts < 3) {
+                mediaRecoveryAttempts++;
+                hls.recoverMediaError();
+              } else {
+                hls.destroy();
+              }
+            } else {
+              hls.destroy();
+            }
+          }
+        });
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           video.play().catch(() => {
