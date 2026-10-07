@@ -1,4 +1,30 @@
 
+// توليد روابط المشغلات الخارجية لأجهزة الأندرويد والكمبيوتر
+function openInExternalPlayer(rawStreamUrl) {
+  if (!rawStreamUrl) return;
+  const cleanUrl = rawStreamUrl.trim();
+
+  // فحص إذا كان الجهاز أندرويد
+  const isAndroid = /android/i.test(navigator.userAgent);
+
+  if (isAndroid) {
+    // محاولة فتح عبر Intent عام لأي مشغل فيديو مثبت
+    const intentUrl = "intent:" + cleanUrl + "#Intent;type=video/*;scheme=http;action=android.intent.action.VIEW;end;";
+    window.location.href = intentUrl;
+  } else {
+    // فتح عبر VLC مباشر أو نافذة خارجية
+    const vlcUrl = "vlc://" + cleanUrl;
+    window.location.href = vlcUrl;
+    setTimeout(() => {
+      // بديل إذا لم يكن VLC مثبتاً: نسخ الرابط
+      navigator.clipboard.writeText(cleanUrl).then(() => {
+        alert("تم نسخ رابط البث! يمكنك لصقه في VLC أو أي مشغل تفضله.");
+      }).catch(() => {});
+    }, 1000);
+  }
+}
+
+
 // تفريغ حالة البحث عند التنقل بين الأقسام
 window.clearSearchState = function() {
   window.searchQuery = '';
@@ -2202,6 +2228,15 @@ function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
     video.playsInline = true;
     video.loop = true;
     if (isModal) {
+      // إضافة زر المشغل الخارجي في شاشة العرض
+      const extBtn = document.createElement('button');
+      extBtn.className = 'absolute top-4 left-24 z-50 bg-amber-600/90 hover:bg-amber-500 text-white text-xs px-3 py-1.5 rounded-lg font-medium shadow-lg backdrop-blur flex items-center gap-1.5 transition-all';
+      extBtn.innerHTML = '<span>🚀</span> <span>مشغل خارجي (VLC)</span>';
+      extBtn.onclick = (e) => {
+        e.stopPropagation();
+        openInExternalPlayer(rawUrl || url);
+      };
+      container.parentElement.appendChild(extBtn);
       video.muted = false;
       video.volume = 1.0;
     } else {
