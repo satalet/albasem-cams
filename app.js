@@ -2418,19 +2418,9 @@ function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
             });
             player.attachMediaElement(video);
             
-            // إعادة وصل البث فورا إذا قطع السيرفر أو البروكسي الاتصال
+            // معالجة الأخطاء بهدوء دون تشنج الـ loop
             player.on(mpegts.Events.ERROR, (type, detail, info) => {
-                console.warn("[mpegts Error Reconnecting...]", type, detail);
-                setTimeout(() => {
-                    try { player.unload(); player.load(); player.play(); } catch(e){}
-                }, 500);
-            });
-
-            video.addEventListener("ended", () => {
-                console.log("[Live Stream Ended, Reconnecting...]");
-                setTimeout(() => {
-                    try { player.unload(); player.load(); player.play(); } catch(e){}
-                }, 300);
+                console.warn("[mpegts Error]", type, detail);
             });
             player.load();
             player.play().catch(() => { video.muted = true; player.play().catch(()=>{}); });
