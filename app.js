@@ -2184,33 +2184,25 @@ async function saveCategoryOrder() {
 function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
   // === معالج الروابط الشامل عند نقطة الدخول الأولى ===
   function prepareUniversalStreamUrl(inputUrl) {
-    if (!inputUrl || typeof inputUrl !== 'string') return inputUrl;
+    if (!inputUrl || typeof inputUrl !== "string") return inputUrl;
     let u = inputUrl.trim();
 
-    // فك التكرار إذا كان الرابط مسبوقاً ببروكسي
-    if (u.includes('corsproxy.io/?')) {
-      const parts = u.split('corsproxy.io/?');
-      u = decodeURIComponent(parts[parts.length - 1]);
-    }
-
-    // 1. تصحيح روابط Xtream المباشرة التي تنتهي برقم وبدون لاحقة لتصبح HLS
-    if (!u.includes('.m3u8') && !u.includes('.mpd') && !u.includes('.mp4')) {
-      const cleanPath = u.split('?')[0];
-      const parts = cleanPath.split('/');
-      const lastPart = parts[parts.length - 1];
-      if (/^[0-9]+$/.test(lastPart)) {
-        const query = u.includes('?') ? '?' + u.split('?')[1] : '';
-        u = cleanPath + '.m3u8' + query;
+    // فك أي تكرار سابق للبروكسيات لمنع الـ 404
+    while (u.includes("albasem-proxy.satalet.workers.dev/?url=") || u.includes("corsproxy.io/?")) {
+      if (u.includes("albasem-proxy.satalet.workers.dev/?url=")) {
+        u = decodeURIComponent(u.split("albasem-proxy.satalet.workers.dev/?url=").pop());
+      }
+      if (u.includes("corsproxy.io/?")) {
+        u = decodeURIComponent(u.split("corsproxy.io/?").pop());
       }
     }
 
-    // 2. توجيه الروابط التي تواجه قيود HTTP أو CORS عبر البروكسي بشكل نظيف ولمرة واحدة
-    const isHttp = u.startsWith('http://');
-    const isCorsRestricted = /falcon-|amagi\.tv|xtream|iptv|stream/i.test(u);
-    const isPageHttps = window.location.protocol === 'https:';
+    // الروابط التي تتطلب بروكسي
+    const isHttp = u.startsWith("http://");
+    const isRestricted = /falcon-|amagi\.tv|xtream|iptv/i.test(u);
 
-    if ((isHttp && isPageHttps) || isCorsRestricted) {
-      return 'https://albasem-proxy.satalet.workers.dev/?url=' + encodeURIComponent(u);
+    if (isHttp || isRestricted) {
+      return "https://albasem-proxy.satalet.workers.dev/?url=" + encodeURIComponent(u);
     }
     return u;
   }
