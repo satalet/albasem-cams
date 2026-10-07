@@ -2390,6 +2390,31 @@ function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
       try { hlsInstance.destroy(); } catch(e){}
     }
 
+    // دعم تشغيل MPEG-TS المباشر عبر mpegts.js
+    const isTsStream = !streamUrl.includes(".m3u8") && (streamUrl.includes("falcon-") || /\/\d+$/.test(streamUrl) || streamUrl.includes(".ts"));
+    if (isTsStream && window.mpegts && mpegts.getFeatureList().mseLivePlayback) {
+        try {
+            if (video._mpegtsPlayer) { video._mpegtsPlayer.destroy(); }
+            const proxiedUrl = "https://albasem-proxy.satalet.workers.dev/?url=" + encodeURIComponent(streamUrl);
+            const player = mpegts.createPlayer({
+                type: "mse",
+                isLive: true,
+                url: proxiedUrl
+            }, {
+                enableWorker: true,
+                lazyLoad: false,
+                stashInitialSize: 128
+            });
+            player.attachMediaElement(video);
+            player.load();
+            player.play().catch(() => { video.muted = true; player.play().catch(()=>{}); });
+            video._mpegtsPlayer = player;
+            return;
+        } catch(e) {
+            console.warn("[mpegts fallback to HLS]", e);
+        }
+    }
+
     if (Hls.isSupported()) {
       const hls = new Hls({
           enableWorker: true,
@@ -2419,10 +2444,7 @@ function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
         function getPlayableUrl(rawUrl) {
           if (!rawUrl) return rawUrl;
           let target = rawUrl;
-          // 1. إذا كان رابط سيرفر Xtream ينتهي برقم، أضف له .m3u8 لتحويله إلى HLS
-          if (!target.includes('.m3u8') && (target.includes('falcon-') || /\/\d+$/.test(target))) {
-            target = target + '.m3u8';
-          }
+          // 1. الحفاظ على الرابط الأصلي بدون إجبار .m3u8 لسيرفرات الـ TS المباشرة
           // 2. توجيه الروابط التي لا تدعم CORS أو تعمل بـ http عبر البروكسي المشفر
           if (target.startsWith('http://') || target.includes('falcon-') || target.includes('amagi.tv')) {
             return 'https://albasem-proxy.satalet.workers.dev/?url=' + encodeURIComponent(target);
