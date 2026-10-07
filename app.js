@@ -2210,7 +2210,7 @@ function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
     const isPageHttps = window.location.protocol === 'https:';
 
     if ((isHttp && isPageHttps) || isCorsRestricted) {
-      return 'https://corsproxy.io/?' + encodeURIComponent(u);
+      return 'https://albasem-proxy.satalet.workers.dev/?url=' + encodeURIComponent(u);
     }
     return u;
   }
@@ -2433,7 +2433,7 @@ function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
           }
           // 2. توجيه الروابط التي لا تدعم CORS أو تعمل بـ http عبر البروكسي المشفر
           if (target.startsWith('http://') || target.includes('falcon-') || target.includes('amagi.tv')) {
-            return 'https://corsproxy.io/?' + encodeURIComponent(target);
+            return 'https://albasem-proxy.satalet.workers.dev/?url=' + encodeURIComponent(target);
           }
           return target;
         }
