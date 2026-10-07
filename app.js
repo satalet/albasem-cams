@@ -2354,7 +2354,18 @@ function launchHlsStream(container, url, isModal = false, isIptv = false) {
         let mediaRecoveryAttempts = 0;
         let usedCorsProxy = false;
 
-        hls.loadSource(streamUrl);
+        // فحص وتوجيه الروابط التي تتطلب وسيط (IPTV / HTTP / Non-CORS)
+        function getPlayableUrl(rawUrl) {
+          if (!rawUrl) return rawUrl;
+          // إذا كان الرابط http أو من سيرفرات البث الخارجية مثل falcon أو amagi
+          if (rawUrl.startsWith('http://') || rawUrl.includes('falcon-') || rawUrl.includes('amagi.tv')) {
+            return 'https://corsproxy.io/?' + encodeURIComponent(rawUrl);
+          }
+          return rawUrl;
+        }
+
+        const initialTargetUrl = getPlayableUrl(streamUrl);
+        hls.loadSource(initialTargetUrl);
         hls.attachMedia(video);
 
         hls.on(Hls.Events.ERROR, (event, data) => {
