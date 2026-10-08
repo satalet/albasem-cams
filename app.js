@@ -1,4 +1,14 @@
 
+// Cosc iomlán ar dhúnadh srutha beo
+if (window.MediaSource) {
+    const originalEndOfStream = window.MediaSource.prototype.endOfStream;
+    window.MediaSource.prototype.endOfStream = function(...args) {
+        console.warn("[MediaSource] Cuireadh cosc ar endOfStream d’aon ghnó le haghaidh sruth beo.");
+        return;
+    };
+}
+
+
 // توليد روابط المشغلات الخارجية لأجهزة الأندرويد والكمبيوتر
 function openInExternalPlayer(rawStreamUrl) {
   if (!rawStreamUrl) return;
