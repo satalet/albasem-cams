@@ -2420,7 +2420,8 @@ function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
         window._currentMpegtsPlayer = null;
     }
                         const player = mpegts.createPlayer({
-                type: "mse",
+                type: "mpegts",
+                isLive: true,
                 isLive: true,
                 url: finalStreamUrl
             }, {
@@ -2463,6 +2464,12 @@ function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
             player.load();
             player.play().catch(() => { video.muted = true; player.play().catch(()=>{}); });
             video._mpegtsPlayer = player;
+
+            video.addEventListener("ended", () => {
+                console.log("استئناف البث المباشر...");
+                try { player.unload(); player.load(); player.play(); } catch(e){}
+            });
+
 
             
             return;
