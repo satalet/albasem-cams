@@ -2441,6 +2441,19 @@ function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
                 liveBufferLatencyChasing: false
             });
             player.attachMediaElement(video);
+            let recovering = false;
+            player.on(mpegts.Events.ERROR, (type, detail) => {
+                if (recovering) return;
+                recovering = true;
+                setTimeout(() => {
+                    try {
+                        player.unload();
+                        player.load();
+                        player.play();
+                    } catch(e){}
+                    recovering = false;
+                }, 500);
+            });
             window._currentMpegtsPlayer = player;
             
             // معالجة الأخطاء بهدوء دون تشنج الـ loop
