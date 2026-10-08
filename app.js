@@ -2443,6 +2443,24 @@ function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
             player.load();
             player.play().catch(() => { video.muted = true; player.play().catch(()=>{}); });
             video._mpegtsPlayer = player;
+
+            // إعادة الاتصال التلقائي عند توقف الدفق من المصدر
+            let isStalled = false;
+            video.addEventListener("waiting", () => {
+                if (isStalled) return;
+                isStalled = true;
+                setTimeout(() => {
+                    if (video.paused || video.readyState < 3) {
+                        console.log("⚡ جاري تنشيط البث واستئناف الدفق...");
+                        try {
+                            player.unload();
+                            player.load();
+                            player.play();
+                        } catch(e){}
+                    }
+                    isStalled = false;
+                }, 1500);
+            });
             return;
         } catch(e) {
             console.warn("[mpegts fallback to HLS]", e);
