@@ -2209,7 +2209,7 @@ function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
 
   const url = prepareUniversalStreamUrl(rawUrl);
   // فحص مباشر: إذا كان الرابط فيلم أو حلقة (VOD) بامتداد فيديو واضح
-  const isVodFile = /\.(mp4|mkv|avi|mov|webm)($|\?)/i.test(url) || /\.(mp4|mkv|avi|mov|webm)($|\?)/i.test(rawUrl);
+  const isVodFile = url.includes("/movie/") || url.includes("/series/") || /\.(mp4|mkv|avi|mov|webm)($|\?)/i.test(url) || /\.(mp4|mkv|avi|mov|webm)($|\?)/i.test(rawUrl);
   const isDirectMp4 = isVodFile;
   if (isDirectMp4 && !url.includes('youtube') && !url.includes('youtu.be')) {
     container.innerHTML = '';
