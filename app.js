@@ -2400,6 +2400,15 @@ function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
             if (!finalStreamUrl.includes("albasem-proxy.satalet.workers.dev")) {
                 finalStreamUrl = "https://albasem-proxy.satalet.workers.dev/?url=" + encodeURIComponent(finalStreamUrl);
             }
+                if (window._currentMpegtsPlayer) {
+        try {
+            window._currentMpegtsPlayer.pause();
+            window._currentMpegtsPlayer.unload();
+            window._currentMpegtsPlayer.detachMediaElement();
+            window._currentMpegtsPlayer.destroy();
+        } catch(e) {}
+        window._currentMpegtsPlayer = null;
+    }
             const player = mpegts.createPlayer({
                 type: "mse",
                 isLive: true,
@@ -2417,6 +2426,7 @@ function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
                 liveBufferLatencyMinRemain: 0.8
             });
             player.attachMediaElement(video);
+            window._currentMpegtsPlayer = player;
             
             // معالجة الأخطاء بهدوء دون تشنج الـ loop
             player.on(mpegts.Events.ERROR, (type, detail, info) => {
