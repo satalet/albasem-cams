@@ -2202,7 +2202,7 @@ function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
     const isRestricted = /falcon-|amagi\.tv|xtream|iptv/i.test(u);
 
     if (isHttp || isRestricted) {
-      return "https://albasem-proxy.satalet.workers.dev/?url=" + encodeURIComponent(u);
+      return "https://iptv-stream-proxy.onrender.com/proxy?url=" + encodeURIComponent(u);
     }
     return u;
   }
@@ -2285,7 +2285,7 @@ function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
   let isPlaying = false;
   let hlsInstance = null;
   let usedProxy = false;
-  const PROXY_BASE = "https://albasem-proxy.satalet.workers.dev/?url=";
+  const PROXY_BASE = "https://iptv-stream-proxy.onrender.com/proxy?url=";
 
   const showOfflineBox = () => {
     if (isModal) {
@@ -2398,7 +2398,7 @@ function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
             if (video._mpegtsPlayer) { video._mpegtsPlayer.destroy(); }
             let finalStreamUrl = streamUrl;
             if (!finalStreamUrl.includes("albasem-proxy.satalet.workers.dev")) {
-                finalStreamUrl = "https://albasem-proxy.satalet.workers.dev/?url=" + encodeURIComponent(finalStreamUrl);
+                finalStreamUrl = "https://iptv-stream-proxy.onrender.com/proxy?url=" + encodeURIComponent(finalStreamUrl);
             }
                 if (window._currentMpegtsPlayer) {
         try {
@@ -2473,7 +2473,7 @@ function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
           // 1. الحفاظ على الرابط الأصلي بدون إجبار .m3u8 لسيرفرات الـ TS المباشرة
           // 2. توجيه الروابط التي لا تدعم CORS أو تعمل بـ http عبر البروكسي المشفر
           if (target.startsWith('http://') || target.includes('falcon-') || target.includes('amagi.tv')) {
-            return 'https://albasem-proxy.satalet.workers.dev/?url=' + encodeURIComponent(target);
+            return 'https://iptv-stream-proxy.onrender.com/proxy?url=' + encodeURIComponent(target);
           }
           return target;
         }
