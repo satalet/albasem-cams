@@ -2419,12 +2419,19 @@ function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
         } catch(e) {}
         window._currentMpegtsPlayer = null;
     }
-            const player = mpegts.createPlayer({
+                        const player = mpegts.createPlayer({
                 type: "mse",
                 isLive: true,
                 url: finalStreamUrl
             }, {
                 enableWorker: true,
+                lazyLoad: false,
+                enableStashBuffer: true,
+                stashInitialSize: 1024,
+                isLive: true,
+                autoCleanupSourceBuffer: true,
+                autoCleanupMaxBackwardDuration: 120,
+                autoCleanupMinBackwardDuration: 60,
                 lazyLoad: false,
                 enableStashBuffer: true,
                 stashInitialSize: 384,
@@ -2444,23 +2451,7 @@ function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
             player.play().catch(() => { video.muted = true; player.play().catch(()=>{}); });
             video._mpegtsPlayer = player;
 
-            // إعادة الاتصال التلقائي عند توقف الدفق من المصدر
-            let isStalled = false;
-            video.addEventListener("waiting", () => {
-                if (isStalled) return;
-                isStalled = true;
-                setTimeout(() => {
-                    if (video.paused || video.readyState < 3) {
-                        console.log("⚡ جاري تنشيط البث واستئناف الدفق...");
-                        try {
-                            player.unload();
-                            player.load();
-                            player.play();
-                        } catch(e){}
-                    }
-                    isStalled = false;
-                }, 1500);
-            });
+            
             return;
         } catch(e) {
             console.warn("[mpegts fallback to HLS]", e);
