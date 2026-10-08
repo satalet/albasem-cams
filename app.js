@@ -2416,14 +2416,12 @@ function launchHlsStream(container, rawUrl, isModal = false, isIptv = false) {
             }, {
                 enableWorker: true,
                 lazyLoad: false,
-                stashInitialSize: 64,
-                enableStashBuffer: false,
+                enableStashBuffer: true,
+                stashInitialSize: 384,
                 autoCleanupSourceBuffer: true,
-                autoCleanupMaxBackwardDuration: 15,
-                autoCleanupMinBackwardDuration: 10,
-                liveBufferLatencyChasing: true,
-                liveBufferLatencyMaxLatency: 2.5,
-                liveBufferLatencyMinRemain: 0.8
+                autoCleanupMaxBackwardDuration: 60,
+                autoCleanupMinBackwardDuration: 30,
+                liveBufferLatencyChasing: false
             });
             player.attachMediaElement(video);
             window._currentMpegtsPlayer = player;
